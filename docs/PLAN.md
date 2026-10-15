@@ -172,7 +172,7 @@ Owner's additions (do first):
 - Art Review Board v2: approve, reject or request a fix with notes per asset, stored in Redis on the bug-kit
   pattern. "Copy for Claude" exports the open notes.
 
-### B5b · Coaching help, playbook, season (owner's request)
+### B5b · Coaching help, playbook, season (owner's request) ✅ (colour-blind shapes moved to B6)
 - **Tutorial:** a guided first game (a scripted drive that teaches formation, play call, activations, checks,
   blocks, tackles and passing one step at a time), replayable from Home.
 - **Rules / help section:** a full illustrated rules page (Home and in game), plus contextual "?" help on every

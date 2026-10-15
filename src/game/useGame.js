@@ -31,16 +31,22 @@ export function useGame(match) {
   const [, bump] = useReducer((x) => x + 1, 0);
   useEffect(() => {
     let raf = 0;
+    let savedLen = match.replay?.length ?? 0;
     const bot = makeAI(match.level);
     // the computer "thinks" for a moment before acting, so you can follow along
     const cpu = (g, side, req) => {
       const v = bot(g, side, req);
+      if (g.rewinding) return v; // replaying a saved game: no thinking time
       const ms = req.type !== 'act' ? 150 : v?.kind === 'end' ? 120 : 380;
       return wait(ms / speed()).then(() => v);
     };
-    const g = new Game({ teams: [teamSetup(match.you), teamSetup(match.cpu)], seed: match.seed ?? Date.now(), mode: match.mode, agents: [null, cpu] }, {
-      onChange: () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; bump(); }); },
-      pace: (e) => (settings().calm ? 0.5 : 1) * (BEATS[e.kind]?.(e) ?? 200),
+    const g = new Game({ teams: [teamSetup(match.you), teamSetup(match.cpu)], seed: match.seed ?? Date.now(), mode: match.mode, agents: [null, cpu], replay: match.replay ?? null }, {
+      onChange: () => {
+        // keep the game saved for Resume: every new answer of yours
+        if (g.trail.length !== savedLen) { savedLen = g.trail.length; saveResume(match, g.trail); }
+        if (!raf) raf = requestAnimationFrame(() => { raf = 0; bump(); });
+      },
+      pace: (e) => (g.rewinding ? 0 : (settings().calm ? 0.5 : 1) * (BEATS[e.kind]?.(e) ?? 200)),
       delay: (ms) => wait(ms / speed()),
     });
     setGame(g);
@@ -53,3 +59,20 @@ export function useGame(match) {
 }
 
 const speed = () => SPEEDS[settings().speed] ?? 1;
+
+// ---------- resume / undo ----------
+const RESUME = 'tb-resume';
+function saveResume(match, trail) {
+  if (match.tutorial) return;
+  try { localStorage.setItem(RESUME, JSON.stringify({ match: { ...match, replay: undefined }, trail: trail.map(({ type, value, logAt }) => ({ type, value, logAt })), at: Date.now() })); } catch { /* not saved */ }
+}
+export const loadResume = () => { try { return JSON.parse(localStorage.getItem(RESUME) || 'null'); } catch { return null; } };
+export const clearResume = () => { try { localStorage.removeItem(RESUME); } catch { /* ignore */ } };
+// a game rebuilt from its saved answers (resume), or with the last one taken back (undo)
+export const resumeMatch = (saved, drop = 0) => ({ ...saved.match, replay: saved.trail.slice(0, saved.trail.length - drop), skipIntro: true, key: Date.now() });
+// undo is only fair before any dice: your last answer was a move and nothing has been rolled since
+export function canUndo(g) {
+  const last = g?.trail.at(-1);
+  if (!last || last.type !== 'act' || last.value?.kind !== 'move') return false;
+  return !g.state.log.some((e) => e.id > last.logAt && ['check', 'sport', 'scatter', 'dice', 'cointoss'].includes(e.kind));
+}

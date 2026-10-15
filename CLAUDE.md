@@ -21,7 +21,13 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
   cleanup + Techno Bowl logo, pre-game logo / helmet smash / records, numbers that stay upright, coin toss, 8-bit UI.
 - **B5 done:** snaps from the center, theme fades at kick-off, free mouse camera, rules double-pass (40 tests; one fix:
   a critical block failure's push is optional), sound editor (`?view=sounds`), Art Review Board v2 (verdicts).
-- **Next is B5b:** tutorial, rules/help, on-field help, playbook, season + playoffs (see docs/PLAN.md).
+- **B5b done:** tutorial (`?view=tutorial`, coach tips), tabbed + searchable rules (drawer and `?view=rules`), "?"
+  help per prompt, run/throw ranges, legal setup squares, playbook (`src/data/playbook.js`), season + playoffs
+  (`src/game/season.js`), odds on hover, explicit action buttons, resume (`tb-resume`) + Undo (replays the answer
+  trail minus one), coach Suggest (All-Pro AI on a copied RNG), quick play, Esc pause menu, play log, big roll
+  number, dice that steer round players, down cube showing the current down on every side, PWA manifest.
+- **Next is B6:** rule modes (abilities with in-the-moment ability buttons, PRO / field goals, INFERNO); colour-blind
+  shapes still to do.
 
 ## Look (8-bit everywhere)
 - Type: Press Start 2P (`--pixel`) for titles, buttons, chips, labels; Pixelify Sans (`--body`) for running text.

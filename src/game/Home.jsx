@@ -6,9 +6,12 @@ import { PlayerCube } from '../three/Cube';
 import { TEAMS, uniformOf, artUrl } from '../data/art';
 import { lineUp } from './formation';
 import { settings } from './prefs';
+import { loadResume, resumeMatch, clearResume } from './useGame';
+import { teamById } from '../data/art';
 
 // Home: a slow fly-around of two random teams lined up at the 20, with the menu over it.
-export default function Home({ go }) {
+export default function Home({ go, onResume }) {
+  const saved = useMemo(loadResume, []);
   const [a, b] = useMemo(() => {
     const i = Math.floor(Math.random() * TEAMS.length);
     const j = (i + 1 + Math.floor(Math.random() * (TEAMS.length - 1))) % TEAMS.length;
@@ -27,14 +30,26 @@ export default function Home({ go }) {
         <h1 className="led big">TECHNO BOWL</h1>
         <p className="tagline">8-bit tabletop football from the More Fun! League</p>
         <div className="menu-cards">
+          {saved && (
+            <button className="menu-card glass primary resume-card" onClick={() => onResume(resumeMatch(saved))}>
+              <b>Resume game</b><span>{teamById(saved.match.you.team)?.name} vs {teamById(saved.match.cpu.team)?.name}{saved.match.season ? ` · season ${saved.match.season.label}` : ''}</span>
+              <small className="resume-x" role="button" onClick={(e) => { e.stopPropagation(); clearResume(); location.reload(); }}>Discard</small>
+            </button>
+          )}
           <button className="menu-card glass primary" onClick={() => go('teams')}>
             <b>Play vs Computer</b><span>Pick your team, your uniform and the opponent</span>
+          </button>
+          <button className="menu-card glass" onClick={() => go('season')}>
+            <b>Season</b><span>A schedule, standings and the playoffs</span>
           </button>
           <button className="menu-card glass" disabled title="Arrives in a later batch">
             <b>Play Online</b><span>Coming soon</span>
           </button>
-          <button className="menu-card glass" onClick={() => go('art')}>
-            <b>Art Review Board</b><span>Every team, uniform and token</span>
+          <button className="menu-card glass" onClick={() => go('tutorial')}>
+            <b>Tutorial</b><span>A guided first game with the coach's tips</span>
+          </button>
+          <button className="menu-card glass" onClick={() => go('rules')}>
+            <b>How to play</b><span>All the rules, short and sweet</span>
           </button>
           <button className="menu-card glass" onClick={() => go('settings')}>
             <b>Settings</b><span>Text size, motion, field detail</span>

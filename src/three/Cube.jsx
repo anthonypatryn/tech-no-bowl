@@ -39,15 +39,23 @@ export function PlayerCube({ uniform, row, position = [0, 0, 0], facing = 0, dow
   );
 }
 
-// down marker cube: turns a quarter per down so the current down faces `face` (default +x: the broadcast camera)
-export function DownCube({ down = 1, position = [0, 0, 0], size = CUBE, face = Math.PI / 2 }) {
-  const mats = useMemo(() => downMaterials(), []);
+// down marker cube: the current down on every side. A new down gives it a quarter turn, and the number changes as
+// it turns (once it's past halfway), like flipping the marker on the sideline.
+export function DownCube({ down = 1, position = [0, 0, 0], size = CUBE }) {
+  const sets = useMemo(() => downMaterials(), []);
   const ref = useRef();
+  const st = useRef({ down, shown: down, goal: 0 });
+  if (st.current.down !== down) { st.current.down = down; st.current.goal -= Math.PI / 2; }
   useFrame((_, dt) => {
-    if (!ref.current) return;
-    const goal = face - (down - 1) * Math.PI / 2;
-    ref.current.rotation.y = damp(ref.current.rotation.y, goal, 7, dt);
+    const m = ref.current;
+    if (!m) return;
+    const c = st.current;
+    m.rotation.y = damp(m.rotation.y, c.goal, 7, dt);
+    if (c.shown !== c.down && Math.abs(c.goal - m.rotation.y) < Math.PI / 4) c.shown = c.down;
+    const want = sets[Math.min(3, Math.max(0, c.shown - 1))];
+    if (m.material !== want) m.material = want;
   });
+  const mats = sets[Math.min(3, Math.max(0, down - 1))];
   return (
     <mesh ref={ref} material={mats} position={[position[0], size / 2 + (position[1] ?? 0), position[2]]} castShadow>
       <boxGeometry args={[size, size, size]} />

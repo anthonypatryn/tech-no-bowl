@@ -74,8 +74,9 @@ export function playerMaterials(uniform, row) {
 }
 
 // the down marker: atlas row 6 is the cube with 1 / 2 / 3 / 4 round its sides (front, right, back, left)
+// one set per down: that down's number on all four sides
 export function downMaterials(row = 6) {
   const mat = (col) => new THREE.MeshStandardMaterial({ map: tileTexture(DOWNS.file, row, col, 5), roughness: 0.7 });
-  const [top, front, right, back, left] = [0, 1, 2, 3, 4].map(mat);
-  return [right, left, top, top, front, back];
+  const [top, ...nums] = [0, 1, 2, 3, 4].map(mat);
+  return nums.map((n) => [n, n, top, top, n, n]);
 }

@@ -382,3 +382,23 @@ test('p.12: same skill ratings: a die each decides; a tie again lets the offense
   await g.round(42, 45);
   assert.equal(decider, 0);
 });
+
+test('playbook: every built-in offense and defense is legal everywhere on the field', async () => {
+  const { OFFENSE_SETS, DEFENSE_SETS, buildOffense, buildDefense } = await import('../src/data/playbook.js');
+  const roster = [6, 7, 33, 42, 45, 55, 68].map((num) => ({ num, skill: skillOf(num) }));
+  const bad = [];
+  for (const dir of [-1, 1]) for (let line = 3; line <= 21; line++) for (const col of [4, 6, 8]) {
+    const ctx = { line, dir, col, count: 7 };
+    for (const set of OFFENSE_SETS) {
+      const o = buildOffense(set, roster, ctx);
+      const r = checkOffense(o, ctx);
+      if (!r.ok) bad.push(`${set.id} ${dir}/${line}/${col}: ${r.errors[0]}`);
+      for (const ds of DEFENSE_SETS) {
+        const d = buildDefense(ds, roster, o, ctx);
+        const rd = checkDefense(d, o, ctx);
+        if (!rd.ok) bad.push(`${ds.id} vs ${set.id} ${dir}/${line}/${col}: ${rd.errors[0]}`);
+      }
+    }
+  }
+  assert.equal(bad.length, 0, bad.slice(0, 5).join(' | '));
+});

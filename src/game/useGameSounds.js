@@ -40,12 +40,12 @@ function thump(kind) {
   } catch { /* no audio */ }
 }
 
-export function useGameSounds(game) {
+export function useGameSounds(game, { theme = true } = {}) {
   const seen = useRef(0);
   useEffect(() => {
     preload(['crowd', 'whistle', 'whistleStart', 'whistleFinal', 'grunt', 'hit', 'theme']);
     startCrowd();
-    playTheme(26).then(() => crowd(0.45, 22, 0.5)); // duck the crowd under the theme
+    if (theme) playTheme(26).then(() => crowd(0.45, 22, 0.5)); // duck the crowd under the theme
     return () => { stopTheme(0.6); stopCrowd(0.8); };
   }, [game]);
   const log = game.state.log;

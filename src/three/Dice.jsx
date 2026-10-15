@@ -76,10 +76,38 @@ function Die({ value, body = '#f4f0e6', pip = '#c21d24', at, from, delay = 0, si
 }
 
 const ROLL_KINDS = ['check', 'sport', 'scatter', 'dice'];
+const CLEAR = 0.78; // how close a die may come to a player cube's centre
+
+// distance from point p to segment a-b, on the turf (x, z)
+function segDist(p, a, b) {
+  const dx = b[0] - a[0], dz = b[2] - a[2];
+  const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[2] - a[2]) * dz) / (dx * dx + dz * dz || 1)));
+  return Math.hypot(p[0] - (a[0] + dx * t), p[2] - (a[2] + dz * t));
+}
+// the dice's landing spots and throw lines beside (x, z): the nearest layout where no die lands on, or rolls
+// through, a player. Thrown in from the camera's side (+x).
+function plan(x, z, n, cubes) {
+  const lay = (ax, az) => Array.from({ length: n }, (_, i) => {
+    const at = [ax + (i % 2) * 0.3, 0, az + (i - (n - 1) / 2) * 0.85];
+    return { at, from: [at[0] + 3.2, 0, at[2] + (Math.random() - 0.5) * 0.6] };
+  });
+  const score = (dice) => Math.min(...dice.flatMap((d) => cubes.map((c) => segDist(c, d.from, d.at))), 9);
+  let best = null;
+  for (const dx of [1.1, 1.6, 2.2, 0.6, 2.9]) {
+    for (const dz of [0, 0.5, -0.5, 1, -1, 1.6, -1.6, 2.3, -2.3]) {
+      const dice = lay(x + dx, z + dz);
+      const s = score(dice);
+      if (s >= CLEAR) return dice;
+      if (!best || s > best.s) best = { s, dice };
+    }
+  }
+  return best.dice;
+}
 const SHOW_MS = 2600;
 
 // watches the log and throws the dice for the newest roll, beside whoever rolled
 export function DiceRolls({ log, players, teamColors, offense, home }) {
+  const cubes = Object.values(players).filter((p) => p.col != null).map((p) => sq(p.col, p.row));
   const last = useMemo(() => [...log].reverse().find((e) => ROLL_KINDS.includes(e.kind) && e.dice), [log]);
   const [roll, setRoll] = useState(null);
   useEffect(() => {
@@ -87,23 +115,17 @@ export function DiceRolls({ log, players, teamColors, offense, home }) {
     const p = last.pid ? players[last.pid] : null;
     const spot = last.kind === 'scatter' ? last.from : p ? [p.col, p.row] : home; // who-goes-first: at the ball
     const [x, , z] = spot ? sq(spot[0], spot[1]) : [0, 0, 0];
-    // land just towards the camera (+x side) of the action, a die-width apart; thrown in from further out
-    const at = [x + 1.1, 0, z];
     const colors = last.kind === 'scatter' || last.kind === 'dice'
       ? [offense, 1 - offense].map((side) => ({ body: teamColors[side][0], pip: teamColors[side][1] })).slice(0, last.dice.length)
       : last.kind === 'sport' ? [{ body: '#f4f0e6', pip: '#1b1b1b' }, { body: '#f4f0e6', pip: '#1b1b1b' }] : [{}, {}];
-    setRoll({ id: last.id, at, dice: last.dice, colors: last.dice.map((_, i) => colors[i] ?? {}) });
+    setRoll({ id: last.id, paths: plan(x, z, last.dice.length, cubes), dice: last.dice, colors: last.dice.map((_, i) => colors[i] ?? {}) });
     const t = setTimeout(() => setRoll((r) => (r?.id === last.id ? null : r)), SHOW_MS);
     return () => clearTimeout(t);
   }, [last?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!roll) return null;
   return (
     <group key={roll.id}>
-      {roll.dice.map((v, i) => {
-        const at = [roll.at[0] + (i % 2) * 0.3, 0, roll.at[2] + (i - (roll.dice.length - 1) / 2) * 0.85];
-        const from = [at[0] + 3.2, 0, at[2] + (Math.random() - 0.5) * 1.5];
-        return <Die key={i} value={v} at={at} from={from} delay={i * 0.06} {...roll.colors[i]} />;
-      })}
+      {roll.dice.map((v, i) => <Die key={i} value={v} at={roll.paths[i].at} from={roll.paths[i].from} delay={i * 0.06} {...roll.colors[i]} />)}
     </group>
   );
 }

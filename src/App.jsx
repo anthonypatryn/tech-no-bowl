@@ -3,6 +3,7 @@
 //   ?view=art         Art Review Board
 //   ?view=settings    Settings
 //   ?view=game        a game vs the computer (after the Team Picker)
+//   ?view=rules       How to play;  ?view=tutorial  the guided first game;  ?view=season  a season + playoffs
 //   ?view=bugs        the owner's bug list (PIN)
 //   ?view=moments     Moment Lab: fire each cinematic on demand
 //   ?view=sounds      the owner's sound editor (PIN to save)
@@ -18,6 +19,8 @@ const BugList = lazy(() => import('./game/BugList.jsx'));
 const Lab = lazy(() => import('./game/Lab.jsx'));
 const SoundEditor = lazy(() => import('./game/SoundEditor.jsx'));
 import BugReport from './game/BugReport.jsx';
+import { RulesPage } from './game/RulesDrawer.jsx';
+import SeasonPage from './game/SeasonPage.jsx';
 
 const viewFromUrl = () => new URLSearchParams(location.search).get('view') || 'home';
 
@@ -25,6 +28,7 @@ export default function App() {
   const s = useSettings();
   const [view, setView] = useState(viewFromUrl);
   const [match, setMatch] = useState(null);
+  const [tut, setTut] = useState(null); // the tutorial after an undo
 
   useEffect(() => {
     const pop = () => setView(viewFromUrl());
@@ -44,14 +48,18 @@ export default function App() {
   if (view === 'sounds') return <Suspense fallback={<div className="loading">Loading…</div>}><SoundEditor /></Suspense>;
   if (view === 'moments') return <Suspense fallback={<div className="loading">Loading…</div>}><Lab /></Suspense>;
   if (view === 'bugs') return <Suspense fallback={<div className="loading">Loading…</div>}><BugList /></Suspense>;
-  if (view === 'game' && match) return <GameView key={match.seed} match={match} onExit={() => go('teams')} onRematch={() => setMatch({ ...match, seed: Date.now() })} />;
+  // the tutorial: a set game vs the Rookie with the coach's tips on
+  if (view === 'tutorial') return <GameView key={tut?.key ?? 'tutorial'} match={tut ?? { you: { team: 'bighorns', uni: 'home', picks: {} }, cpu: { team: 'kittens', uni: 'home', picks: {} }, level: 'rookie', mode: 'techno', seed: 2026, tutorial: true }} onRestart={setTut} onExit={() => { setTut(null); go('home'); }} onRematch={() => { setTut(null); go('teams'); }} />;
+  if (view === 'game' && match) return <GameView key={match.key ?? match.seed} match={match} onRestart={(m) => setMatch(m)} onExit={() => go(match.season ? 'season' : 'teams')} onRematch={() => setMatch({ ...match, seed: Date.now() })} />;
 
   return (
     <div className="app">
       <TopBar view={view} go={go} />
-      {view === 'home' && <Home go={go} />}
+      {view === 'home' && <Home go={go} onResume={(m) => { setMatch(m); go('game'); }} />}
       {(view === 'teams' || (view === 'game' && !match)) && <TeamPicker onStart={(m) => { setMatch({ ...m, seed: Date.now() }); go('game'); }} />}
       {view === 'settings' && <Settings />}
+      {view === 'rules' && <RulesPage go={go} />}
+      {view === 'season' && <SeasonPage onPlay={(m) => { setMatch(m); go('game'); }} />}
       {view === 'art' && <Suspense fallback={<div className="loading">Loading the art…</div>}><ArtReview /></Suspense>}
     </div>
   );
@@ -63,7 +71,7 @@ function TopBar({ view, go }) {
   return (
     <header className="topbar">
       <a className="brand" href="/" onClick={(e) => { e.preventDefault(); go('home'); }}><span className="led">TECHNO BOWL</span></a>
-      <nav>{link('home', 'Home')}{link('teams', 'Play')}{link('art', 'Art Review')}{link('settings', 'Settings')}
+      <nav>{link('home', 'Home')}{link('teams', 'Play')}{link('season', 'Season')}{link('rules', 'Rules')}{link('art', 'Art Review')}{link('settings', 'Settings')}
         <a href="#bug" onClick={(e) => { e.preventDefault(); setBug(true); }}>Report a bug</a></nav>
       {bug && <BugReport onClose={() => setBug(false)} />}
     </header>

@@ -14,7 +14,7 @@ const SPEED = 6.5; // squares per second when walking
 
 // ---------- players ----------
 // p: { pid, side, num, col, row, down }. path: the squares of the move that brought him here (if any)
-function Mover({ p, uniform, row, path, positions, ring, onPick }) {
+function Mover({ p, uniform, row, path, positions, ring, onPick, onHover }) {
   const g = useRef();
   const pos = useRef(null);
   const queue = useRef([]);
@@ -42,7 +42,7 @@ function Mover({ p, uniform, row, path, positions, ring, onPick }) {
     positions.current[p.pid] = g.current.position;
   });
   return (
-    <group ref={g}>
+    <group ref={g} onPointerOver={onHover ? (e) => { e.stopPropagation(); onHover(p.pid); } : undefined} onPointerOut={onHover ? () => onHover(null) : undefined}>
       <PlayerCube uniform={uniform} row={row} facing={Math.PI / 2} down={p.down}
         onClick={onPick ? (e) => { e.stopPropagation(); onPick(p.pid); } : undefined} />
       {ring && (
@@ -316,6 +316,25 @@ function Tiles({ tiles, onPick, onHover }) {
   );
 }
 
+// the edge of a set of squares (a throwing range), drawn as a line round it
+function Outline({ squares, color }) {
+  const geo = useMemo(() => {
+    const set = new Set(squares.map(([c, r]) => `${c},${r}`));
+    const pts = [];
+    const x0 = (c) => c - COLS / 2, z0 = (r) => r - ROWS / 2;
+    for (const [c, r] of squares) {
+      if (!set.has(`${c},${r - 1}`)) pts.push(x0(c), 0.03, z0(r), x0(c + 1), 0.03, z0(r));
+      if (!set.has(`${c},${r + 1}`)) pts.push(x0(c), 0.03, z0(r + 1), x0(c + 1), 0.03, z0(r + 1));
+      if (!set.has(`${c - 1},${r}`)) pts.push(x0(c), 0.03, z0(r), x0(c), 0.03, z0(r + 1));
+      if (!set.has(`${c + 1},${r}`)) pts.push(x0(c + 1), 0.03, z0(r), x0(c + 1), 0.03, z0(r + 1));
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+    return g;
+  }, [squares]);
+  return <lineSegments geometry={geo} raycast={() => null}><lineBasicMaterial color={color} transparent opacity={0.85} toneMapped={false} /></lineSegments>;
+}
+
 // ---------- camera ----------
 const VIEW = {
   free: (f) => ({ pos: [f.x + 12.5, 9, f.z + 0.5], target: [f.x - 0.5, 0, f.z - 0.3] }), // only used if 'free' has no controls yet
@@ -398,7 +417,7 @@ function Rig({ view, focus, dir, shot, positions, intro }) {
 
 // ---------- the scene ----------
 // edit: { side, spots:[{num,col,row}] } shows a formation being placed instead of that side's real positions
-export function Board({ game, view, tiles, onTile, onHover, rings = {}, onPlayer, edit, focusSq, shot, intro, onFree }) {
+export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outlines = [], rings = {}, onPlayer, edit, focusSq, shot, intro, onFree }) {
   const s = game.state;
   const positions = useRef({});
   const unis = useMemo(() => s.teams.map((t) => uniformOf(t.id, t.uniform)), [s.teams]);
@@ -451,7 +470,7 @@ export function Board({ game, view, tiles, onTile, onHover, rings = {}, onPlayer
       {intro && <RunOut teams={[0, 1].map((side) => Object.values(s.players).filter((p) => p.side === side))} unis={unis} rows={rows} t0={intro.t0} startAt={intro.startAt} />}
       {!intro && players.map((p) => (
         <Mover key={p.pid} p={p} uniform={unis[p.side]} row={rows[p.side][p.num]} path={paths[p.pid]} positions={positions}
-          ring={rings[p.pid]} onPick={onPlayer} />
+          ring={rings[p.pid]} onPick={onPlayer} onHover={onHoverPlayer} />
       ))}
       <Ball ball={s.ball} positions={positions} slowmo={!settings().calm} snapFrom={s.log.findLast?.((e) => e.kind === 'snap')?.from} />
       {shot?.kind === 'hit' && <Burst key={shot.id} at={sq(...shot.at, 0)} colors={['#c9c9c9', '#7a5a3a', '#3f6b2a', '#ffffff']} count={shot.big ? 46 : 26} />}
@@ -460,6 +479,7 @@ export function Board({ game, view, tiles, onTile, onHover, rings = {}, onPlayer
       <DiceRolls log={s.log} players={s.players} offense={s.offense} home={[s.spot, s.line]}
         teamColors={s.teams.map((t) => teamColors(t.id, t.uniform))} />
       <Tiles tiles={tiles} onPick={onTile} onHover={onHover} />
+      {outlines.map((o, i) => <Outline key={i} squares={o.squares} color={o.color} />)}
       <OrbitControls makeDefault enableDamping dampingFactor={0.12} enabled={!shot && !intro} maxPolarAngle={Math.PI / 2.1} minDistance={2.5} maxDistance={45}
         onStart={() => { drag.current = { x: null, y: null }; }} onEnd={() => { drag.current = null; }} />
       <Rig view={view} focus={focus} dir={s.teams[s.offense].dir} shot={shot} positions={positions} intro={intro} />

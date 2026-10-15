@@ -37,7 +37,11 @@ export class Game {
   // agents: [fn | null, fn | null]: a computer coach is fn(game, side, request) -> answer; null = a person
   // pacing (UI only): pace(logEntry) -> ms that entry needs on screen; delay(ms) -> Promise. The next decision waits for
   // the time owed, so moves animate and dice can be read. The simulator passes neither and runs flat out.
-  constructor({ teams, seed = Date.now(), mode = 'techno', agents = [null, null] }, { onChange, pace, delay } = {}) {
+  // replay: a saved trail of a person's answers to feed back instantly (resume / undo); the engine is deterministic,
+  // so the same seed + the same answers rebuild the same game.
+  constructor({ teams, seed = Date.now(), mode = 'techno', agents = [null, null], replay = null }, { onChange, pace, delay } = {}) {
+    this.replayQueue = replay ? [...replay] : [];
+    this.rewinding = this.replayQueue.length > 0;
     this.pace = pace;
     this.delay = delay;
     this.owed = 0;
@@ -113,7 +117,7 @@ export class Game {
 
   ask(side, req) {
     if (this.stopped) return new Promise(() => {});
-    const wait = this.owed;
+    const wait = this.rewinding ? 0 : this.owed;
     this.owed = 0;
     const ready = wait && this.delay ? this.delay(wait) : Promise.resolve();
     return ready.then(() => new Promise((resolve) => {
@@ -123,9 +127,16 @@ export class Game {
       this.emit();
       this.pending = (v) => {
         this.pending = null; this.s.request = null;
-        if (!this.agents[side]) this.trail.push({ req: id, side, type: req.type, value: v });
+        if (!this.agents[side]) this.trail.push({ req: id, side, type: req.type, value: v, logAt: this.logNo });
         resolve(v);
       };
+      // replaying a saved game: a person's answers come straight from the trail until it runs out
+      if (this.rewinding && !this.agents[side]) {
+        const next = this.replayQueue.shift();
+        if (next && next.type === req.type) { queueMicrotask(() => this.pending?.(next.value)); if (!this.replayQueue.length) this.rewinding = false; return; }
+        this.replayQueue = []; this.rewinding = false; // out of step (shouldn't happen): just ask
+        this.emit();
+      }
       const agent = this.agents[side];
       if (agent) Promise.resolve(agent(this, side, this.s.request)).then((v) => { if (this.s.request?.id === id) this.pending?.(v); });
     }));
