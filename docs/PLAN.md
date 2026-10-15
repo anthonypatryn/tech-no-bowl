@@ -25,7 +25,7 @@ Template: Long Shot (look, 3D/R3F, camera rig, cinematics) + Escape Order 66 (so
 
 ## Batches (each one = a push + Vercel deploy you can play-test)
 
-### B0 · Foundation
+### B0 · Foundation ✅
 - Wire this folder to `github.com/anthonypatryn/tech-no-bowl` and link it to Vercel.
 - Scaffold from the Long Shot template.
 - Add `CLAUDE.md` with a code map, a dev launch config and the pre-commit checklist.
@@ -38,7 +38,7 @@ Template: Long Shot (look, 3D/R3F, camera rig, cinematics) + Escape Order 66 (so
   Its purpose is to catch bad crops early.
 - Pages exist only as stubs (Home, Team Picker, Settings).
 
-### B1 · Rules engine, TECHNO mode (7v7, no skills) — headless
+### B1 · Rules engine, TECHNO mode (7v7, no skills) — headless ✅
 - Grid geometry:
   - Distance with the every-other-diagonal penalty.
   - Threat zones.
