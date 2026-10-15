@@ -21,3 +21,11 @@ export function rosterFor(id, uid) {
 }
 
 export const artUrl = (file) => `/art/${file}`;
+// card number -> atlas row for one side of a live game (alternates wear the cube of the player they replace)
+export function artRows(state, side) {
+  const t = state.teams[side];
+  const byNum = Object.fromEntries(rosterFor(t.id, t.uniform).map((p) => [p.num, p.row]));
+  return Object.fromEntries(Object.values(state.players).filter((p) => p.side === side).map((p) => [p.num, byNum[p.artNum ?? p.num] ?? 0]));
+}
+// the team's helmet + logo from the team guide (transparent webp)
+export const helmetUrl = (id) => (ART.helmets?.[id] ? artUrl(ART.helmets[id]) : null);

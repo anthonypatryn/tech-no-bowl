@@ -15,8 +15,10 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
 - **B3 done:** AI levels (Rookie / Starter / All-Pro), bug reports, rebindable keys, phone layout, play clocks.
 - **B4 done:** game-day sound (owner's clips), 3D dice for every roll, cinematics (long throw, big hits, TD),
   letterbox, Moment Lab, AI run/pass play plans.
-- **Next is B4b:** Madden-style team select (logos, ability players, alternate-player choice), the opening show,
-  TV overlays, wipes, replays.
+- **B4b done:** head-to-head team select (helmets, ability players, alternate lineups), opening show (head-to-head +
+  tunnel run-out), TV score bug, chyrons, stat cards, MFL wipes, instant replays, engine box score + drives.
+- **Next is B4c:** the owner's polish list in docs/PLAN.md (laces, billboard numbers, coin toss, pre-game cinematic
+  with records and helmet smash, 8-bit everywhere, UI/UX pass).
 
 ## Working with the owner
 - Push in batches the owner can play-test. Say what's verified and what isn't.
@@ -60,6 +62,11 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
 | `src/game/useGameSounds.js` | Log-driven cues (snap, whistle, contact, catches, TDs) + synthesized dice rattle |
 | `src/three/Dice.jsx` | `DiceRolls`: real dice thrown next to whoever rolls (checks red pips, sport checks black, scatter / order in team colours), landing on the engine's numbers |
 | `src/game/shots.js` | Shot director: `useShot(log)` -> throw (pass of 8+) / hit / td; `Board`'s `Rig` flies `shotCam`, `Burst` = debris / confetti, `.game.cine` = letterbox + HUD hidden |
+| `src/game/TeamPicker.jsx` | Team select, head-to-head: team-colour halves, helmet, ability players (tap = `AbilityCard`), `TeamGrid`, `LineupPicker` for alternates |
+| `src/data/abilities.js` | `ABILITIES` short texts, `altSlots(team)`, `lineup(team, picks)` (alternates carry `artNum` = whose cube they wear) |
+| `src/game/Broadcast.jsx` | `ScoreBug`, `Chyrons` (lower thirds from the log + box score), `StatCard` (half time / final), `Wipe` (shield stinger) |
+| `src/game/OpeningShow.jsx` | Head-to-head card, then Board's `RunOut` + intro camera, then KICK-OFF; the engine starts after (`game.begin()`) |
+| `src/game/replay.js` | `lastPlay(state)` rebuilds the last play from the log; `useReplay` plays it back on the Board in slow motion |
 | `src/game/Lab.jsx` | `?view=moments`: Moment Lab, a button per cinematic and roll |
 | `src/game/keys.js` | Rebindable keys: `KEY_ACTIONS`, `isKey(e, action)`, `labelFor`, `rebind` (swaps on conflict). Bound in Settings → Keys; `<Kbd a="throw" />` shows the live key |
 | `tools/simulate.mjs` | `npm run sim -- 300`: bot-vs-bot games with invariant checks. Must print `errors: 0` |
@@ -69,6 +76,7 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
 - 1 world unit = 1 square = 5 yards. The play area is **13 columns × 24 rows**, end zones included (2 rows each end).
   It's centred on the origin: columns run along x, rows along z.
 - Row 0 is the blue end zone (−z), row 23 the orange one. The broadcast camera sits on the +x sideline.
+- Helmets: `public/art/helmets/<team>.webp`, cropped from the team guide (`npm run art helmets`). The MFL shield comes from the scoreboard art.
 - Field image calibration (inner sideline and end-line edges) is in `art.json` → `field`. Check it on Art Review → Field.
 
 ## Vercel env vars (needed for bug reports on the live site)
@@ -94,7 +102,10 @@ key prefix differs) and `BUG_PIN`. Without them the live site answers that bug r
   need spent ≤ half the move (read-and-react: nothing spent yet).
 - A play ends by throwing `PlayEnd` (td / safety / tackle / out / incomplete / stall). `endPlay` handles score, downs,
   turnovers on downs and the clock.
-- Log entries carry data (pid, from/to/path, dice, result). The board animates from them.
+- Log entries carry data (pid, from/to/path, dice, result). The board animates from them, and replays rebuild plays
+  from them exactly (tested: every move, including a run cut short by a sack, is logged).
+- Box score: `state.box[pid]` (carries, rushYds, att, comp, passYds, rec, recYds, tackles, sacks, fumbles, tds),
+  `state.drive` and `state.drives` (plays, yards, result). Players carry `abilities` and `artNum`.
 - Pacing: `new Game(…, { pace, delay })`. Each log entry adds owed time and the next `ask` waits for it, so the UI
   stays readable while the simulator (no pace) runs flat out. In dev builds the live game is `window.__tb`.
 
@@ -135,4 +146,4 @@ node tools/simulate.mjs 60 1 passive   # side 0 never acts: games must still end
 node tools/simulate.mjs 100 1 allpro:starter   # AI ladder: the first level must win clearly
 node tools/simulate.mjs 100 1 starter:rookie
 ```
-Dev server: `.claude/launch.json` → port 5192.
+Dev server: `.claude/launch.json` → port 5192. The project is in OneDrive, so Vite polls for file changes (`vite.config.js`); restart it if a change doesn't show up.

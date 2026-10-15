@@ -57,7 +57,8 @@ export class Game {
       for (const r of t.roster) {
         if (!this.rules.pro && r.num === 51) continue;
         const pid = `${side}:${r.num}`;
-        players[pid] = { pid, side, num: r.num, name: r.name, skill: skillOf(r.num), col: null, row: null, down: false };
+        // artNum: whose cube art he wears (an alternate player can take another's slot, e.g. Reapers #4 in #44's)
+        players[pid] = { pid, side, num: r.num, artNum: r.artNum ?? r.num, name: r.name, skill: skillOf(r.num), abilities: r.abilities ?? [], col: null, row: null, down: false };
       }
     });
     this.s = {
@@ -81,6 +82,10 @@ export class Game {
       request: null,
       log: [],
       winner: null,
+      // box score for the TV overlays: per player, and the drive in progress / finished drives
+      box: {},
+      drive: null,
+      drives: [],
     };
   }
 
@@ -100,6 +105,11 @@ export class Game {
   dir(side) { return this.s.teams[side].dir; }
   name(p) { return `${this.team(p.side).name} #${p.num}`; }
   get defense() { return 1 - this.s.offense; }
+  // stat(pid, 'rushYds', 5): the box score the broadcast overlays read
+  stat(pid, key, n = 1) {
+    const b = (this.s.box[pid] ??= { carries: 0, rushYds: 0, att: 0, comp: 0, passYds: 0, rec: 0, recYds: 0, tackles: 0, sacks: 0, fumbles: 0, tds: 0 });
+    b[key] += n;
+  }
 
   ask(side, req) {
     if (this.stopped) return new Promise(() => {});
@@ -152,6 +162,7 @@ export class Game {
         this.startDrive(half === 1 ? first : 1 - first);
         this.log(half === 1 ? 'Kick-off! (There are no kicks in Techno Bowl: the first drive starts at the 20.)' : 'Second half.', 'half', { half });
         while (this.s.pile.length) await this.playDown();
+        if (this.s.drive?.open) this.endDrive(half === 1 ? 'HALF TIME' : 'END OF GAME');
       }
       if (this.s.score[0] === this.s.score[1]) {
         this.s.overtime = true;
@@ -175,16 +186,39 @@ export class Game {
   }
 
   startDrive(side) {
+    this.beginDrive(side);
     this.s.offense = side;
     this.s.line = START_LINE[String(this.dir(side))];
     this.s.spot = 6;
     this.s.down = 1;
   }
 
+  beginDrive(side, line = START_LINE[String(this.dir(side))]) {
+    const s = this.s;
+    if (s.drive && s.drive.side === side && s.drive.open) return;
+    if (s.drive?.open) this.endDrive(s.drive.result ?? 'turnover');
+    s.drive = { side, startLine: line, plays: 0, open: true, result: null };
+  }
+  // possession changed hands without a score: close the old drive, open one from where the ball is
+  changeDrive(result) {
+    if (this.s.drive?.open) this.endDrive(result);
+    this.beginDrive(this.s.offense, this.s.line);
+  }
+  endDrive(result) {
+    const s = this.s, d = s.drive;
+    if (!d?.open) return;
+    d.open = false; d.result = result;
+    const end = result === 'TOUCHDOWN' ? (this.dir(d.side) < 0 ? 2 : 22) : s.line; // a touchdown drive goes to the goal line
+    d.yards = Math.max(0, (end - d.startLine) * this.dir(d.side) * 5);
+    s.drives = [...s.drives, { ...d }];
+    this.log(`Drive: ${d.plays} play${d.plays === 1 ? '' : 's'}, ${d.yards} yds, ${result}.`, 'drive', { drive: { ...d } });
+  }
+
   // one down: formations, play calls, motion, snap, the play
   async playDown() {
     const s = this.s;
     this.stats.downs++;
+    if (s.drive?.side === s.offense) s.drive.plays++;
     s.play = { startOffense: s.offense, line: s.line, forwardDone: false, crossed: false, passThrown: false, adjustUsed: [false, false], activations: 0 };
     for (const p of playerList(s)) { p.col = null; p.row = null; p.down = false; }
     s.ball = { at: 'dead' };
@@ -527,7 +561,18 @@ export class Game {
         this.endWithBall(p, 'out');
       }
       p.col = q[0]; p.row = q[1];
-      this.pressure(p, prev, ctx);
+      try {
+        this.pressure(p, prev, ctx);
+      } catch (e) {
+        // a sack mid-run ends the play here: log the steps taken so far (the board and replays need them)
+        const done = path.slice(0, path.indexOf(q) + 1);
+        this.log(`${this.name(p)} moves.`, 'move', { pid: p.pid, from, to: sqOf(p), path: done });
+        throw e;
+      }
+    }
+    if (this.s.ball.at === 'held' && this.s.ball.pid === p.pid) {
+      if (!this.s.play.carried?.includes(p.pid)) { this.stat(p.pid, 'carries'); (this.s.play.carried ??= []).push(p.pid); }
+      this.stat(p.pid, 'rushYds', (p.row - from[1]) * this.dir(p.side) * 5);
     }
     this.log(`${this.name(p)} moves.`, 'move', { pid: p.pid, from, to: sqOf(p), path });
     this.ballMoved();
@@ -546,6 +591,7 @@ export class Game {
     ctx.pressured = true;
     const bench = s.cards[c.side].bench;
     if (bench.length < 2) {
+      this.stat(p.pid, 'sacks');
       this.log(`Pressure! ${this.name(c)} has nowhere to go: SACKED.`, 'sack', { pid: c.pid, by: p.pid });
       this.endWithBall(c, 'tackle');
     }
@@ -672,6 +718,7 @@ export class Game {
     const s = this.s;
     p.down = true;
     if (carrier(s)?.pid === p.pid) {
+      this.stat(p.pid, 'fumbles');
       this.log(`${this.name(p)} FUMBLES!`, 'fumble', { pid: p.pid });
       await this.scatter(sqOf(p), false, 'fumble');
     }
@@ -684,6 +731,7 @@ export class Game {
     if (res.success) {
       target.down = true;
       if (!res.crit) {
+        this.stat(actor.pid, 'tackles');
         this.log(`${this.name(target)} is brought down.`, 'tackle', { pid: target.pid, by: actor.pid, at: sqOf(target) });
         this.endWithBall(target, 'tackle');
       }
@@ -700,11 +748,15 @@ export class Game {
     const s = this.s;
     const info = passInfo(s, passer, to);
     s.play.passThrown = true;
+    this.stat(passer.pid, 'att');
     if (info.forward) s.play.forwardDone = true;
     const res = await this.skillCheck(passer, { bonus: info.bonus, penalty: Math.min(3, info.penalty), label: `${this.name(passer)} throws ${info.dist}`, data: { action: 'pass', from: sqOf(passer), to, target: info.target?.pid ?? null, dist: info.dist } });
     if (res.success) {
       if (info.target) {
-        this.log(`Caught by ${this.name(info.target)}!`, 'catch', { pid: info.target.pid, from: passer.pid, to });
+        const yds = (to[1] - passer.row) * this.dir(passer.side) * 5;
+        this.stat(passer.pid, 'comp'); this.stat(passer.pid, 'passYds', yds);
+        this.stat(info.target.pid, 'rec'); this.stat(info.target.pid, 'recYds', yds);
+        this.log(`Caught by ${this.name(info.target)}!`, 'catch', { pid: info.target.pid, from: passer.pid, to, yds });
         this.gain(info.target);
       } else {
         s.ball = { at: 'air', col: to[0], row: to[1] };
@@ -811,7 +863,9 @@ export class Game {
     s.ball = { at: 'dead' };
     if (reason === 'td') {
       s.score[info.side] += 7;
-      this.log(`TOUCHDOWN ${this.team(info.side).name}! (+7)`, 'td', { side: info.side, pid: info.pid, score: [...s.score] });
+      if (info.pid) this.stat(info.pid, 'tds');
+      this.log(`TOUCHDOWN ${this.team(info.side).name}! (+7)`, 'td', { side: info.side, pid: info.pid, at: info.at, score: [...s.score] });
+      if (s.drive?.side === info.side) this.endDrive('TOUCHDOWN');
       if (s.overtime) throw new GameOver();
       this.startDrive(1 - info.side);
       return;
@@ -819,6 +873,7 @@ export class Game {
     if (reason === 'safety') {
       s.score[info.side] += 2;
       this.log(`SAFETY! ${this.team(info.side).name} score 2 and get the ball.`, 'safety', { side: info.side, score: [...s.score] });
+      if (s.drive) s.drive.result = 'SAFETY';
       if (s.overtime) throw new GameOver();
       this.startDrive(info.side);
       return;
@@ -832,11 +887,12 @@ export class Game {
       this.log(reason === 'stall' ? 'The officials blow it dead.' : 'Incomplete!', 'whistle', { reason });
       if (!turnedOver) { s.line = play.line; }
     }
-    if (turnedOver) { s.down = 1; return; }
+    if (turnedOver) { s.down = 1; this.changeDrive('TURNOVER'); return; }
     if (++s.down > 4) {
       s.offense = 1 - s.offense;
       s.down = 1;
       this.log(`Turnover on downs! ${this.team(s.offense).name} take over.`, 'turnover', { side: s.offense, downs: true });
+      this.changeDrive('DOWNS');
     }
   }
 

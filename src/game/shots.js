@@ -11,10 +11,10 @@ const DUR = { throw: 3.0, hit: 1.5, td: 3.4 };
 export function shotFor(e, players) {
   if (!e) return null;
   const sqOfPid = (pid) => { const p = players[pid]; return p && p.col != null ? [p.col, p.row] : null; };
-  if (e.kind === 'check' && e.action === 'pass' && e.dist >= LONG_THROW) return { kind: 'throw', from: e.from, to: e.to };
-  if (e.kind === 'tackle') return { kind: 'hit', at: e.at };
+  if (e.kind === 'check' && e.action === 'pass' && e.dist >= LONG_THROW && e.from && e.to) return { kind: 'throw', from: e.from, to: e.to };
+  if (e.kind === 'tackle') return e.at ? { kind: 'hit', at: e.at } : null;
   if (e.kind === 'sack' || e.kind === 'knockdown' || (e.kind === 'fumble' && e.crit)) { const at = sqOfPid(e.pid); return at ? { kind: 'hit', at, big: e.kind !== 'knockdown' } : null; }
-  if (e.kind === 'td') return { kind: 'td', at: e.at, side: e.side };
+  if (e.kind === 'td') { const at = e.at ?? (e.pid && sqOfPid(e.pid)); return at ? { kind: 'td', at, side: e.side } : null; }
   return null;
 }
 

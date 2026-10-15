@@ -26,4 +26,6 @@ function bugsApi() {
 
 export default defineConfig({
   plugins: [react(), bugsApi()],
+  // the project lives in OneDrive, where file-change events get lost: poll instead (dev server only)
+  server: { watch: { usePolling: true, interval: 250 } },
 })

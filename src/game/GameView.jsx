@@ -9,14 +9,18 @@ import { useSettings } from './prefs';
 import { isKey } from './keys';
 import { Sprite } from './TeamPicker';
 import { HUMAN, useGame } from './useGame';
-import { rosterFor } from '../data/art';
-import { yardLabel, skillOf, losRows, COLS } from '../engine/board.js';
+import { artRows } from '../data/art';
+import { skillOf, losRows, COLS } from '../engine/board.js';
 import { checkDefense, checkOffense, sideRows } from '../engine/rules.js';
 import { autoDefense, autoOffense } from '../engine/formations.js';
 import RulesDrawer from './RulesDrawer.jsx';
 import BugReport from './BugReport.jsx';
 import { useGameSounds } from './useGameSounds';
 import { useShot } from './shots';
+import { ScoreBug, Chyrons, StatCard, Wipe } from './Broadcast';
+import OpeningShow, { SHOW } from './OpeningShow';
+import { lastPlay, useReplay } from './replay';
+import { settings } from './prefs';
 
 const COLORS = { move: '#2fd06b', ball: '#ffd34a', td: '#ffffff', out: '#ff6a5a', good: '#2fd06b', ok: '#f5e04a', bad: '#ff5a4a', push: '#ff9a3c', scatter: '#c77dff', motion: '#4ab8ff', place: '#4ab8ff' };
 const RING = { active: '#f5e04a', block: '#ff9a3c', tackle: '#ff3b3b', handoff: '#3ce0ff', option: '#3ce0ff', selected: '#ffffff' };
@@ -30,7 +34,22 @@ export default function GameView({ match, onExit, onRematch }) {
 function Screen({ game, match, onExit, onRematch }) {
   const s = game.state;
   useGameSounds(game);
-  const shot = useShot(s.log, s.players);
+  // instant replay: the last play played back on the board (automatic after a touchdown, or the Replay button)
+  const [replay, setReplay] = useState(null);
+  const rs = useReplay(s, replay, () => setReplay(null));
+  const shown = rs ?? s;
+  const lastTd = s.log.findLast?.((e) => e.kind === 'td');
+  useEffect(() => {
+    if (!lastTd || settings().calm) return;
+    const t = setTimeout(() => setReplay(lastPlay(game.state)), 3000);
+    return () => clearTimeout(t);
+  }, [lastTd?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const shot = useShot(shown.log, shown.players);
+  // the opening show runs first; the engine starts when it ends (calm motion skips it)
+  const [intro, setIntro] = useState(() => (settings().calm ? null : { t0: performance.now(), startAt: SHOW.h2h }));
+  const endIntro = useRef(null);
+  endIntro.current = () => { setIntro(null); game.begin(); };
+  useEffect(() => { if (!intro) game.begin(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const req = s.request && s.request.side === HUMAN ? s.request : null;
   // portrait phones: the field runs up the screen from the end-zone camera, so start there
   const [view, setView] = useState(() => (window.innerWidth < 760 && window.innerHeight > window.innerWidth ? 'endzone' : 'broadcast'));
@@ -84,7 +103,7 @@ function Screen({ game, match, onExit, onRematch }) {
   }, [reqId, limit]); // eslint-disable-line react-hooks/exhaustive-deps
   const players = s.players;
   const P = (pid) => players[pid];
-  const myRows = useMemo(() => Object.fromEntries(rosterFor(s.teams[HUMAN].id, s.teams[HUMAN].uniform).map((p) => [p.num, p.row])), [s.teams]);
+  const myRows = useMemo(() => artRows(s, HUMAN), [s.teams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---------- what the board shows for the open question ----------
   const board = useMemo(() => {
@@ -175,12 +194,15 @@ function Screen({ game, match, onExit, onRematch }) {
   const leave = async () => { if (s.phase === 'over' || await confirmIt({ title: 'Leave this game?', body: 'The game will be lost.', yes: 'Leave', danger: true })) onExit(); };
 
   return (
-    <div className={`game ${shot ? 'cine' : ''}`}>
+    <div className={`game ${shot || intro || rs ? 'cine' : ''} ${intro ? 'intro' : ''} ${rs ? 'replaying' : ''}`}>
       <Stage className="game-stage">
-        <Board game={game} view={view} shot={shot} tiles={board.tiles} rings={board.rings} onTile={board.onTile} onHover={setHover} onPlayer={board.onPlayer}
+        <Board game={rs ? { state: rs } : game} view={view} shot={shot} intro={intro} tiles={rs ? [] : board.tiles} rings={rs ? {} : board.rings} onTile={rs ? null : board.onTile} onHover={setHover} onPlayer={rs ? null : board.onPlayer}
           edit={edit && req?.type === 'formation' ? { side: HUMAN, spots: edit } : null} />
       </Stage>
-      <Scoreboard s={s} />
+      <ScoreBug s={s} />
+      <Chyrons s={s} />
+      <Halftime s={s} />
+      <Wipe s={s} />
       <LogFeed s={s} />
       <Moment s={s} />
       <div className="game-bottom">
@@ -199,12 +221,20 @@ function Screen({ game, match, onExit, onRematch }) {
         <button className="btn small cam-cycle" onClick={nextView}>Camera: {VIEWS.find(([k]) => k === view)[1]}</button>
         <button className="btn small" onClick={() => setRules((r) => !r)}>Rules <Kbd a="rules" /></button>
         <button className="btn small" onClick={() => setBug(true)}>Report a bug <Kbd a="bug" /></button>
+        <button className="btn small" disabled={!lastPlay(s) || !!rs} onClick={() => setReplay(lastPlay(s))}>Replay</button>
       </div>
+      {rs && (
+        <div className="replay-ui">
+          <span className="replay-bug"><i />REPLAY</span>
+          <button className="btn small" onClick={() => setReplay(null)}>Skip replay</button>
+        </div>
+      )}
       {bug && <BugReport onClose={() => setBug(false)} context={{
         seed: match.seed, half: s.half, down: s.down, phase: s.phase, score: s.score.join('-'), level: match.level, mode: match.mode,
         teams: `${s.teams[0].name} (you) vs ${s.teams[1].name}`, log: s.log.slice(-15).map((l) => l.text),
       }} />}
       {rules && <RulesDrawer onClose={() => setRules(false)} />}
+      {intro && <OpeningShow s={s} t0={intro.t0} onDone={() => endIntro.current()} />}
       {s.phase === 'over' && <EndScreen s={s} onExit={onExit} onRematch={onRematch} match={match} />}
       {dialog}
     </div>
@@ -380,7 +410,7 @@ function CardRow({ nums, rows, s, onPick }) {
 function Cards({ s, rows }) {
   const [open, setOpen] = useState(false); // phones: the deck details fold away
   const mine = s.cards[HUMAN], theirs = s.cards[1 - HUMAN];
-  const oppRows = useMemo(() => Object.fromEntries(rosterFor(s.teams[1 - HUMAN].id, s.teams[1 - HUMAN].uniform).map((p) => [p.num, p.row])), [s.teams]);
+  const oppRows = useMemo(() => artRows(s, 1 - HUMAN), [s.teams]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className={`cards glass ${open ? 'open' : ''}`} onClick={() => setOpen(!open)}>
       <div className="faceup">
@@ -399,22 +429,6 @@ function Cards({ s, rows }) {
 const group = (nums) => { const m = new Map(); for (const n of nums) m.set(n, (m.get(n) ?? 0) + 1); return [...m]; };
 
 // ---------- scoreboard, log, moments ----------
-function Scoreboard({ s }) {
-  const ord = ['', '1ST', '2ND', '3RD', '4TH'][s.down];
-  const half = s.overtime ? 'OVERTIME' : s.half === 1 ? '1ST HALF' : '2ND HALF';
-  return (
-    <div className="scoreboard">
-      <div className={`sb-team ${s.offense === 0 ? 'ball' : ''}`}><span className="led sb-name">{s.teams[0].name.toUpperCase()}</span><b className="led digits">{String(s.score[0]).padStart(2, '0')}</b><span className="tos">{'●'.repeat(s.timeouts[0])}</span></div>
-      <div className="sb-mid">
-        <span className="led small">{half}</span>
-        {!s.overtime && <span className="cubes">{s.pile.map((c, i) => <i key={i} className={c === 'r' ? 'red' : ''} />)}{!s.pile.length && s.phase !== 'setup' && <em className="led small">0:00</em>}</span>}
-        <span className="led small">{ord} DOWN · {yardLabel(s.line, s.teams[s.offense].dir)}</span>
-      </div>
-      <div className={`sb-team ${s.offense === 1 ? 'ball' : ''}`}><span className="tos">{'●'.repeat(s.timeouts[1])}</span><b className="led digits">{String(s.score[1]).padStart(2, '0')}</b><span className="led sb-name">{s.teams[1].name.toUpperCase()}</span></div>
-    </div>
-  );
-}
-
 function LogFeed({ s }) {
   const items = s.log.filter((e) => !['activate', 'formation', 'call'].includes(e.kind)).slice(-7);
   return (
@@ -467,6 +481,7 @@ function EndScreen({ s, onExit, onRematch }) {
       <div className="modal-card glass end-card">
         <h2 className="led big">{s.winner == null ? 'TIE GAME' : won ? 'YOU WIN!' : 'YOU LOSE'}</h2>
         <p className="final"><span>{s.teams[0].name}</span> <b className="led">{a}</b> – <b className="led">{b}</b> <span>{s.teams[1].name}</span></p>
+        <StatCard s={s} title="FINAL" />
         <div className="btns"><button className="btn" onClick={onExit}>Change teams</button><button className="btn primary" onClick={onRematch}>Rematch</button></div>
       </div>
     </div>
@@ -489,4 +504,18 @@ function delayOfGame(req, edit, stack) {
     return out;
   }
   return null;
+}
+
+// the halftime stat card, shown for a few seconds when the second half starts (Continue closes it sooner)
+function Halftime({ s }) {
+  const half = s.log.findLast?.((e) => e.kind === 'half' && e.half === 2);
+  const [open, setOpen] = useState(null);
+  useEffect(() => {
+    if (!half) return;
+    setOpen(half.id);
+    const t = setTimeout(() => setOpen(null), 7000);
+    return () => clearTimeout(t);
+  }, [half?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!half || open !== half.id) return null;
+  return <div className="halftime"><StatCard s={s} title="HALF TIME" onClose={() => setOpen(null)} /></div>;
 }

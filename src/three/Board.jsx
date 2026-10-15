@@ -1,11 +1,11 @@
 // The live game on the 3D field: cubes that walk their paths, the ball (carried, loose or hanging in the air),
 // the line of scrimmage, the down cube, clickable square highlights and the camera.
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Field, Lights, sq, ROWS, COLS } from './Field';
 import { PlayerCube, DownCube, CUBE } from './Cube';
-import { uniformOf, rosterFor, teamColors } from '../data/art';
+import { uniformOf, teamColors, artRows } from '../data/art';
 import { DiceRolls } from './Dice';
 import { settings } from '../game/prefs';
 
@@ -153,6 +153,70 @@ function Burst({ at, colors, count = 40, confetti }) {
   );
 }
 
+// ---------- the opening run-out ----------
+// Both teams pour out of tunnels under the end-zone stands and line up across their own 35s, through smoke.
+const ease = (u) => u * u * (3 - 2 * u);
+export function RunOut({ teams, unis, rows, t0, startAt }) {
+  const group = useRef();
+  const squads = useMemo(() => teams.map((roster, side) => {
+    const tunnelZ = side === 0 ? 14.2 : -14.2;
+    const lineZ = side === 0 ? 3.2 : -3.2;
+    return roster.map((p, i) => ({
+      key: `${side}:${p.num}`, side, num: p.num,
+      from: new THREE.Vector3((i % 2 ? 1 : -1) * 0.4, 0, tunnelZ),
+      to: new THREE.Vector3((i - (roster.length - 1) / 2) * 1.3, 0, lineZ),
+      delay: 0.35 + i * 0.32 + side * 0.15, dur: 2.4 + Math.random() * 0.4, hop: 3 + Math.random() * 2,
+    }));
+  }).flat(), [teams]);
+  const refs = useRef({});
+  const [smoke, setSmoke] = useState(false); // the smoke bursts when the run-out starts, not under the title card
+  useFrame(() => {
+    const rel = (performance.now() - t0) / 1000 - startAt;
+    if (!smoke && rel > 0) setSmoke(true);
+    for (const q of squads) {
+      const o = refs.current[q.key];
+      if (!o) continue;
+      const u = Math.min(1, Math.max(0, (rel - q.delay) / q.dur));
+      o.visible = rel >= q.delay;
+      const k = ease(u);
+      o.position.lerpVectors(q.from, q.to, k);
+      o.position.y = u < 1 ? Math.abs(Math.sin(u * Math.PI * q.hop)) * 0.28 : 0;
+      o.rotation.y = Math.PI / 2 + (u < 1 ? Math.sin(u * 20) * 0.12 : 0);
+    }
+  });
+  return (
+    <group ref={group}>
+      {squads.map((q) => (
+        <group key={q.key} ref={(o) => { refs.current[q.key] = o; }} visible={false}>
+          <PlayerCube uniform={unis[q.side]} row={rows[q.side][q.num] ?? 0} />
+        </group>
+      ))}
+      {/* tunnel mouths: dark arches under the stands, with smoke */}
+      {[14.4, -14.4].map((z, i) => (
+        <group key={z} position={[0, 0, z]}>
+          <mesh position={[0, 0.9, i ? -0.4 : 0.4]}><boxGeometry args={[3.2, 1.8, 0.8]} /><meshStandardMaterial color="#0d0f13" /></mesh>
+          {smoke && <Burst confetti at={[0, 0, i ? 0.8 : -0.8]} colors={['#9aa0a6', '#c8ccd0', '#6f757b']} count={60} />}
+        </group>
+      ))}
+    </group>
+  );
+}
+// camera for the run-out: low at the home tunnel, sweep along the field, crane up to the wide shot
+function introCam(rel) {
+  const keys = [
+    [0, [3.2, 1.0, 16.5], [0, 0.6, 12.5]],
+    [2.6, [5.5, 2.2, 9], [0, 0.4, 4]],
+    [5.0, [11, 6.5, 1.5], [0, 0, 0]],
+    [7.6, [15, 12, 0.5], [0, 0, 0]],
+  ];
+  let i = 0;
+  while (i < keys.length - 2 && rel > keys[i + 1][0]) i++;
+  const [ta, pa, la] = keys[i], [tb, pb, lb] = keys[i + 1];
+  const u = ease(Math.min(1, Math.max(0, (rel - ta) / (tb - ta))));
+  const lerp = (a, b) => a.map((v, k) => v + (b[k] - v) * u);
+  return { pos: new THREE.Vector3(...lerp(pa, pb)), target: new THREE.Vector3(...lerp(la, lb)), rate: 6 };
+}
+
 // ---------- highlights ----------
 // tiles: [{ sq:[c,r], color, value }]. One instanced mesh, so hundreds of pass squares stay cheap.
 function Tiles({ tiles, onPick, onHover }) {
@@ -234,12 +298,12 @@ function shotCam(shot, positions) {
   return null;
 }
 
-function Rig({ view, focus, dir, shot, positions }) {
+function Rig({ view, focus, dir, shot, positions, intro }) {
   const { camera, size } = useThree();
   const target = useRef(new THREE.Vector3(0, 0, 6));
   const f = useRef(new THREE.Vector3(0, 0, 6));
   useFrame((_, dt) => {
-    const sc = shot ? shotCam(shot, positions) : null;
+    const sc = intro ? introCam((performance.now() - intro.t0) / 1000 - intro.startAt) : shot ? shotCam(shot, positions) : null;
     if (sc) {
       const k = 1 - Math.exp(-dt * sc.rate);
       camera.position.lerp(sc.pos, k);
@@ -267,11 +331,11 @@ function Rig({ view, focus, dir, shot, positions }) {
 
 // ---------- the scene ----------
 // edit: { side, spots:[{num,col,row}] } shows a formation being placed instead of that side's real positions
-export function Board({ game, view, tiles, onTile, onHover, rings = {}, onPlayer, edit, focusSq, shot }) {
+export function Board({ game, view, tiles, onTile, onHover, rings = {}, onPlayer, edit, focusSq, shot, intro }) {
   const s = game.state;
   const positions = useRef({});
   const unis = useMemo(() => s.teams.map((t) => uniformOf(t.id, t.uniform)), [s.teams]);
-  const rows = useMemo(() => s.teams.map((t) => Object.fromEntries(rosterFor(t.id, t.uniform).map((p) => [p.num, p.row]))), [s.teams]);
+  const rows = useMemo(() => [0, 1].map((side) => artRows(s, side)), [s.teams]); // eslint-disable-line react-hooks/exhaustive-deps
   // the last move of each player, so his cube walks the same path
   const paths = {};
   for (const e of s.log) if (e.kind === 'move' && e.path) paths[e.pid] = e.path;
@@ -303,7 +367,8 @@ export function Board({ game, view, tiles, onTile, onHover, rings = {}, onPlayer
           <DownCube down={s.down} position={[8.2, 0, lineZ]} size={0.85} />
         </>
       )}
-      {players.map((p) => (
+      {intro && <RunOut teams={[0, 1].map((side) => Object.values(s.players).filter((p) => p.side === side))} unis={unis} rows={rows} t0={intro.t0} startAt={intro.startAt} />}
+      {!intro && players.map((p) => (
         <Mover key={p.pid} p={p} uniform={unis[p.side]} row={rows[p.side][p.num]} path={paths[p.pid]} positions={positions}
           ring={rings[p.pid]} onPick={onPlayer} />
       ))}
@@ -313,7 +378,7 @@ export function Board({ game, view, tiles, onTile, onHover, rings = {}, onPlayer
       <DiceRolls log={s.log} players={s.players} offense={s.offense} home={[s.spot, s.line]}
         teamColors={s.teams.map((t) => teamColors(t.id, t.uniform))} />
       <Tiles tiles={tiles} onPick={onTile} onHover={onHover} />
-      <Rig view={view} focus={focus} dir={s.teams[s.offense].dir} shot={shot} positions={positions} />
+      <Rig view={view} focus={focus} dir={s.teams[s.offense].dir} shot={shot} positions={positions} intro={intro} />
     </>
   );
 }

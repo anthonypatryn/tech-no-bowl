@@ -109,7 +109,7 @@ Template: Long Shot (look, 3D/R3F, camera rig, cinematics) + Escape Order 66 (so
 - **AI passing game tuned** so the computer throws (the long-throw cam needs throws).
 - Moment Lab (`?view=moments`) has a button per cinematic, for tuning.
 
-### B4b · The broadcast package (owner's wishlist)
+### B4b · The broadcast package (owner's wishlist) ✅
 - **Team select, Madden head-to-head style** (owner's reference screenshot):
   - split screen in each team's colours, big team logo in the middle of each half. The logos come from the art: the
     helmet/logo on the punchboards and team sheets, cropped by the art pipeline (Art Review checks them)
@@ -131,6 +131,29 @@ Template: Long Shot (look, 3D/R3F, camera rig, cinematics) + Escape Order 66 (so
 - **Transitions / wipes:** MFL-shield stinger on change of possession, after scores, at half time and for overtime.
 - **Instant replays** (nice to have): the board can already replay the logged moves, so a big play re-runs from a
   replay camera with a REPLAY bug and slow motion.
+
+### B4c · Owner's polish list (after B4b)
+- **Football:** laces, and a visible spiral in flight.
+- **Moment Lab:** add KNOCKED DOWN.
+- **Big hit vs sack:** different looks and sounds.
+- **Helmets:**
+  - remove the white inside the helmet (the shell's interior)
+  - clean up the stray white pixels on the edges
+- **Pre-game cinematic** (on Take the field, before the run-out):
+  - team vs team with records (W-L), which needs a saved win/loss record per team on this device
+  - the helmets smash into each other
+  - the Techno Bowl logo where Madden puts the NFL shield
+- **Readable numbers:** the big numbers on top of the cubes always face the viewer (billboard), whatever the camera.
+- **Coin toss:** an actual coin flip animation for the kick-off.
+- **8-bit look everywhere:** all buttons and type in the pixel style and font.
+- **UI/UX pass:**
+  - reusable components
+  - consistent spacing
+  - check for clipped images and broken links
+  - readability
+  - no text orphans, nothing bleeding out of boxes
+  - smooth animations
+- (Already fixed in B4b: the Warriors helmet crop, and the arrows opening the lineup chooser.)
 
 ### B5 · Sound editor + Art Review Board v2
 - EO66 SoundEditor port (`?view=sounds`): waveform trim per slot (e.g. fine-tune the theme splits and grunt cuts),

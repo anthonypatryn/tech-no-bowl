@@ -4,6 +4,7 @@ import { useEffect, useReducer, useState } from 'react';
 import { Game } from '../engine/game.js';
 import { makeAI } from '../engine/ai.js';
 import { teamById } from '../data/art';
+import { lineup } from '../data/abilities';
 import { settings } from './prefs';
 
 export const HUMAN = 0; // you are side 0: you attack the blue end zone (row 0), the computer attacks the orange one
@@ -22,7 +23,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export function teamSetup(sel) {
   const t = teamById(sel.team);
-  return { id: t.id, name: t.name, uniform: sel.uni, roster: t.players.map((p) => ({ num: p.num, name: p.name })) };
+  return { id: t.id, name: t.name, uniform: sel.uni, roster: lineup(t, sel.picks).map((p) => ({ num: p.num, name: p.name, artNum: p.artNum, abilities: p.abilities })) };
 }
 
 export function useGame(match) {
@@ -44,7 +45,8 @@ export function useGame(match) {
     });
     setGame(g);
     if (import.meta.env.DEV) window.__tb = g; // poke at it from the console while developing
-    g.run().catch((err) => { console.error(err); g.crashed = String(err?.stack || err); bump(); });
+    // the game starts when the opening show is over (or skipped): GameView calls game.begin()
+    g.begin = () => { if (g.began) return; g.began = true; g.run().catch((err) => { console.error(err); g.crashed = String(err?.stack || err); bump(); }); };
     return () => { g.stopped = true; cancelAnimationFrame(raf); };
   }, [match]);
   return game;

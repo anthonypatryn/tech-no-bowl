@@ -10,8 +10,9 @@ Outputs (committed):
   public/art/cubes/downs.webp              the down-marker cubes, same layout
   public/art/field-4k.webp / field-2k.webp the MFL field
   public/art/turf.webp                     tileable grass (cube bottoms, surroundings)
-  public/art/scoreboard.webp
+  public/art/scoreboard.webp, mfl-shield.webp
   public/art/punch/pb<n><f|b>.webp         punchboards, 10 x 8 token grid
+  public/art/helmets/<team>.webp           each team's helmet + logo (team guide), transparent background
   src/data/art.json                        manifest (uniforms per team, player order, face colours, field calibration)
   src/data/teams.json                      rosters, from docs/rules-and-rosters.md
 
@@ -193,7 +194,13 @@ def do_board():
     yy, xx = np.mgrid[0:512, 0:512]
     wgt = (np.minimum(np.minimum(xx, 511 - xx), np.minimum(yy, 511 - yy)) / 256.0).clip(0, 1)[..., None]
     Image.fromarray((a * wgt + b * (1 - wgt)).astype(np.uint8)).save(os.path.join(OUT, 'turf.webp'), 'WEBP', quality=85)
-    Image.open(os.path.join(ROOT, 'TechnoBowl_ScoreBoard_DriveThru.jpg')).convert('RGB').save(os.path.join(OUT, 'scoreboard.webp'), 'WEBP', quality=90)
+    sb = Image.open(os.path.join(ROOT, 'TechnoBowl_ScoreBoard_DriveThru.jpg')).convert('RGB')
+    sb.save(os.path.join(OUT, 'scoreboard.webp'), 'WEBP', quality=90)
+    # the MORE FUN! shield from the middle of the scoreboard, black knocked out (score bug, wipes)
+    W, H = sb.size
+    a = np.asarray(sb.crop((int(W * 0.42), int(H * 0.17), int(W * 0.585), int(H * 0.385)))).astype(np.uint8)
+    shield = Image.fromarray(np.dstack([a, np.where(a.max(2) < 40, 0, 255).astype(np.uint8)]), 'RGBA')
+    shield.crop(shield.getbbox()).save(os.path.join(OUT, 'mfl-shield.webp'), 'WEBP', quality=92)
     for n in range(1, 5):
         for side, s in (('front', 'f'), ('back', 'b')):
             im = Image.open(os.path.join(ROOT, f'TB_punchboard_{n}_{side}_DriveThru.jpg')).convert('RGB')
@@ -202,8 +209,46 @@ def do_board():
     return {'punch': {'cols': 10, 'rows': 8, 'files': [f'punch/pb{n}{s}.webp' for n in range(1, 5) for s in 'fb']}}
 
 
+def do_helmets():
+    """Team guide pages 2-17: two helmets per page (team order = teams.json), white background -> transparent."""
+    os.makedirs(os.path.join(OUT, 'helmets'), exist_ok=True)
+    teams = json.load(open(os.path.join(DATA, 'teams.json'), encoding='utf8'))
+    d = fitz.open(os.path.join(ROOT, 'TECHNO_BOWL_TeamGuide_DriveThru.pdf'))
+    out = {}
+    for i, t in enumerate(teams):
+        page = d[1 + i // 2]
+        # some helmets are stacked layers (logo over shell): render the page area so they composite
+        # helmet-sized images only (the last page has its text as wide, short images too)
+        half = [x for x in page.get_image_info(xrefs=True) if x['width'] > 800 and x['height'] > 500 and x['bbox'][3] - x['bbox'][1] > 120
+                and (x['bbox'][0] < page.rect.width / 2) == (i % 2 == 0)]
+        if not half:
+            print('!! no helmet for', t['id']); continue
+        r = fitz.Rect(half[0]['bbox'])
+        for x in half[1:]: r |= fitz.Rect(x['bbox'])
+        pix = page.get_pixmap(clip=r + (-2, -2, 2, -4), dpi=320, colorspace=fitz.csRGB)  # bottom trimmed: the title bar starts right below
+        rgb = np.frombuffer(pix.samples, np.uint8).reshape(pix.h, pix.w, pix.n)[:, :, :3].copy()
+        # background = pure-white pixels connected to the border (white helmets are shaded, so they survive)
+        white = (rgb.min(2) > 251).astype(np.uint8)
+        mask = np.zeros((pix.h + 2, pix.w + 2), np.uint8)
+        bg = white.copy()
+        for y, x in [(0, 0), (0, pix.w - 1), (pix.h - 1, 0), (pix.h - 1, pix.w - 1)]:
+            if white[y, x]:
+                cv2.floodFill(bg, mask, (x, y), 2)
+        alpha = np.where(bg == 2, 0, 255).astype(np.uint8)
+        alpha = cv2.GaussianBlur(cv2.erode(alpha, np.ones((3, 3), np.uint8)), (3, 3), 0)  # soft edge, no white fringe
+        im = Image.fromarray(np.dstack([rgb, alpha]), 'RGBA')
+        bbox = im.getbbox()
+        if bbox: im = im.crop(bbox)
+        im.thumbnail((640, 640), Image.LANCZOS)
+        name = f"helmets/{t['id']}.webp"
+        im.save(os.path.join(OUT, name), 'WEBP', quality=88, method=6)
+        out[t['id']] = name
+    print('helmets:', len(out))
+    return out
+
+
 if __name__ == '__main__':
-    what = set(sys.argv[1:]) or {'teams', 'cubes', 'field', 'board'}
+    what = set(sys.argv[1:]) or {'teams', 'cubes', 'field', 'board', 'helmets'}
     os.makedirs(OUT, exist_ok=True)
     mpath = os.path.join(DATA, 'art.json')
     man = json.load(open(mpath)) if os.path.exists(mpath) else {}
@@ -211,5 +256,6 @@ if __name__ == '__main__':
     if 'cubes' in what: man['uniforms'] = do_cubes()
     if 'field' in what: man['field'] = do_field()
     if 'board' in what: man.update(do_board())
+    if 'helmets' in what: man['helmets'] = do_helmets()
     json.dump(man, open(mpath, 'w'), indent=1)
     print('wrote', mpath)

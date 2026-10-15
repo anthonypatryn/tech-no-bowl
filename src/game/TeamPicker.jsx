@@ -1,78 +1,196 @@
-import { useState } from 'react';
+// Team select, head-to-head style: each half in its team's colours with the helmet and logo, the players with special
+// abilities down the outside (tap one to read what his abilities do), name and home/away at the bottom. Teams with
+// alternate players ask who suits up when you pick them.
+import { useEffect, useState } from 'react';
 import { Chips } from './ui';
-import { TEAMS, teamById, uniformsFor, uniformOf, rosterFor, artUrl } from '../data/art';
-import { Stage } from '../three/Stage';
-import { Lights } from '../three/Field';
-import { PlayerCube } from '../three/Cube';
-
+import { TEAMS, teamById, uniformsFor, uniformOf, teamColors, artUrl, helmetUrl, rosterFor } from '../data/art';
+import { abilityText, altSlots, lineup } from '../data/abilities';
 import { LEVELS } from '../engine/ai.js';
+
 export const MODES = [['techno', 'Techno'], ['alltechno', 'All Techno', true], ['pro', 'Pro', true], ['allpro', 'All Pro', true], ['inferno', 'Inferno!', true]];
 
-const pick = (not) => { let t; do { t = TEAMS[Math.floor(Math.random() * TEAMS.length)].id; } while (t === not); return t; };
+const idx = (id) => TEAMS.findIndex((t) => t.id === id);
+const lum = (hex) => { const n = parseInt(hex.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255; };
+const randomTeam = (not) => { let t; do { t = TEAMS[Math.floor(Math.random() * TEAMS.length)].id; } while (t === not); return t; };
 
-// Team + uniform for you and the computer, difficulty, rules mode.
 export default function TeamPicker({ onStart }) {
-  const [you, setYou] = useState({ team: 'bighorns', uni: 'home' });
-  const [cpu, setCpu] = useState(() => ({ team: pick('bighorns'), uni: 'home' }));
+  const [you, setYou] = useState({ team: 'bighorns', uni: 'home', picks: {} });
+  const [cpu, setCpu] = useState(() => ({ team: randomTeam('bighorns'), uni: 'home', picks: {} }));
   const [level, setLevel] = useState('starter');
   const [mode, setMode] = useState('techno');
+  const [grid, setGrid] = useState(null);     // 'you' | 'cpu': the all-teams grid is open for that side
+  const [info, setInfo] = useState(null);     // a player whose abilities are being read
+  const [lineupFor, setLineupFor] = useState(null); // 'you' | 'cpu': choosing alternates
   const clash = you.team === cpu.team && you.uni === cpu.uni;
+  const sides = { you: [you, setYou], cpu: [cpu, setCpu] };
+
+  // picking a team from the grid asks about alternates; flipping through with the arrows doesn't (the Lineup button does)
+  const pickTeam = (who, team, ask = true) => {
+    const [, set] = sides[who];
+    set({ team, uni: 'home', picks: {} });
+    if (ask && altSlots(teamById(team)).length) setLineupFor(who);
+  };
+  const step = (who, d) => {
+    const [sel] = sides[who];
+    pickTeam(who, TEAMS[(idx(sel.team) + d + TEAMS.length) % TEAMS.length].id, false);
+  };
+
+  useEffect(() => {
+    const key = (e) => {
+      if (grid || info || lineupFor || e.target.closest?.('input, textarea')) return;
+      if (e.key === 'ArrowLeft') step('you', -1);
+      if (e.key === 'ArrowRight') step('you', 1);
+      if (e.key === 'Enter' && !clash) onStart({ you, cpu, level, mode });
+    };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  });
+
   return (
-    <main className="page picker">
-      <h1 className="page-title">Pick your teams</h1>
-      <div className="picker-cols">
-        <Side title="You" sel={you} onSel={setYou} />
-        <Side title="Computer" sel={cpu} onSel={setCpu} random={() => setCpu({ team: pick(you.team), uni: 'home' })} />
+    <main className="ts">
+      <div className="ts-halves">
+        <Half who="you" label="You" tag="HOME" sel={you} set={setYou} step={(d) => step('you', d)} openGrid={() => setGrid('you')} onInfo={setInfo} onLineup={() => setLineupFor('you')} />
+        <Half who="cpu" label="Computer" tag="AWAY" mirror sel={cpu} set={setCpu} step={(d) => step('cpu', d)} openGrid={() => setGrid('cpu')} onInfo={setInfo} onLineup={() => setLineupFor('cpu')} />
       </div>
-      <section className="glass picker-opts">
-        <div className="opt"><span>Difficulty</span><Chips value={level} onChange={setLevel} options={LEVELS} /></div>
-        <div className="opt"><span>Rules</span><Chips value={mode} onChange={setMode} options={MODES} /></div>
-        <p className="hint">Rookie makes mistakes. Starter plays the odds. All-Pro manages cards, the clock and coverage. Techno = 7-vs-7, no skills, no field goals; the other modes unlock in later batches.</p>
-        {clash && <p className="warn">Same team in the same uniform: pick a different uniform for one side.</p>}
-        <button className="btn primary big" disabled={clash} onClick={() => onStart({ you, cpu, level, mode })}>Take the field</button>
-      </section>
+      <div className="ts-center glass">
+        <div className="opt"><span>Computer</span><Chips small value={level} onChange={setLevel} options={LEVELS} /></div>
+        <div className="opt"><span>Rules</span><Chips small value={mode} onChange={setMode} options={MODES} /></div>
+        {clash && <p className="warn">Same team, same uniform: change one side's uniform.</p>}
+        <button className="btn primary big" disabled={clash} onClick={() => onStart({ you, cpu, level, mode })}>Take the field <kbd className="kh">Enter</kbd></button>
+        <p className="hint">← → flips through teams. Rookie makes mistakes, Starter plays the odds, All-Pro manages cards, the clock and coverage.</p>
+      </div>
+      {grid && <TeamGrid current={sides[grid][0].team} onPick={(t) => { pickTeam(grid, t); setGrid(null); }} onClose={() => setGrid(null)} />}
+      {info && <AbilityCard p={info} onClose={() => setInfo(null)} />}
+      {lineupFor && <LineupPicker sel={sides[lineupFor][0]} set={sides[lineupFor][1]} onClose={() => setLineupFor(null)} />}
     </main>
   );
 }
 
-function Side({ title, sel, onSel, random }) {
+function Half({ who, label, tag, sel, set, step, openGrid, onInfo, onLineup, mirror }) {
   const team = teamById(sel.team);
-  const unis = uniformsFor(sel.team);
+  // very light primaries (white jerseys) would wash out the white lettering: use the trim colour behind instead
+  const [p0, p1] = teamColors(sel.team, sel.uni);
+  const [c0, c1] = lum(p0) > 0.72 ? [p1, p0] : [p0, p1];
+  const players = lineup(team, sel.picks).filter((p) => p.abilities?.length);
+  const stars = players.reduce((n, p) => n + p.abilities.length, 0);
+  const hasAlt = altSlots(team).length > 0;
+  const rows = Object.fromEntries(rosterFor(sel.team, sel.uni).map((p) => [p.num, p.row]));
+  const helmet = helmetUrl(sel.team);
   return (
-    <section className="glass side">
-      <header className="side-head">
-        <h2>{title}: <span className="led">{team.name.toUpperCase()}</span></h2>
-        {random && <button className="btn small" onClick={random}>Random</button>}
+    <section className={`ts-half ${mirror ? 'mirror' : ''}`} style={{ '--c0': c0, '--c1': c1 }}>
+      <header className="ts-top">
+        <span className="ts-who">{label}</span>
+        <div className="ts-nav">
+          <button className="btn small" onClick={() => step(-1)} aria-label="Previous team">◀</button>
+          <button className="btn small" onClick={openGrid}>All teams</button>
+          <button className="btn small" onClick={() => step(1)} aria-label="Next team">▶</button>
+        </div>
       </header>
-      <div className="team-grid" role="radiogroup" aria-label={`${title} team`}>
-        {TEAMS.map((t) => (
-          <button key={t.id} role="radio" aria-checked={t.id === sel.team} className={`team-tile ${t.id === sel.team ? 'on' : ''}`}
-            title={t.name} onClick={() => onSel({ team: t.id, uni: 'home' })}>
-            <Sprite team={t.id} uni="home" />
-            <small>{t.name}</small>
-          </button>
-        ))}
+      <div className="ts-body">
+        <div className="ts-players">
+          {players.map((p) => (
+            <button key={`${p.num}${p.name}`} className="ts-card" onClick={() => onInfo({ ...p, team: team.name, c0, c1 })}>
+              <span className="ts-card-name">{p.name}</span>
+              <span className="ts-card-art">
+                <i>#{p.num}</i>
+                <Sprite team={sel.team} uni={sel.uni} row={rows[p.artNum ?? p.num] ?? 0} />
+              </span>
+              <span className="ts-card-skill">{p.abilities.join(' · ')}</span>
+            </button>
+          ))}
+        </div>
+        <div className="ts-logo">{helmet && <img src={helmet} alt={`${team.name} helmet`} />}</div>
       </div>
-      <div className="opt"><span>Uniform</span><Chips small value={sel.uni} onChange={(u) => onSel({ ...sel, uni: u })} options={unis.map((u) => [u.id, u.label])} /></div>
-      <Stage className="side-stage" camera={{ position: [0, 1.3, 4.2], fov: 35 }}>
-        <Lights />
-        <Lineup team={sel.team} uni={sel.uni} />
-      </Stage>
-      <p className="hint">{team.notes}</p>
+      <footer className="ts-foot">
+        <div className="ts-ring" title="Special abilities on the roster"><b>{stars}</b><small>★</small></div>
+        <div className="ts-name">
+          <h2>{team.name.toUpperCase()}</h2>
+          <small>{tag}</small>
+        </div>
+        <div className="ts-opts">
+          <Chips small value={sel.uni} onChange={(u) => set({ ...sel, uni: u })} options={uniformsFor(sel.team).map((u) => [u.id, u.label])} />
+          {hasAlt && <button className="btn small" onClick={onLineup}>Lineup{Object.values(sel.picks).includes('alt') ? ' (alternate)' : ''}</button>}
+        </div>
+      </footer>
+      <span className="sr-only">{who}</span>
     </section>
   );
 }
 
-function Lineup({ team, uni }) {
-  const u = uniformOf(team, uni);
-  const roster = rosterFor(team, uni).filter((p) => p.num !== 51);
+function TeamGrid({ current, onPick, onClose }) {
+  useEscape(onClose);
   return (
-    <group position={[0, -0.5, 0]}>
-      {roster.map((p, i) => (
-        <PlayerCube key={`${u.file}${p.row}`} uniform={u} row={p.row} size={0.42} position={[(i - (roster.length - 1) / 2) * 0.52, 0, 0]} facing={-0.35} />
-      ))}
-    </group>
+    <div className="modal" onClick={onClose}>
+      <div className="modal-card glass ts-grid-card" onClick={(e) => e.stopPropagation()}>
+        <h2>Pick a team</h2>
+        <div className="ts-grid">
+          {TEAMS.map((t) => {
+            const [c0] = teamColors(t.id, 'home');
+            return (
+              <button key={t.id} className={`ts-grid-tile ${t.id === current ? 'on' : ''}`} style={{ '--c0': c0 }} onClick={() => onPick(t.id)}>
+                {helmetUrl(t.id) ? <img src={helmetUrl(t.id)} alt="" /> : <Sprite team={t.id} uni="home" />}
+                <small>{t.name}</small>
+              </button>
+            );
+          })}
+        </div>
+        <div className="btns"><button className="btn" onClick={onClose}>Close</button></div>
+      </div>
+    </div>
   );
+}
+
+function AbilityCard({ p, onClose }) {
+  useEscape(onClose);
+  return (
+    <div className="modal" onClick={onClose}>
+      <div className="modal-card glass ability-card" style={{ '--c0': p.c0 }} onClick={(e) => e.stopPropagation()}>
+        <h2>#{p.num} {p.name}</h2>
+        <p className="hint">{p.team} · skill {p.skill} · {p.tier === 'superstar' ? 'Superstar' : p.tier === 'star' ? 'Star' : 'Impact player'}</p>
+        <ul>{p.abilities.map((a) => <li key={a}><b>{a}</b><span>{abilityText(a)}</span></li>)}</ul>
+        <p className="hint">Abilities are used in All Techno, All Pro and Inferno.</p>
+        <div className="btns"><button className="btn primary" onClick={onClose}>Got it</button></div>
+      </div>
+    </div>
+  );
+}
+
+function LineupPicker({ sel, set, onClose }) {
+  useEscape(onClose);
+  const team = teamById(sel.team);
+  const slots = altSlots(team);
+  const choose = (slot, v) => set({ ...sel, picks: { ...sel.picks, [slot]: v } });
+  return (
+    <div className="modal" onClick={onClose}>
+      <div className="modal-card glass lineup-card" onClick={(e) => e.stopPropagation()}>
+        <h2>{team.name}: who suits up?</h2>
+        <p className="hint">{team.name} have alternate players. Pick one for each spot.</p>
+        {slots.map((s) => (
+          <div key={s.slot} className="lineup-slot">
+            {[['reg', s.regular], ['alt', s.alternate]].map(([k, p]) => {
+              const on = (sel.picks[s.slot] ?? 'reg') === k;
+              return (
+                <button key={k} className={`lineup-opt ${on ? 'on' : ''}`} onClick={() => choose(s.slot, k)}>
+                  <b>#{p.num} {p.name}</b>
+                  <small>{k === 'alt' ? 'Alternate' : 'Regular'} · skill {p.skill}</small>
+                  <ul>{p.abilities.map((a) => <li key={a}><i>{a}</i> {abilityText(a)}</li>)}</ul>
+                </button>
+              );
+            })}
+          </div>
+        ))}
+        <div className="btns"><button className="btn primary" onClick={onClose}>Done</button></div>
+      </div>
+    </div>
+  );
+}
+
+function useEscape(fn) {
+  useEffect(() => {
+    const key = (e) => { if (e.key === 'Escape') { e.stopPropagation(); fn(); } };
+    window.addEventListener('keydown', key, true);
+    return () => window.removeEventListener('keydown', key, true);
+  }, [fn]);
 }
 
 // a flat picture of a player (the front face) straight from the atlas: row = player, column 1 = front
