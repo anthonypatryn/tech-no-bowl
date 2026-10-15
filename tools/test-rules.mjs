@@ -213,3 +213,172 @@ test('engine: defensive pressure costs two bench cards, or sacks with fewer than
   g2.agents[1] = g.agents[1];
   await assert.rejects(g2.runActivation('1:45', 'card'), (e) => e.reason === 'tackle');
 });
+
+// ---------- rules double-pass (B5): one scenario per rule, page numbers from the rulebook ----------
+test('p.4: after more than half a move, no block / tackle / pass (move-and-X is half then act)', async () => {
+  const g = scenario([[0, 6, 6, 14], [1, 45, 6, 9]], null);
+  let asked = 0, last = null;
+  g.agents[0] = (game, side, req) => {
+    if (req.type !== 'act') return null;
+    asked++; last = req;
+    return asked === 1 ? { kind: 'move', to: [6, 10] } : { kind: 'end' }; // 4 squares: more than half of 6
+  };
+  await g.runActivation('0:6', 'card');
+  assert.equal(last.blocks.length, 0);
+});
+
+test('p.13: a read-and-react player may not half-move and then act', async () => {
+  const g = scenario([[0, 6, 6, 12], [1, 45, 6, 9]], null);
+  let asked = 0, last = null;
+  g.agents[0] = (game, side, req) => { if (req.type !== 'act') return null; asked++; last = req; return asked === 1 ? { kind: 'move', to: [6, 11] } : { kind: 'end' }; };
+  await g.runActivation('0:6', 'rr');
+  assert.equal(last.blocks.length, 0);
+});
+
+test('p.3: total success gives a free activation to another player (not the one who acted)', async () => {
+  const g = scenario([[0, 42, 6, 10], [0, 33, 0, 20], [1, 45, 6, 9]], null, [5, 6]);
+  let bonus = null;
+  g.agents[0] = scripted({ act: (req) => (req.blocks.length ? { kind: 'block', pid: req.blocks[0] } : { kind: 'end' }), push: (req) => req.options[0], followUp: () => false, bonus: (req) => { bonus = req; return null; } });
+  await g.runActivation('0:42', 'card');
+  assert.equal(bonus.kind, 'full');
+  assert.ok(!bonus.options.includes('0:42') && bonus.options.includes('0:33'));
+});
+
+test('p.3: partial success gives the other coach a half move', async () => {
+  const g = scenario([[0, 42, 6, 10], [1, 45, 6, 9]], null, [3, 4]);
+  let bonus = null;
+  g.agents[0] = scripted({ act: (req) => (req.blocks.length ? { kind: 'block', pid: req.blocks[0] } : { kind: 'end' }), push: (req) => req.options[0], followUp: () => false });
+  g.agents[1] = scripted({ bonus: (req) => { bonus = req; return null; } });
+  await g.runActivation('0:42', 'card');
+  assert.equal(bonus.kind, 'half');
+});
+
+test('p.6: critical block failure: the defender may decline the push, the blocker still goes down', async () => {
+  const g = scenario([[0, 42, 6, 10], [1, 45, 6, 9]], null, [2, 2]);
+  g.agents[0] = scripted({ act: (req) => (req.blocks.length ? { kind: 'block', pid: req.blocks[0] } : { kind: 'end' }) });
+  g.agents[1] = scripted({ reverse: () => false, bonus: () => null });
+  await g.runActivation('0:42', 'card');
+  assert.equal(g.s.players['0:42'].down, true);
+  assert.deepEqual([g.s.players['0:42'].col, g.s.players['0:42'].row], [6, 10]);
+});
+
+test('p.7: no forward pass once the ball has crossed the line of scrimmage', () => {
+  const g = scenario([[0, 7, 6, 15], [0, 33, 6, 10]], '0:7');
+  g.ballMoved();
+  assert.equal(g.s.play.forwardDone, true);
+  assert.equal(passInfo(g.s, g.s.players['0:7'], [6, 10]).ok, false);
+});
+
+test('p.7: a pass may not target a knocked-down teammate', () => {
+  const s = state([[0, 7, 6, 20], [0, 33, 6, 16, true]], '0:7');
+  assert.equal(passInfo(s, s.players['0:7'], [6, 16]).ok, false);
+});
+
+test('p.8: a hand-off with nobody threatening is automatic (no dice)', async () => {
+  const g = scenario([[0, 6, 6, 19], [0, 33, 6, 18], [1, 45, 0, 5]], '0:6', []);
+  let rolled = 0; const d6 = g.d6; g.d6 = () => { rolled++; return d6(); };
+  g.agents[0] = scripted({ act: (req) => (req.handoffs.length && g.s.ball.pid === '0:6' ? { kind: 'handoff', pid: req.handoffs[0] } : { kind: 'end' }) });
+  await g.runActivation('0:6', 'card');
+  assert.equal(g.s.ball.pid, '0:33');
+  assert.equal(rolled, 0);
+});
+
+test('p.8: a threatened hand-off on doubles fails: ball scattered, activation over', async () => {
+  const g = scenario([[0, 6, 6, 19], [0, 33, 6, 18], [1, 45, 7, 17]], '0:6', [4, 4, 5, 2]);
+  let acts = 0;
+  g.agents[0] = scripted({ act: (req) => { acts++; return req.handoffs.length ? { kind: 'handoff', pid: req.handoffs[0] } : { kind: 'end' }; }, scatter: (req) => req.options[0] });
+  g.agents[1] = scripted({ scatter: (req) => req.options[0] });
+  await g.runActivation('0:6', 'card');
+  assert.equal(acts, 1);
+  assert.notEqual(g.s.ball.at, 'held');
+});
+
+test('p.8: a pass scattering out of bounds is incomplete', async () => {
+  const g = scenario([[0, 7, 6, 20], [1, 45, 12, 10]], '0:7', [1, 2, 6, 1]);
+  g.agents[0] = scripted({ act: () => ({ kind: 'pass', to: [12, 12] }), scatter: (req) => req.options.find((o) => o.out) ?? req.options[0], bonus: () => null });
+  g.agents[1] = scripted({ scatter: (req) => req.options.find((o) => o.out) ?? req.options[0], bonus: () => null });
+  await assert.rejects(g.runActivation('0:7', 'card'), (e) => e.reason === 'incomplete');
+});
+
+test('p.8: equal scatter dice: a dramatic recovery (a downed carrier who keeps it is down)', async () => {
+  const g = scenario([[0, 6, 6, 10], [1, 45, 6, 9]], '0:6', [5, 5, 3, 3]);
+  g.agents[1] = scripted({ act: (req) => ({ kind: 'tackle', pid: req.tackles[0] }), bonus: () => null });
+  g.agents[0] = scripted({ bonus: () => null });
+  await assert.rejects(g.runActivation('1:45', 'card'), (e) => e.reason === 'tackle');
+});
+
+test('p.13: a running play uses two minutes; a passing play one; a timeout cube is never doubled', async () => {
+  const run = scenario([[0, 6, 6, 10]], null);
+  run.s.pile = ['y', 'y', 'y']; run.s.play.cube = 'y';
+  await run.endPlay(new PlayEnd('tackle', { side: 0, at: [6, 10] }));
+  assert.equal(run.s.pile.length, 2);
+  const pass = scenario([[0, 6, 6, 10]], null);
+  pass.s.pile = ['y', 'y', 'y']; pass.s.play.cube = 'y'; pass.s.play.passThrown = true;
+  await pass.endPlay(new PlayEnd('tackle', { side: 0, at: [6, 10] }));
+  assert.equal(pass.s.pile.length, 3);
+  const last = scenario([[0, 6, 6, 10]], null);
+  last.s.pile = ['r']; last.s.play.cube = 'y';
+  await last.endPlay(new PlayEnd('tackle', { side: 0, at: [6, 10] }));
+  assert.equal(last.s.pile.length, 1);
+});
+
+test('p.7: a tackle on 4th down hands the ball over at the spot', async () => {
+  const g = scenario([[0, 6, 6, 10]], null);
+  g.s.down = 4;
+  await g.endPlay(new PlayEnd('tackle', { side: 0, at: [6, 12] }));
+  assert.equal(g.s.offense, 1);
+  assert.equal(g.s.down, 1);
+});
+
+test('p.5: defensive pressure happens once per activation (out and back in is no second hit)', async () => {
+  const g = scenario([[0, 6, 6, 19], [1, 45, 6, 16]], '0:6');
+  g.s.cards[0].bench = [6, 6, 33, 33, 42, 42];
+  const path = [[6, 18], [6, 17], [7, 18]];
+  let i = 0;
+  g.agents[1] = scripted({ act: (req) => (i < path.length && req.moves.some((m) => m.to[0] === path[i][0] && m.to[1] === path[i][1]) ? { kind: 'move', to: path[i++] } : { kind: 'end' }) });
+  await g.runActivation('1:45', 'card');
+  assert.equal(g.s.cards[0].bench.length, 4);
+});
+
+test('p.9-10: the hike receiver must be within the hiker skill rating, straight behind', () => {
+  const ctx = { line: 18, dir: -1, col: 6, count: 7 };
+  const spots = [{ num: 33, col: 6, row: 18 }, { num: 43, col: 4, row: 18 }, { num: 42, col: 8, row: 18 }, { num: 6, col: 6, row: 22 }, { num: 72, col: 0, row: 18 }, { num: 62, col: 11, row: 18 }, { num: 55, col: 5, row: 21 }];
+  assert.equal(checkOffense(spots, ctx).ok, false);
+});
+
+test('p.13: no adjustment for a player holding the ball; partners exclude the carrier', async () => {
+  const g = scenario([[0, 6, 6, 19], [0, 33, 5, 18], [0, 42, 7, 18]], '0:6');
+  const req = await new Promise((res) => { g.agents[0] = (game, side, r) => { if (r.type === 'act') { res(r); return { kind: 'end' }; } return null; }; g.runActivation('0:6', 'card'); });
+  assert.equal(req.canAdjust, false);
+  const g2 = scenario([[0, 6, 6, 19], [0, 33, 5, 18], [0, 42, 7, 18]], '0:6');
+  let partner = null;
+  g2.agents[0] = (game, side, r) => {
+    if (r.type === 'act') return r.canAdjust ? { kind: 'adjust' } : { kind: 'end' };
+    if (r.type === 'adjustPartner') { partner = r; return { pid: r.options[0], first: 'self' }; }
+    return null;
+  };
+  await g2.runActivation('0:33', 'card');
+  assert.ok(partner && !partner.options.includes('0:6'));
+});
+
+test('p.5: standing up costs 3 (a half move of 2 cannot stand)', async () => {
+  const g = scenario([[0, 42, 6, 10, true]], null);
+  const p = g.s.players['0:42'];
+  assert.equal(g.actRequest(p, { mode: 'half', budget: 2, spent: 0, parity: 0, fresh: true }).canStand, false);
+  assert.equal(g.actRequest(p, { mode: 'card', budget: 4, spent: 0, parity: 0, fresh: true }).canStand, true);
+});
+
+test('p.13: catching a pass in the end zone is a touchdown', async () => {
+  const g = scenario([[0, 7, 6, 10], [0, 33, 6, 1]], '0:7', [5, 4]);
+  g.agents[0] = scripted({ act: () => ({ kind: 'pass', to: [6, 1] }) });
+  await assert.rejects(g.runActivation('0:7', 'card'), (e) => e.reason === 'td');
+});
+
+test('p.12: same skill ratings: a die each decides; a tie again lets the offense decide', async () => {
+  const g = scenario([[0, 42, 0, 20], [1, 45, 12, 2]], null, [3, 3]);
+  let decider = null;
+  const who = () => (game, sd, r) => { if (r.type === 'first') { decider = sd; return 'me'; } return r.type === 'act' ? { kind: 'end' } : null; };
+  g.agents = [who(), who()];
+  await g.round(42, 45);
+  assert.equal(decider, 0);
+});

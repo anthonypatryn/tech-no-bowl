@@ -2,6 +2,7 @@
 // the line of scrimmage, the down cube, clickable square highlights and the camera.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
+import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { Field, Lights, sq, ROWS, COLS } from './Field';
 import { PlayerCube, DownCube, CUBE } from './Cube';
@@ -55,7 +56,7 @@ function Mover({ p, uniform, row, path, positions, ring, onPick }) {
 }
 
 // ---------- the ball ----------
-function Ball({ ball, positions, slowmo }) {
+function Ball({ ball, positions, slowmo, snapFrom }) {
   const g = useRef();
   const from = useRef(null), to = useRef(new THREE.Vector3()), t = useRef(1), arc = useRef(0), long = useRef(false);
   const spin = useRef(), roll = useRef();
@@ -69,7 +70,9 @@ function Ball({ ball, positions, slowmo }) {
   useEffect(() => {
     const goal = goalOf();
     if (!goal || !g.current) return;
-    from.current = g.current.position.clone();
+    // the snap: the ball comes out of the center's hands, not out of thin air
+    const hiker = !g.current.visible && snapFrom && ball.at === 'held' ? positions.current[snapFrom] : null;
+    from.current = hiker ? new THREE.Vector3(hiker.x, CUBE * 0.55, hiker.z) : g.current.position.clone();
     to.current = goal;
     const d = from.current.distanceTo(goal);
     t.current = settings().calm || d < 0.05 ? 1 : 0;
@@ -315,12 +318,13 @@ function Tiles({ tiles, onPick, onHover }) {
 
 // ---------- camera ----------
 const VIEW = {
+  free: (f) => ({ pos: [f.x + 12.5, 9, f.z + 0.5], target: [f.x - 0.5, 0, f.z - 0.3] }), // only used if 'free' has no controls yet
   broadcast: (f) => ({ pos: [f.x + 12.5, 9, f.z + 0.5], target: [f.x - 0.5, 0, f.z - 0.3] }),
   endzone: (f, dir) => ({ pos: [f.x, 7.5, f.z - dir * 11], target: [f.x, 0, f.z + dir * 2] }),
   overhead: (f) => ({ pos: [f.x + 0.01, 25, f.z], target: [f.x, 0, f.z] }),
   low: (f) => ({ pos: [f.x + 6, 1.2, f.z + 2.5], target: [f.x - 1, 0.6, f.z - 0.5] }),
 };
-export const VIEWS = [['broadcast', 'Broadcast'], ['endzone', 'End zone'], ['overhead', 'Overhead'], ['low', 'Field level']];
+export const VIEWS = [['broadcast', 'Broadcast'], ['endzone', 'End zone'], ['overhead', 'Overhead'], ['low', 'Field level'], ['free', 'Free']];
 
 // the cinematic camera for a shot (see game/shots.js): { pos, target, rate } or null
 function shotCam(shot, positions) {
@@ -358,7 +362,7 @@ function shotCam(shot, positions) {
 }
 
 function Rig({ view, focus, dir, shot, positions, intro }) {
-  const { camera, size } = useThree();
+  const { camera, size, controls } = useThree();
   const target = useRef(new THREE.Vector3(0, 0, 6));
   const f = useRef(new THREE.Vector3(0, 0, 6));
   useFrame((_, dt) => {
@@ -368,8 +372,11 @@ function Rig({ view, focus, dir, shot, positions, intro }) {
       camera.position.lerp(sc.pos, k);
       target.current.lerp(sc.target, k);
       camera.lookAt(target.current);
+      controls?.target.copy(target.current);
       return;
     }
+    // free camera: the mouse has it (OrbitControls); just remember where it's looking for when a preset takes over
+    if (view === 'free') { if (controls) target.current.copy(controls.target); return; }
     const goal = focus();
     const kf = 1 - Math.exp(-dt * 1.6);
     if (goal) f.current.lerp(new THREE.Vector3(Math.max(-3, Math.min(3, goal.x * 0.4)), 0, goal.z), kf);
@@ -384,13 +391,14 @@ function Rig({ view, focus, dir, shot, positions, intro }) {
     camera.position.lerp(new THREE.Vector3(...s.pos), k);
     target.current.lerp(new THREE.Vector3(...s.target), k);
     camera.lookAt(target.current);
+    controls?.target.copy(target.current);
   });
   return null;
 }
 
 // ---------- the scene ----------
 // edit: { side, spots:[{num,col,row}] } shows a formation being placed instead of that side's real positions
-export function Board({ game, view, tiles, onTile, onHover, rings = {}, onPlayer, edit, focusSq, shot, intro }) {
+export function Board({ game, view, tiles, onTile, onHover, rings = {}, onPlayer, edit, focusSq, shot, intro, onFree }) {
   const s = game.state;
   const positions = useRef({});
   const unis = useMemo(() => s.teams.map((t) => uniformOf(t.id, t.uniform)), [s.teams]);
@@ -405,6 +413,20 @@ export function Board({ game, view, tiles, onTile, onHover, rings = {}, onPlayer
     }
     return p;
   }).filter((p) => p.col != null);
+  // grabbing the camera (a real drag, not a click on a square) switches to the free camera
+  const drag = useRef(null);
+  useEffect(() => {
+    const move = (e) => {
+      const d = drag.current;
+      if (!d || shot || intro) return;
+      if (d.x == null) { d.x = e.clientX; d.y = e.clientY; return; }
+      if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 6 && view !== 'free') { drag.current = null; onFree?.(); }
+    };
+    const wheel = (e) => { if (e.target?.tagName === 'CANVAS' && !shot && !intro && view !== 'free') onFree?.(); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('wheel', wheel, { passive: true });
+    return () => { window.removeEventListener('pointermove', move); window.removeEventListener('wheel', wheel); };
+  }, [shot, intro, view, onFree]);
   const lineZ = s.line - ROWS / 2;
   const showLine = s.phase !== 'setup' && s.phase !== 'over';
   const focus = () => {
@@ -431,13 +453,15 @@ export function Board({ game, view, tiles, onTile, onHover, rings = {}, onPlayer
         <Mover key={p.pid} p={p} uniform={unis[p.side]} row={rows[p.side][p.num]} path={paths[p.pid]} positions={positions}
           ring={rings[p.pid]} onPick={onPlayer} />
       ))}
-      <Ball ball={s.ball} positions={positions} slowmo={!settings().calm} />
+      <Ball ball={s.ball} positions={positions} slowmo={!settings().calm} snapFrom={s.log.findLast?.((e) => e.kind === 'snap')?.from} />
       {shot?.kind === 'hit' && <Burst key={shot.id} at={sq(...shot.at, 0)} colors={['#c9c9c9', '#7a5a3a', '#3f6b2a', '#ffffff']} count={shot.big ? 46 : 26} />}
       {shot?.kind === 'sack' && <Dust key={shot.id} at={sq(...shot.at, 0)} />}
       {shot?.kind === 'td' && <Burst key={shot.id} confetti at={sq(...shot.at, 0)} colors={teamColors(s.teams[shot.side].id, s.teams[shot.side].uniform).concat(['#f5e04a', '#ffffff'])} count={120} />}
       <DiceRolls log={s.log} players={s.players} offense={s.offense} home={[s.spot, s.line]}
         teamColors={s.teams.map((t) => teamColors(t.id, t.uniform))} />
       <Tiles tiles={tiles} onPick={onTile} onHover={onHover} />
+      <OrbitControls makeDefault enableDamping dampingFactor={0.12} enabled={!shot && !intro} maxPolarAngle={Math.PI / 2.1} minDistance={2.5} maxDistance={45}
+        onStart={() => { drag.current = { x: null, y: null }; }} onEnd={() => { drag.current = null; }} />
       <Rig view={view} focus={focus} dir={s.teams[s.offense].dir} shot={shot} positions={positions} intro={intro} />
     </>
   );

@@ -19,7 +19,9 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
   tunnel run-out), TV score bug, chyrons, stat cards, MFL wipes, instant replays, engine box score + drives.
 - **B4c done:** owner's polish list: laces + spiral, Lab knocked-down, distinct sack (dust, low push-in, boom), helmet
   cleanup + Techno Bowl logo, pre-game logo / helmet smash / records, numbers that stay upright, coin toss, 8-bit UI.
-- **Next is B5:** sound editor + Art Review Board v2.
+- **B5 done:** snaps from the center, theme fades at kick-off, free mouse camera, rules double-pass (40 tests; one fix:
+  a critical block failure's push is optional), sound editor (`?view=sounds`), Art Review Board v2 (verdicts).
+- **Next is B5b:** tutorial, rules/help, on-field help, playbook, season + playoffs (see docs/PLAN.md).
 
 ## Look (8-bit everywhere)
 - Type: Press Start 2P (`--pixel`) for titles, buttons, chips, labels; Pixelify Sans (`--body`) for running text.
@@ -47,7 +49,7 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
 | `src/game/GameView.jsx` | The game screen: board + scoreboard, cards, log, dice toast, banners, a prompt for every request type, end screen |
 | `src/game/useGame.js` | Builds the `Game` for a match (you = side 0, CPU = side 1), CPU think time, pacing (`BEATS` per log kind), speed |
 | `src/three/Board.jsx` | Live scene: `Mover` cubes walk their logged paths, `Ball` (held / loose / in the air, arcs), LOS + down cube, `Tiles` (instanced highlights; clicks go through one invisible pick plane), camera `Rig` that follows the ball |
-| `src/game/ArtReview.jsx` | `?view=art`: Teams (live cubes), Down marker, Field (calibration grid), Scoreboard & tokens, Checks |
+| `src/game/ArtReview.jsx` | `?view=art`: Teams, Helmets, Down marker, Field, Scoreboard & tokens, Checks, Review. Every asset has a `Verdict` (approve / needs fix / reject + note, PIN) saved to `/api/reviews`; Review tab copies open items for Claude |
 | `src/game/formation.js` | Stand-in line-ups until the engine exists |
 | `src/game/prefs.js` | Per-device settings (`tb-settings`). Not settings.js, because of a Windows name clash with Settings.jsx |
 | `src/three/Field.jsx` | Field plane, `sq(col,row)` → world, `Lights`, calibration `Grid` |
@@ -76,6 +78,8 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
 | `src/game/replay.js` | `lastPlay(state)` rebuilds the last play from the log; `useReplay` plays it back on the Board in slow motion |
 | `src/game/CoinToss.jsx` | The coin flip overlay (engine logs `cointoss` before asking the winner) |
 | `src/game/records.js` | W-L per team on this device (pre-game card); `recordResult` at game end |
+| `src/game/SoundEditor.jsx` | `?view=sounds`: per slot, clips with waveform trim (drag), start/len/vol/fade, play; Save (PIN) -> `/api/sounds` overrides `sounds.json` for everyone; Copy for Claude |
+| `lib/sounds.js`, `lib/reviews.js` (+ `api/`) | Redis stores (`tech-no-bowl:sounds`, `tech-no-bowl:reviews`), PIN writes, dev saves under `.data/` |
 | `src/game/Lab.jsx` | `?view=moments`: Moment Lab, a button per cinematic and roll |
 | `src/game/keys.js` | Rebindable keys: `KEY_ACTIONS`, `isKey(e, action)`, `labelFor`, `rebind` (swaps on conflict). Bound in Settings → Keys; `<Kbd a="throw" />` shows the live key |
 | `tools/simulate.mjs` | `npm run sim -- 300`: bot-vs-bot games with invariant checks. Must print `errors: 0` |
@@ -120,7 +124,10 @@ key prefix differs) and `BUG_PIN`. Without them the live site answers that bug r
 - Pacing: `new Game(…, { pace, delay })`. Each log entry adds owed time and the next `ask` waits for it, so the UI
   stays readable while the simulator (no pace) runs flat out. In dev builds the live game is `window.__tb`.
 
+- Camera: presets + **Free** (OrbitControls). A real drag or scroll-zoom switches to Free; picking a preset takes over again.
+
 ### Rulings (things the rulebook leaves open; change here if the owner disagrees)
+- The owner wants the rulebook as written (no house rules). Rules double-pass done in B5: see the p.N tests.
 - Benches are dealt fresh every down (2 cards per player on the field).
 - A ball carrier knocked down by anything except a tackle fumbles (scatter). A dramatic recovery (scatter tie) by a
   carrier who is down ends the down like a tackle.

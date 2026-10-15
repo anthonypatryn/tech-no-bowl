@@ -22,6 +22,7 @@ import OpeningShow, { SHOW } from './OpeningShow';
 import { lastPlay, useReplay } from './replay';
 import CoinToss from './CoinToss';
 import { recordResult } from './records';
+import { crowd, stopTheme } from './sound';
 import { settings } from './prefs';
 
 const COLORS = { move: '#2fd06b', ball: '#ffd34a', td: '#ffffff', out: '#ff6a5a', good: '#2fd06b', ok: '#f5e04a', bad: '#ff5a4a', push: '#ff9a3c', scatter: '#c77dff', motion: '#4ab8ff', place: '#4ab8ff' };
@@ -51,8 +52,8 @@ function Screen({ game, match, onExit, onRematch }) {
   // the opening show runs first; the engine starts when it ends (calm motion skips it)
   const [intro, setIntro] = useState(() => (settings().calm ? null : { t0: performance.now(), startAt: SHOW.h2h }));
   const endIntro = useRef(null);
-  endIntro.current = () => { setIntro(null); game.begin(); };
-  useEffect(() => { if (!intro) game.begin(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  endIntro.current = () => { setIntro(null); stopTheme(1.8); crowd(1, 0.2); game.begin(); };
+  useEffect(() => { if (!intro) { stopTheme(1.8); game.begin(); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const req = s.request && s.request.side === HUMAN ? s.request : null;
   // portrait phones: the field runs up the screen from the end-zone camera, so start there
   const [view, setView] = useState(() => (window.innerWidth < 760 && window.innerHeight > window.innerWidth ? 'endzone' : 'broadcast'));
@@ -199,7 +200,7 @@ function Screen({ game, match, onExit, onRematch }) {
   return (
     <div className={`game ${shot || intro || rs ? 'cine' : ''} ${intro ? 'intro' : ''} ${rs ? 'replaying' : ''}`}>
       <Stage className="game-stage">
-        <Board game={rs ? { state: rs } : game} view={view} shot={shot} intro={intro} tiles={rs ? [] : board.tiles} rings={rs ? {} : board.rings} onTile={rs ? null : board.onTile} onHover={setHover} onPlayer={rs ? null : board.onPlayer}
+        <Board game={rs ? { state: rs } : game} view={view} onFree={() => setView('free')} shot={shot} intro={intro} tiles={rs ? [] : board.tiles} rings={rs ? {} : board.rings} onTile={rs ? null : board.onTile} onHover={setHover} onPlayer={rs ? null : board.onPlayer}
           edit={edit && req?.type === 'formation' ? { side: HUMAN, spots: edit } : null} />
       </Stage>
       <ScoreBug s={s} />
@@ -291,7 +292,7 @@ function Prompt(props) {
         <p className="hint">{req.label}. Already +{req.bonus} / −{req.penalty}. Spent cards can't activate him later this play.</p>
         <div className="btns">{opts.map((n) => <button key={n} className={`btn ${n === 0 ? 'primary' : ''}`} onClick={() => answer(n)}>{n === 0 ? 'No boost' : `+${n}`}{n === 0 && <Kbd a="primary" />}</button>)}</div></>);
     }
-    case 'reverse': return yesNo(`The block failed! Reverse it on ${name(req.against)}?`, 'Reverse it', 'Leave it');
+    case 'reverse': return yesNo(req.crit ? `Critical failure! ${name(req.against)} goes down. Push him back too?` : `The block failed! Reverse it on ${name(req.against)}?`, req.crit ? 'Push him' : 'Reverse it', req.crit ? 'Just knock him down' : 'Leave it');
     case 'followUp': return yesNo(`Follow up into the gap with ${name(req.pid)}?`, 'Follow up', 'Stay');
     case 'push': return <h3>Pick where {name(req.pid)} gets pushed (orange squares)</h3>;
     case 'scatter': {

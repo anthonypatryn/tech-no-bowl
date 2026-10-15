@@ -80,7 +80,7 @@ export default function Lab() {
   return (
     <div className="game">
       <Stage className="game-stage">
-        <Board game={game} view={view} tiles={[]} shot={shot} />
+        <Board game={game} view={view} onFree={() => setView('free')} tiles={[]} shot={shot} />
       </Stage>
       <div className={`lab-bar glass ${shot ? 'hide' : ''}`}>
         <h3>Moment Lab</h3>

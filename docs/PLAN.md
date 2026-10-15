@@ -155,11 +155,46 @@ Template: Long Shot (look, 3D/R3F, camera rig, cinematics) + Escape Order 66 (so
   - smooth animations
 - (Already fixed in B4b: the Warriors helmet crop, and the arrows opening the lineup chooser.)
 
-### B5 · Sound editor + Art Review Board v2
+### B5 · Sound editor + Art Review Board v2 ✅
+Owner's additions (do first):
+- **Snaps:** the ball travels from the center (hiker) back to the receiver, instead of popping into his hands.
+- **Music:** the opening TV theme fades out when the game starts (end of the opening show / skip), not at the
+  first whistle.
+- **Rules audit:** a full re-check of the engine against the rulebook. (The owner's first report, an uncovered
+  offensive line player, turned out to be legal per pp.10-11: coverage is only required before a defender stands on
+  the line unassigned. Stick with the rulebook; no house rules.) Go through every section with tests (formations, activations, checks and
+  free actions, movement costs, passing, hand-offs, tackles, pressure, scatter, downs, clock).
+- **Free camera:** mouse-controlled orbit / pan / zoom (OrbitControls, like Long Shot), as an extra view beside the
+  presets; dragging switches to it, and picking a preset hands control back.
+
 - EO66 SoundEditor port (`?view=sounds`): waveform trim per slot (e.g. fine-tune the theme splits and grunt cuts),
   loudness matching, Blob uploads, PIN save.
 - Art Review Board v2: approve, reject or request a fix with notes per asset, stored in Redis on the bug-kit
   pattern. "Copy for Claude" exports the open notes.
+
+### B5b · Coaching help, playbook, season (owner's request)
+- **Tutorial:** a guided first game (a scripted drive that teaches formation, play call, activations, checks,
+  blocks, tackles and passing one step at a time), replayable from Home.
+- **Rules / help section:** a full illustrated rules page (Home and in game), plus contextual "?" help on every
+  prompt that explains the rule being asked about.
+- **On-field help:**
+  - show how far a player can run (reachable squares shaded by cost, the half-move limit marked)
+  - show how far he can throw (2x skill ring, the +1 short-throw ring)
+  - show where players can legally set up (green squares for each player in the formation editor; why a square is
+    illegal on hover)
+- **Playbook:** saved offensive and defensive formations, from built-in sets (I-form, spread, shotgun-style deep
+  passer, goal line, 4-3, nickel, blitz, prevent) plus your own. Pick one and it drops in, adapting to the spot and
+  your roster; you can still move anyone before confirming. Also save a 5-card play call with a formation.
+- **Season:** pick a team and play a schedule against the other teams (length selectable), with a standings table,
+  then a playoff bracket and a Techno Bowl final. Records feed the pre-game W-L card. Saved on the device.
+- **My suggestions (owner to OK):**
+  - Odds on hover: the % to succeed for a block, tackle or throw before you commit (the modifiers are already known)
+  - Save and resume a game in progress (refresh-safe, like Long Shot)
+  - Undo a misclick (moves only, until dice are rolled)
+  - A "coach's suggestion" button (asks the All-Pro AI what it would do)
+  - In-game pause menu (settings, rules, quit) and an auto-answer option for small prompts (bench boost, who goes
+    first) so play flows
+  - Colour-blind safe highlights (shapes as well as colours), and install-to-home-screen on phones
 
 ### B6 · Rule modes
 - **ALL TECHNO:** the 25 skills.

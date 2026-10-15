@@ -497,4 +497,53 @@ button.card:hover { border-color: var(--led); }
 .coin-call b { font-size: clamp(28px, 5vw, 54px); }
 .coin-call span:last-child { font-family: var(--pixel); font-size: .8em; }
 
+/* sound editor */
+.se-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: var(--s4); align-items: start; }
+@media (max-width: 860px) { .se-layout { grid-template-columns: 1fr; } }
+.se-slots { display: flex; flex-direction: column; gap: var(--s1); padding: var(--s2); }
+.se-slot { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: var(--s2) var(--s3); border: var(--px) solid transparent; background: none; }
+.se-slot b { font-family: var(--pixel); font-size: 10px; font-weight: 400; }
+.se-slot small { color: var(--muted); font-size: .8em; }
+.se-slot.on { border-color: var(--led); background: rgba(245, 224, 74, .1); }
+.se-dirty { position: absolute; top: 6px; right: 8px; font-style: normal; font-family: var(--pixel); font-size: 8px; color: var(--led); }
+.se-main { display: flex; flex-direction: column; gap: var(--s4); min-width: 0; }
+.se-clip { border-top: var(--px) solid var(--line); padding: var(--s3) 0; display: flex; flex-direction: column; gap: var(--s2); }
+.se-clip-head { display: flex; justify-content: space-between; align-items: center; gap: var(--s2); flex-wrap: wrap; }
+.se-wave { width: 100%; height: 90px; border: var(--px) solid var(--line); cursor: ew-resize; touch-action: none; image-rendering: pixelated; }
+.se-zoom, .se-fields { display: flex; gap: var(--s2); align-items: center; flex-wrap: wrap; }
+.se-num { display: flex; align-items: center; gap: var(--s1); }
+.se-num span { font-family: var(--pixel); font-size: 9px; color: var(--muted); }
+.se-num input, .pin-input { width: 90px; font: inherit; color: var(--text); background: rgba(255, 255, 255, .06); border: var(--px) solid var(--line); padding: 4px 6px; }
+.se-save .btns, .se-main .btns { display: flex; gap: var(--s2); flex-wrap: wrap; margin-top: var(--s2); }
+
+/* art review verdicts */
+.pin-bar { display: flex; align-items: center; gap: var(--s4); flex-wrap: wrap; margin-bottom: var(--s4); padding: var(--s3) var(--s4); }
+.pin-bar label { display: flex; align-items: center; gap: var(--s2); }
+.pin-bar label span { font-family: var(--pixel); font-size: 10px; color: var(--muted); }
+.verdict { display: grid; grid-template-columns: minmax(120px, 200px) auto minmax(0, 1fr); align-items: center; gap: var(--s2); margin-top: var(--s3); padding: var(--s2); border: var(--px) dashed var(--line); }
+.verdict.ok { border-color: var(--go); border-style: solid; }
+.verdict.fix { border-color: var(--led); border-style: solid; }
+.verdict.reject { border-color: var(--mfl-red); border-style: solid; }
+.verdict-label { font-family: var(--pixel); font-size: 9px; color: var(--muted); }
+.verdict-btns { display: flex; gap: var(--s1); flex-wrap: wrap; }
+.chipbtn { font-family: var(--pixel); font-size: 8px; padding: 6px 8px; border: var(--px) solid var(--line); background: rgba(255, 255, 255, .05); border-radius: 2px; }
+.chipbtn.on.v-ok { background: var(--go); color: #04140a; }
+.chipbtn.on.v-fix { background: var(--led); color: #15130a; }
+.chipbtn.on.v-reject { background: var(--mfl-red); color: #fff; }
+.verdict-note { min-width: 0; font: inherit; color: var(--text); background: rgba(255, 255, 255, .06); border: var(--px) solid var(--line); padding: 4px 8px; }
+@media (max-width: 700px) { .verdict { grid-template-columns: 1fr; } }
+.helmet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--s3); }
+.helmet-tile { margin: 0; padding: var(--s2); display: flex; flex-direction: column; gap: var(--s1); }
+.helmet-tile img { width: 100%; height: 150px; object-fit: contain; }
+.helmet-tile.bg-team { background: var(--c0); }
+.helmet-tile.bg-dark { background: #0b0d12; }
+.helmet-tile.bg-light { background: #e9eef2; }
+.helmet-tile.bg-check { background: repeating-conic-gradient(#666 0 25%, #999 0 50%) 0 0 / 16px 16px; }
+.helmet-tile .verdict { grid-template-columns: 1fr; background: rgba(0, 0, 0, .55); }
+.logo-row { display: flex; gap: var(--s4); flex-wrap: wrap; }
+.logo-row figure { margin: 0; background: #3a1418; padding: var(--s3); }
+.logo-row img { height: 140px; }
+.logo-row figcaption { font-size: .8em; color: var(--muted); }
+.punch-grid .verdict { grid-template-columns: 1fr; }
+
 html.calm *, html.calm *::before { transition: none !important; animation: none !important; }

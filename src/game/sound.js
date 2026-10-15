@@ -1,7 +1,17 @@
 // Game-day sound: the owner's recordings in public/sfx/*.mp3, cut into clips by src/data/sounds.json
 // ({ slot: [{ file, start, len, vol, fade, loop?, name? }] }, one picked at random each time). The sound editor (B5)
 // will edit that table. Three mixer channels from Settings: fx, crowd, music.
-import SOUNDS from '../data/sounds.json';
+import BUILTIN from '../data/sounds.json';
+
+// the built-in clip table, overridden by whatever the sound editor saved (loaded once at start)
+let SOUNDS = { ...BUILTIN };
+export const builtinSounds = () => BUILTIN;
+export function setSoundConfig(map) { SOUNDS = { ...BUILTIN, ...map }; }
+export async function loadSoundOverrides() {
+  try { const r = await fetch('/api/sounds'); if (!r.ok) return; const j = await r.json(); if (j?.sounds) setSoundConfig(j.sounds); } catch { /* the built-in clips */ }
+}
+export const decodeFile = (file) => (wake() ? load(file) : Promise.resolve(null));
+export const audioNow = () => ctx?.currentTime ?? 0;
 import { settings } from './prefs';
 
 const CHANNEL = { crowd: 'crowd', theme: 'music' };
@@ -93,15 +103,19 @@ export function crowd(x, hold = 1.5, ramp = 0.25) {
 
 // ---------- music: a TV theme to open the game ----------
 let music = null;
+let themeToken = 0; // a stop that lands while the theme is still loading cancels it
 export async function playTheme(seconds = 24) {
   stopTheme(0.2);
+  const token = themeToken;
   const list = SOUNDS.theme ?? [];
   if (!list.length) return null;
   const c = list[Math.floor(Math.random() * list.length)];
-  music = await playClip({ ...c, len: Math.min(c.len, seconds) }, level('theme'));
+  const clip = await playClip({ ...c, len: Math.min(c.len, seconds) }, level('theme'));
+  if (token !== themeToken) { clip?.stop(0.3); return null; }
+  music = clip;
   return c.name;
 }
-export function stopTheme(f = 1.5) { music?.stop(f); music = null; }
+export function stopTheme(f = 1.5) { themeToken++; music?.stop(f); music = null; }
 
 // browsers only start audio after a tap / key: wake it on the first one
 export function unlockAudioOnFirstTap() {

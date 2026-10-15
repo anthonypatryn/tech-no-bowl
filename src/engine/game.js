@@ -680,9 +680,14 @@ export class Game {
     if (res.success) {
       await this.push(actor.side, actor, target, res.crit);
     } else {
-      // the target may turn it round: the initiator is pushed (and knocked down on a critical failure)
-      const reverse = res.crit || await this.askValid(target.side, { type: 'reverse', pid: target.pid, against: actor.pid }, (v) => (typeof v === 'boolean' ? null : 'yes or no'), () => true);
+      // the target may turn it round on the initiator (p.6). On a critical failure the initiator "may be pushed back AND
+      // is knocked down": the push is the target's choice, the knockdown isn't.
+      const reverse = await this.askValid(target.side, { type: 'reverse', pid: target.pid, against: actor.pid, crit: res.crit }, (v) => (typeof v === 'boolean' ? null : 'yes or no'), () => true);
       if (reverse) await this.push(target.side, target, actor, res.crit);
+      else if (res.crit) {
+        this.log(`${this.name(actor)} goes down in a heap!`, 'knockdown', { pid: actor.pid });
+        await this.knockDown(actor);
+      }
     }
     this.afterCheck(ctx, actor, res);
   }
