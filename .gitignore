@@ -1,0 +1,16 @@
+node_modules
+dist
+*.local
+*.log
+.DS_Store
+.vscode/*
+.idea
+.data/
+.vercel
+.env*
+__pycache__/
+
+# print-and-play source art (purchased, large): kept locally only.
+# tools/extract_art.py turns it into the web textures under public/art/, which ARE committed.
+/*.pdf
+/*.jpg

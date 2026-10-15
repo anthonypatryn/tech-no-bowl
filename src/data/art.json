@@ -1,0 +1,1609 @@
+{
+ "uniforms": {
+  "ankhs": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/ankhs-home.webp",
+    "nums": [
+     6,
+     7,
+     38,
+     43,
+     44,
+     51,
+     55,
+     65
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#0c0c0c",
+     "#cccc9c"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/ankhs-alt.webp",
+    "nums": [
+     6,
+     7,
+     38,
+     43,
+     44,
+     51,
+     55,
+     65
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#cccc9c",
+     "#0c0c0c"
+    ]
+   }
+  ],
+  "banditos": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/banditos-home.webp",
+    "nums": [
+     34,
+     44,
+     48,
+     51,
+     55,
+     61,
+     65,
+     72
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#fc6c24",
+     "#24240c"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/banditos-alt.webp",
+    "nums": [
+     34,
+     44,
+     48,
+     51,
+     55,
+     61,
+     65,
+     72
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#24240c",
+     "#fcfcfc"
+    ]
+   }
+  ],
+  "bigcats": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/bigcats-home.webp",
+    "nums": [
+     6,
+     7,
+     39,
+     46,
+     47,
+     51,
+     59,
+     62
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#242454",
+     "#fccc0c"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/bigcats-alt.webp",
+    "nums": [
+     6,
+     7,
+     39,
+     46,
+     47,
+     51,
+     59,
+     62
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#fccc0c",
+     "#242454"
+    ]
+   }
+  ],
+  "bighorns": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/bighorns-home.webp",
+    "nums": [
+     6,
+     7,
+     33,
+     42,
+     45,
+     51,
+     55,
+     68
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#0c0c3c",
+     "#fcfcfc"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/bighorns-alt.webp",
+    "nums": [
+     6,
+     7,
+     33,
+     42,
+     45,
+     51,
+     55,
+     68
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#e45424",
+     "#fcfcfc"
+    ]
+   }
+  ],
+  "bulls": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/bulls-home.webp",
+    "nums": [
+     6,
+     34,
+     45,
+     46,
+     51,
+     55,
+     65,
+     77
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#0c243c",
+     "#fcfcfc"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/bulls-alt.webp",
+    "nums": [
+     6,
+     34,
+     45,
+     46,
+     51,
+     55,
+     65,
+     77
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#cccccc",
+     "#0c243c"
+    ]
+   }
+  ],
+  "chefs": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/chefs-home.webp",
+    "nums": [
+     32,
+     42,
+     47,
+     51,
+     55,
+     61,
+     69,
+     70
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#fcfcfc",
+     "#cc0c0c"
+    ]
+   },
+   {
+    "id": "redhot",
+    "label": "Red Hot",
+    "file": "cubes/chefs-redhot.webp",
+    "nums": [
+     32,
+     42,
+     47,
+     51,
+     55,
+     61,
+     69,
+     70
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#cc0c0c",
+     "#fcfcfc"
+    ]
+   }
+  ],
+  "_downs": {
+   "file": "cubes/downs.webp",
+   "count": 8
+  },
+  "engines": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/engines-home.webp",
+    "nums": [
+     6,
+     33,
+     42,
+     43,
+     51,
+     55,
+     62,
+     72
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#e4b424",
+     "#840c0c"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/engines-alt.webp",
+    "nums": [
+     6,
+     33,
+     42,
+     43,
+     51,
+     55,
+     62,
+     72
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#840c0c",
+     "#fcfcfc"
+    ]
+   }
+  ],
+  "falchions": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/falchions-home.webp",
+    "nums": [
+     7,
+     37,
+     47,
+     48,
+     51,
+     56,
+     66,
+     68
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#fcfcfc",
+     "#e42424"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/falchions-alt.webp",
+    "nums": [
+     7,
+     37,
+     47,
+     48,
+     51,
+     56,
+     66,
+     68
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#0c0c0c",
+     "#e42424"
+    ]
+   }
+  ],
+  "gorillas": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/gorillas-home.webp",
+    "nums": [
+     6,
+     39,
+     41,
+     42,
+     51,
+     55,
+     64,
+     73
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#242454",
+     "#fcfcfc"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/gorillas-alt.webp",
+    "nums": [
+     6,
+     39,
+     41,
+     42,
+     51,
+     55,
+     64,
+     73
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#840c0c",
+     "#fcfcfc"
+    ]
+   }
+  ],
+  "greenbacks": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/greenbacks-home.webp",
+    "nums": [
+     6,
+     39,
+     46,
+     47,
+     51,
+     52,
+     66,
+     75
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#e4e46c",
+     "#3c3c3c"
+    ]
+   },
+   {
+    "id": "cashandcoin",
+    "label": "Cash and Coin",
+    "file": "cubes/greenbacks-cashandcoin.webp",
+    "nums": [
+     6,
+     39,
+     46,
+     47,
+     51,
+     52,
+     66,
+     75
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#3c543c",
+     "#e4e46c"
+    ]
+   },
+   {
+    "id": "greenstuff",
+    "label": "Greenstuff",
+    "file": "cubes/greenbacks-greenstuff.webp",
+    "nums": [
+     6,
+     39,
+     46,
+     47,
+     51,
+     52,
+     66,
+     75
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#3c543c",
+     "#fcfcfc"
+    ]
+   }
+  ],
+  "griffons": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/griffons-home.webp",
+    "nums": [
+     6,
+     39,
+     43,
+     48,
+     51,
+     59,
+     66,
+     77
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#840c24",
+     "#fcfcfc"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/griffons-alt.webp",
+    "nums": [
+     6,
+     39,
+     43,
+     48,
+     51,
+     59,
+     66,
+     77
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#fcfcfc",
+     "#840c24"
+    ]
+   }
+  ],
+  "jackolanterns": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/jackolanterns-home.webp",
+    "nums": [
+     7,
+     35,
+     46,
+     49,
+     51,
+     55,
+     64,
+     66
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#242424",
+     "#fcfcfc"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/jackolanterns-alt.webp",
+    "nums": [
+     7,
+     35,
+     46,
+     49,
+     51,
+     55,
+     64,
+     66
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#e43c24",
+     "#242424"
+    ]
+   }
+  ],
+  "kittens": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/kittens-home.webp",
+    "nums": [
+     7,
+     39,
+     44,
+     45,
+     51,
+     58,
+     61,
+     65
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#cccccc",
+     "#243c84"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/kittens-alt.webp",
+    "nums": [
+     7,
+     39,
+     44,
+     45,
+     51,
+     58,
+     61,
+     65
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#0c6cb4",
+     "#cccccc"
+    ]
+   }
+  ],
+  "lumberjacks": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/lumberjacks-home.webp",
+    "nums": [
+     6,
+     36,
+     46,
+     47,
+     51,
+     52,
+     63,
+     70
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#ccb46c",
+     "#9c2424"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/lumberjacks-alt.webp",
+    "nums": [
+     6,
+     36,
+     46,
+     47,
+     51,
+     52,
+     63,
+     70
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#cc2424",
+     "#fcfcfc"
+    ]
+   }
+  ],
+  "monsters": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/monsters-home.webp",
+    "nums": [
+     7,
+     33,
+     48,
+     49,
+     51,
+     55,
+     61,
+     69
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#0c2454",
+     "#fc843c"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/monsters-alt.webp",
+    "nums": [
+     7,
+     33,
+     48,
+     49,
+     51,
+     55,
+     61,
+     69
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#fc843c",
+     "#0c2454"
+    ]
+   }
+  ],
+  "ninjas": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/ninjas-home.webp",
+    "nums": [
+     36,
+     48,
+     49,
+     51,
+     55,
+     64,
+     67,
+     77
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#24246c",
+     "#fcfcfc"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/ninjas-alt.webp",
+    "nums": [
+     36,
+     48,
+     49,
+     51,
+     55,
+     64,
+     67,
+     77
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#242424",
+     "#fcfcfc"
+    ]
+   }
+  ],
+  "omegas": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/omegas-home.webp",
+    "nums": [
+     6,
+     36,
+     48,
+     49,
+     51,
+     52,
+     66,
+     77
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#242454",
+     "#fcfcfc"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/omegas-alt.webp",
+    "nums": [
+     6,
+     36,
+     48,
+     49,
+     51,
+     52,
+     66,
+     77
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#fcfcfc",
+     "#242454"
+    ]
+   }
+  ],
+  "pandas": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/pandas-home.webp",
+    "nums": [
+     6,
+     7,
+     36,
+     42,
+     47,
+     51,
+     55,
+     68
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#242424",
+     "#fcfcfc"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/pandas-alt.webp",
+    "nums": [
+     6,
+     7,
+     36,
+     42,
+     47,
+     51,
+     55,
+     68
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#2484cc",
+     "#242424"
+    ]
+   },
+   {
+    "id": "blackandblue",
+    "label": "Black and Blue",
+    "file": "cubes/pandas-blackandblue.webp",
+    "nums": [
+     6,
+     7,
+     36,
+     42,
+     47,
+     51,
+     55,
+     68
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#242424",
+     "#2484cc"
+    ]
+   }
+  ],
+  "pills": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/pills-home.webp",
+    "nums": [
+     5,
+     7,
+     31,
+     41,
+     49,
+     51,
+     60,
+     66
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#fcfcfc",
+     "#243c84"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/pills-alt.webp",
+    "nums": [
+     5,
+     7,
+     31,
+     41,
+     49,
+     51,
+     60,
+     66
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#24246c",
+     "#fcfcfc"
+    ]
+   }
+  ],
+  "pitbulls": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/pitbulls-home.webp",
+    "nums": [
+     33,
+     43,
+     44,
+     51,
+     55,
+     62,
+     66,
+     78
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#fccc24",
+     "#242424"
+    ]
+   },
+   {
+    "id": "blackandyellow",
+    "label": "Black and Yellow",
+    "file": "cubes/pitbulls-blackandyellow.webp",
+    "nums": [
+     33,
+     43,
+     44,
+     51,
+     55,
+     62,
+     66,
+     78
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#242424",
+     "#fccc0c"
+    ]
+   }
+  ],
+  "ragnarok": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/ragnarok-home.webp",
+    "nums": [
+     6,
+     7,
+     38,
+     45,
+     46,
+     51,
+     59,
+     65
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#3c246c",
+     "#fcfcfc"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/ragnarok-alt.webp",
+    "nums": [
+     6,
+     7,
+     38,
+     45,
+     46,
+     51,
+     59,
+     65
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#fcb40c",
+     "#3c0c6c"
+    ]
+   },
+   {
+    "id": "asgard",
+    "label": "Asgard",
+    "file": "cubes/ragnarok-asgard.webp",
+    "nums": [
+     6,
+     7,
+     38,
+     45,
+     46,
+     51,
+     59,
+     65
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#3c0c6c",
+     "#fcb40c"
+    ]
+   }
+  ],
+  "rattlers": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/rattlers-home.webp",
+    "nums": [
+     4,
+     34,
+     45,
+     51,
+     55,
+     63,
+     68,
+     75
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#0c0c24",
+     "#fcfcfc"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/rattlers-alt.webp",
+    "nums": [
+     4,
+     34,
+     45,
+     51,
+     55,
+     63,
+     68,
+     75
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#fcfcfc",
+     "#b4243c"
+    ]
+   },
+   {
+    "id": "rattlerred",
+    "label": "Rattler Red",
+    "file": "cubes/rattlers-rattlerred.webp",
+    "nums": [
+     4,
+     34,
+     45,
+     51,
+     55,
+     63,
+     68,
+     75
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#0c0c24",
+     "#b40c3c"
+    ]
+   },
+   {
+    "id": "redrattler",
+    "label": "Red Rattler",
+    "file": "cubes/rattlers-redrattler.webp",
+    "nums": [
+     4,
+     34,
+     45,
+     51,
+     55,
+     63,
+     68,
+     75
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#0c0c24",
+     "#b40c3c"
+    ]
+   }
+  ],
+  "reapers": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/reapers-home.webp",
+    "nums": [
+     31,
+     41,
+     44,
+     51,
+     58,
+     65,
+     67,
+     77
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#0c0c0c",
+     "#cccccc"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/reapers-alt.webp",
+    "nums": [
+     31,
+     41,
+     44,
+     51,
+     58,
+     65,
+     67,
+     77
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#cccccc",
+     "#0c0c0c"
+    ]
+   }
+  ],
+  "regals": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/regals-home.webp",
+    "nums": [
+     6,
+     7,
+     34,
+     48,
+     49,
+     51,
+     56,
+     63
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#0c3c54",
+     "#fcfcfc"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/regals-alt.webp",
+    "nums": [
+     6,
+     7,
+     34,
+     48,
+     49,
+     51,
+     56,
+     63
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#fcfcfc",
+     "#0c3c54"
+    ]
+   }
+  ],
+  "revolt": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/revolt-home.webp",
+    "nums": [
+     6,
+     7,
+     38,
+     46,
+     49,
+     51,
+     59,
+     64
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#fccc0c",
+     "#0c84fc"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/revolt-alt.webp",
+    "nums": [
+     6,
+     7,
+     38,
+     46,
+     49,
+     51,
+     59,
+     64
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#0c84fc",
+     "#fcfcfc"
+    ]
+   },
+   {
+    "id": "electricblue",
+    "label": "Electric Blue",
+    "file": "cubes/revolt-electricblue.webp",
+    "nums": [
+     6,
+     7,
+     38,
+     46,
+     49,
+     51,
+     59,
+     64
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#0c84fc",
+     "#fccc0c"
+    ]
+   }
+  ],
+  "spaceships": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/spaceships-home.webp",
+    "nums": [
+     5,
+     7,
+     33,
+     41,
+     47,
+     51,
+     66,
+     67
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#0c2424",
+     "#fcfcfc"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/spaceships-alt.webp",
+    "nums": [
+     5,
+     7,
+     33,
+     41,
+     47,
+     51,
+     66,
+     67
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#fcfcfc",
+     "#0c2424"
+    ]
+   }
+  ],
+  "sushi": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/sushi-home.webp",
+    "nums": [
+     6,
+     31,
+     42,
+     43,
+     51,
+     55,
+     66,
+     71
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#0c9c9c",
+     "#fcfcfc"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/sushi-alt.webp",
+    "nums": [
+     6,
+     31,
+     42,
+     43,
+     51,
+     55,
+     66,
+     71
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#fcfcfc",
+     "#fc5424"
+    ]
+   }
+  ],
+  "tridents": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/tridents-home.webp",
+    "nums": [
+     6,
+     7,
+     37,
+     40,
+     44,
+     51,
+     54,
+     63
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#5484b4",
+     "#fcfcfc"
+    ]
+   },
+   {
+    "id": "alt1",
+    "label": "Alt 1",
+    "file": "cubes/tridents-alt1.webp",
+    "nums": [
+     6,
+     7,
+     37,
+     40,
+     44,
+     51,
+     54,
+     63
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#0c0c3c",
+     "#fcfcfc"
+    ]
+   },
+   {
+    "id": "alt2",
+    "label": "Alt 2",
+    "file": "cubes/tridents-alt2.webp",
+    "nums": [
+     6,
+     7,
+     37,
+     40,
+     44,
+     51,
+     54,
+     63
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#6c84cc",
+     "#0c0c24"
+    ]
+   }
+  ],
+  "trucks": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/trucks-home.webp",
+    "nums": [
+     33,
+     43,
+     44,
+     51,
+     55,
+     65,
+     68,
+     79
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#9c2424",
+     "#fcfcfc"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/trucks-alt.webp",
+    "nums": [
+     33,
+     43,
+     44,
+     51,
+     55,
+     65,
+     68,
+     79
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#6c846c",
+     "#fcfcfc"
+    ]
+   }
+  ],
+  "tyrants": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/tyrants-home.webp",
+    "nums": [
+     34,
+     43,
+     46,
+     51,
+     56,
+     60,
+     66,
+     77
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#0cb454",
+     "#fcfcfc"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/tyrants-alt.webp",
+    "nums": [
+     34,
+     43,
+     46,
+     51,
+     56,
+     60,
+     66,
+     77
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#546c84",
+     "#fcfcfc"
+    ]
+   }
+  ],
+  "warriors": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/warriors-home.webp",
+    "nums": [
+     6,
+     39,
+     46,
+     49,
+     51,
+     55,
+     66,
+     71
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#0c0c3c",
+     "#fcfcfc"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/warriors-alt.webp",
+    "nums": [
+     6,
+     39,
+     46,
+     49,
+     51,
+     55,
+     66,
+     71
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#cccccc",
+     "#0c0c3c"
+    ]
+   }
+  ],
+  "yellowjackets": [
+   {
+    "id": "home",
+    "label": "Home",
+    "file": "cubes/yellowjackets-home.webp",
+    "nums": [
+     7,
+     33,
+     45,
+     46,
+     51,
+     58,
+     61,
+     68
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#0c6c9c",
+     "#fcfcfc"
+    ]
+   },
+   {
+    "id": "alt",
+    "label": "Alt",
+    "file": "cubes/yellowjackets-alt.webp",
+    "nums": [
+     7,
+     33,
+     45,
+     46,
+     51,
+     58,
+     61,
+     68
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#242424",
+     "#fcfcfc"
+    ]
+   },
+   {
+    "id": "fullyellowjacket",
+    "label": "Full Yellow Jacket",
+    "file": "cubes/yellowjackets-fullyellowjacket.webp",
+    "nums": [
+     7,
+     33,
+     45,
+     46,
+     51,
+     58,
+     61,
+     68
+    ],
+    "count": 8,
+    "cols": 2,
+    "colors": [
+     "#cc9c24",
+     "#0c6c9c"
+    ]
+   }
+  ]
+ },
+ "field": {
+  "w": 4667,
+  "h": 8170,
+  "x0": 0.06278122991214913,
+  "x1": 0.9370044996785943,
+  "y0": 0.03818849449204406,
+  "y1": 0.9616891064871481,
+  "cols": 13,
+  "rows": 24,
+  "endzone": 2
+ },
+ "punch": {
+  "cols": 10,
+  "rows": 8,
+  "files": [
+   "punch/pb1f.webp",
+   "punch/pb1b.webp",
+   "punch/pb2f.webp",
+   "punch/pb2b.webp",
+   "punch/pb3f.webp",
+   "punch/pb3b.webp",
+   "punch/pb4f.webp",
+   "punch/pb4b.webp"
+  ]
+ }
+}

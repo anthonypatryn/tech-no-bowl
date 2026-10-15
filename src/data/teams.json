@@ -1,0 +1,2526 @@
+[
+ {
+  "players": [
+   {
+    "num": 44,
+    "name": "Evan Jar",
+    "skill": 4,
+    "move": 4,
+    "abilities": [
+     "BLOCK +1"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 55,
+    "name": "Jack Richards",
+    "skill": 5,
+    "move": 5,
+    "abilities": [
+     "BLITZ"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 6,
+    "name": "Andrew Zephyr",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "POCKET PASSER"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 7,
+    "name": "Mack Two",
+    "skill": 7,
+    "move": 7,
+    "abilities": [
+     "SPIN MOVE"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 38,
+    "name": "Kyle Hilliard",
+    "skill": 3,
+    "move": 3,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 43,
+    "name": "Gregory Sack",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Renaud Ungramme",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 65,
+    "name": "Burk Lockhart",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "alternate": {
+   "note": "Alternate lineup swaps only the quarterback: #6 Andrew Zephyr (Pocket Passer) is replaced by #6 Jimmy 'Dr. Touchdown' Lockhart (QB Read). Impact marker (1 square).",
+   "replacements": [
+    {
+     "num": 6,
+     "name": "Jimmy 'Dr. Touchdown' Lockhart",
+     "skill": 6,
+     "move": 6,
+     "abilities": [
+      "QB READ"
+     ],
+     "tier": "impact"
+    }
+   ]
+  },
+  "id": "ankhs",
+  "name": "Ankhs"
+ },
+ {
+  "players": [
+   {
+    "num": 44,
+    "name": "Santiago Marron",
+    "skill": 4,
+    "move": 4,
+    "abilities": [
+     "SHOVE",
+     "STIFF ARM"
+    ],
+    "tier": "star"
+   },
+   {
+    "num": 55,
+    "name": "Max Clay",
+    "skill": 5,
+    "move": 5,
+    "abilities": [
+     "BLITZ",
+     "BLOCK +1"
+    ],
+    "tier": "star"
+   },
+   {
+    "num": 34,
+    "name": "Storm Nies",
+    "skill": 3,
+    "move": 3,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 48,
+    "name": "Jaxon Rabatin",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Aiden Sinkko",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 61,
+    "name": "Rocco Rabatin",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 65,
+    "name": "Adam 'B' Blissett",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 72,
+    "name": "Kevin Rankin",
+    "skill": 7,
+    "move": 7,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "banditos",
+  "name": "Banditos"
+ },
+ {
+  "players": [
+   {
+    "num": 6,
+    "name": "Curtis Warmer",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "POCKET PASSER"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 7,
+    "name": "Mark Fault",
+    "skill": 7,
+    "move": 7,
+    "abilities": [
+     "CATCH",
+     "SPIN MOVE",
+     "JUKE"
+    ],
+    "tier": "superstar"
+   },
+   {
+    "num": 39,
+    "name": "Don Clevenger",
+    "skill": 3,
+    "move": 3,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 46,
+    "name": "Joe Bagheera",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 47,
+    "name": "Jack Beckman",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Lina Cossette",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 59,
+    "name": "Skidd O'Shea",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 62,
+    "name": "Blake Spivey",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "bigcats",
+  "name": "Big Cats"
+ },
+ {
+  "players": [
+   {
+    "num": 33,
+    "name": "Tim Nailem",
+    "skill": 3,
+    "move": 3,
+    "abilities": [
+     "TEAM PLAYER"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 55,
+    "name": "Kerry Keen",
+    "skill": 5,
+    "move": 5,
+    "abilities": [
+     "STIFF ARM"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 6,
+    "name": "Phil Manly",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "POCKET PASSER"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 7,
+    "name": "Terry David",
+    "skill": 7,
+    "move": 7,
+    "abilities": [
+     "JUKE"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 42,
+    "name": "Chris Saguisag",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 45,
+    "name": "Leon Chan",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Matt 'Big Sexy' Sellers",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 68,
+    "name": "Cody Crowley",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "bighorns",
+  "name": "Bighorns"
+ },
+ {
+  "players": [
+   {
+    "num": 55,
+    "name": "Sam Emmitt",
+    "skill": 5,
+    "move": 5,
+    "abilities": [
+     "STIFF ARM",
+     "RUN BLOCK"
+    ],
+    "tier": "star"
+   },
+   {
+    "num": 6,
+    "name": "Roy Cakeman",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "POCKET PASSER"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 77,
+    "name": "Dee Sandman",
+    "skill": 7,
+    "move": 7,
+    "abilities": [
+     "LOCKDOWN"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 34,
+    "name": "Makis McGee",
+    "skill": 3,
+    "move": 3,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 45,
+    "name": "Steven Massey",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 46,
+    "name": "Nitro McQueen",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Brian Griffin",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 65,
+    "name": "Raf Cordero",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "bulls",
+  "name": "Bulls"
+ },
+ {
+  "players": [
+   {
+    "num": 55,
+    "name": "Tom Vincent",
+    "skill": 5,
+    "move": 5,
+    "abilities": [
+     "BLITZ",
+     "BLOCK +1"
+    ],
+    "tier": "star"
+   },
+   {
+    "num": 70,
+    "name": "Jamaal Child",
+    "skill": 7,
+    "move": 7,
+    "abilities": [
+     "CATCH",
+     "JUKE"
+    ],
+    "tier": "star"
+   },
+   {
+    "num": 32,
+    "name": "Big Don Carr",
+    "skill": 3,
+    "move": 3,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 42,
+    "name": "Ric 'Very Dangerous' Van Dyke",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 47,
+    "name": "Marc Vaughan",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Derrick 'Tank' Tindal",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 61,
+    "name": "Robert Boeck",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 69,
+    "name": "Brett Rabatin",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "alternate": {
+   "note": "Alternate lineup: #55 Tom Vincent -> #55 Christian Okeydokay (superstar, 3 squares: Stiff Arm, Block +1, Run Block; 'The Tazmanian Terror'); #70 Jamaal Child -> #70 Deacon Homes (impact: Juke).",
+   "replacements": [
+    {
+     "num": 55,
+     "name": "Christian Okeydokay",
+     "skill": 5,
+     "move": 5,
+     "abilities": [
+      "STIFF ARM",
+      "BLOCK +1",
+      "RUN BLOCK"
+     ],
+     "tier": "superstar"
+    },
+    {
+     "num": 70,
+     "name": "Deacon Homes",
+     "skill": 7,
+     "move": 7,
+     "abilities": [
+      "JUKE"
+     ],
+     "tier": "impact"
+    }
+   ]
+  },
+  "id": "chefs",
+  "name": "Chefs"
+ },
+ {
+  "players": [
+   {
+    "num": 33,
+    "name": "John Biggins",
+    "skill": 3,
+    "move": 3,
+    "abilities": [
+     "SHOVE",
+     "BLOCK +1"
+    ],
+    "tier": "star"
+   },
+   {
+    "num": 55,
+    "name": "Clint Portly",
+    "skill": 5,
+    "move": 5,
+    "abilities": [
+     "RUN BLOCK"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 6,
+    "name": "Bradley Fairbanks Danforth III",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "ROUTE PASSER"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 42,
+    "name": "Kirk Wood",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 43,
+    "name": "Andy Pymont",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Johnny 'Moto' Cross",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 62,
+    "name": "Brent 'Brawler' Oravits",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 72,
+    "name": "Manny Deckster",
+    "skill": 7,
+    "move": 7,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "engines",
+  "name": "Engines"
+ },
+ {
+  "players": [
+   {
+    "num": 66,
+    "name": "Juan Julio",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "CATCH"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 7,
+    "name": "Vic Mexico",
+    "skill": 7,
+    "move": 7,
+    "abilities": [
+     "PITCH",
+     "JUKE",
+     "QB READ"
+    ],
+    "tier": "superstar"
+   },
+   {
+    "num": 37,
+    "name": "Lady Jandar",
+    "skill": 3,
+    "move": 3,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 47,
+    "name": "Chris Heupgen",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 48,
+    "name": "Clay Moore",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Diego Montoya",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 56,
+    "name": "Hattori 'The Demon' Hanzo",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 68,
+    "name": "John Keefauver",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "falchions",
+  "name": "Falchions"
+ },
+ {
+  "players": [
+   {
+    "num": 55,
+    "name": "Larry Trailer",
+    "skill": 5,
+    "move": 5,
+    "abilities": [
+     "SHOVE",
+     "BLITZ",
+     "BLOCK +1"
+    ],
+    "tier": "superstar"
+   },
+   {
+    "num": 6,
+    "name": "Elliot Manly",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "SCREEN PASSER"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 39,
+    "name": "Joe Mazing",
+    "skill": 3,
+    "move": 3,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 41,
+    "name": "Ola 'Primate' Falk",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 42,
+    "name": "Jerr Z. Gionti",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Kazzom Boomer",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 64,
+    "name": "Bam Hennessy",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 73,
+    "name": "Brent Spivey",
+    "skill": 7,
+    "move": 7,
+    "abilities": [],
+    "tier": "normal",
+    "inferno": "INFERNO: any single skill while ON FIRE"
+   }
+  ],
+  "id": "gorillas",
+  "name": "Gorillas"
+ },
+ {
+  "players": [
+   {
+    "num": 6,
+    "name": "Roger Dodgers",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "POCKET PASSER",
+     "DODGE",
+     "QB READ"
+    ],
+    "tier": "superstar"
+   },
+   {
+    "num": 66,
+    "name": "Ed Lazy",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "SPIN MOVE"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 39,
+    "name": "Jonas Lindgrenen",
+    "skill": 3,
+    "move": 3,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 46,
+    "name": "Nick 'The Big Manchego' Wild",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 47,
+    "name": "Blonde Jeremy",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Caleb Rademaker",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 52,
+    "name": "Bryce Rademaker",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 75,
+    "name": "Sam Robinson",
+    "skill": 7,
+    "move": 7,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "greenbacks",
+  "name": "Greenbacks"
+ },
+ {
+  "players": [
+   {
+    "num": 6,
+    "name": "Mario Plumber",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "ROUTE PASSER"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 66,
+    "name": "Willie A. Knees",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "TACKLE +1"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 77,
+    "name": "Fritz Gerald",
+    "skill": 7,
+    "move": 7,
+    "abilities": [
+     "CATCH",
+     "SHAKE"
+    ],
+    "tier": "star"
+   },
+   {
+    "num": 39,
+    "name": "J.R. Tracy",
+    "skill": 3,
+    "move": 3,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 43,
+    "name": "Duke Cleo",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 48,
+    "name": "Yored",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Buck Beak",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 59,
+    "name": "Jandar Pygmy",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "griffons",
+  "name": "Griffons"
+ },
+ {
+  "players": [
+   {
+    "num": 55,
+    "name": "Spike Tacos",
+    "skill": 5,
+    "move": 5,
+    "abilities": [
+     "ZONE DEFENDER"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 66,
+    "name": "Chad Sesentayseis",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "SPIN MOVE"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 7,
+    "name": "A. J. Blellow",
+    "skill": 7,
+    "move": 7,
+    "abilities": [
+     "CATCH",
+     "SHAKE"
+    ],
+    "tier": "star"
+   },
+   {
+    "num": 35,
+    "name": "Anthony Spencer",
+    "skill": 3,
+    "move": 3,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 46,
+    "name": "Brandon 'Big Easy' Hodges",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 49,
+    "name": "Jackman",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Steven Bond",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 64,
+    "name": "Boo Boo Eison",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "jackolanterns",
+  "name": "Jack-o-Lanterns"
+ },
+ {
+  "players": [
+   {
+    "num": 44,
+    "name": "Gavin Lover",
+    "skill": 4,
+    "move": 4,
+    "abilities": [
+     "TEAM PLAYER"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 7,
+    "name": "Harry Danders",
+    "skill": 7,
+    "move": 7,
+    "abilities": [
+     "JUKE",
+     "SQUEEZE PLAY",
+     "STIFF ARM"
+    ],
+    "tier": "superstar"
+   },
+   {
+    "num": 39,
+    "name": "Darren 'Minion' Manoharan",
+    "skill": 3,
+    "move": 3,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 45,
+    "name": "R. J. 'Bubby' Morris",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Greg Winter",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 58,
+    "name": "Anthony Sarlo",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 61,
+    "name": "Tim T-Bone",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 65,
+    "name": "Michael Pfisterer",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "kittens",
+  "name": "Kittens"
+ },
+ {
+  "players": [
+   {
+    "num": 70,
+    "name": "Larry Nice",
+    "skill": 7,
+    "move": 7,
+    "abilities": [
+     "SHAKE"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 6,
+    "name": "Joe Dakota",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "ROUTE PASSER",
+     "SCREEN PASSER",
+     "QB READ"
+    ],
+    "tier": "superstar"
+   },
+   {
+    "num": 36,
+    "name": "Niko Payrett",
+    "skill": 3,
+    "move": 3,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 46,
+    "name": "Nathan 'Psyche' Ward",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 47,
+    "name": "Franck 'The Tank' Lefebvre",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Keven Ruest",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 52,
+    "name": "Fluke Bore",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 63,
+    "name": "Richard 'Redwood' Stout",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "lumberjacks",
+  "name": "Lumberjacks"
+ },
+ {
+  "players": [
+   {
+    "num": 33,
+    "name": "Perry Freezer",
+    "skill": 3,
+    "move": 3,
+    "abilities": [
+     "BLOCK PARTY"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 55,
+    "name": "Mike Solitary",
+    "skill": 5,
+    "move": 5,
+    "abilities": [
+     "BLITZ"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 7,
+    "name": "Walt Payday",
+    "skill": 7,
+    "move": 7,
+    "abilities": [
+     "JUKE",
+     "RUN BLOCK"
+    ],
+    "tier": "star"
+   },
+   {
+    "num": 48,
+    "name": "Josh Aldis-Snow",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 49,
+    "name": "Jonny 'The Punisher' Peletis",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Jake Jamelli",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 61,
+    "name": "Payton Johnston",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 69,
+    "name": "Spencer Harstead",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "monsters",
+  "name": "Monsters"
+ },
+ {
+  "players": [
+   {
+    "num": 55,
+    "name": "Lou Ray",
+    "skill": 5,
+    "move": 5,
+    "abilities": [
+     "BLITZ",
+     "LOCKDOWN"
+    ],
+    "tier": "star"
+   },
+   {
+    "num": 77,
+    "name": "Earl Red",
+    "skill": 7,
+    "move": 7,
+    "abilities": [
+     "ZONE DEFENDER",
+     "INTERCEPTOR"
+    ],
+    "tier": "star"
+   },
+   {
+    "num": 36,
+    "name": "Wes Baker",
+    "skill": 3,
+    "move": 3,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 48,
+    "name": "Bruise Lee",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 49,
+    "name": "Air Xavier",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Darren Hanfland",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 64,
+    "name": "Robert 'Hobbit' Newman",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 67,
+    "name": "Brayden Spivey",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "ninjas",
+  "name": "Ninjas"
+ },
+ {
+  "players": [
+   {
+    "num": 6,
+    "name": "Andy Fortune",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "ROUTE PASSER"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 66,
+    "name": "Dick Erickson",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "RUN BLOCK",
+     "STIFF ARM"
+    ],
+    "tier": "star"
+   },
+   {
+    "num": 77,
+    "name": "Harold Marvin",
+    "skill": 7,
+    "move": 7,
+    "abilities": [
+     "SHAKE"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 36,
+    "name": "Joe Sunday",
+    "skill": 3,
+    "move": 3,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 48,
+    "name": "James Sibo",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 49,
+    "name": "May Flower",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Erick Kratos",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 52,
+    "name": "Stephen Rochelle",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "omegas",
+  "name": "Omegas"
+ },
+ {
+  "players": [
+   {
+    "num": 55,
+    "name": "Julian Salts",
+    "skill": 5,
+    "move": 5,
+    "abilities": [
+     "BLITZ"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 6,
+    "name": "Cameron Dyne",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "SPIN MOVE"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 7,
+    "name": "Steve Vaughn",
+    "skill": 7,
+    "move": 7,
+    "abilities": [
+     "CATCH",
+     "JUKE"
+    ],
+    "tier": "star"
+   },
+   {
+    "num": 36,
+    "name": "Jason Chae",
+    "skill": 3,
+    "move": 3,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 42,
+    "name": "Brian Thompson",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 47,
+    "name": "Scott Greer",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Sammy Miles Jr.",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 68,
+    "name": "Ian Leighly",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "pandas",
+  "name": "Pandas"
+ },
+ {
+  "players": [
+   {
+    "num": 5,
+    "name": "Kelly James",
+    "skill": 5,
+    "move": 5,
+    "abilities": [
+     "POCKET PASSER"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 60,
+    "name": "Andrew Tweed",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "CATCH"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 66,
+    "name": "Orlando Juice",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "STIFF ARM"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 7,
+    "name": "Tomas Thurston",
+    "skill": 7,
+    "move": 7,
+    "abilities": [
+     "JUKE"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 31,
+    "name": "Patrick 'Fish Squisher' Downey",
+    "skill": 3,
+    "move": 3,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 41,
+    "name": "Jason Webster",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 49,
+    "name": "Bruise Pilliams",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Anthony 'Schiz' Albano",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "pills",
+  "name": "Pills"
+ },
+ {
+  "players": [
+   {
+    "num": 33,
+    "name": "Joey Mean",
+    "skill": 3,
+    "move": 3,
+    "abilities": [
+     "SHOVE"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 44,
+    "name": "Harry Jammison",
+    "skill": 4,
+    "move": 4,
+    "abilities": [
+     "TEAM PLAYER"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 55,
+    "name": "Roy Gonnamaulu",
+    "skill": 5,
+    "move": 5,
+    "abilities": [
+     "BLITZ"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 66,
+    "name": "Ron Woodsman",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "TACKLE +1"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 43,
+    "name": "Sam Tyson",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Raymond Starfire",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 62,
+    "name": "Jason Guzman",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 78,
+    "name": "Mark Nealon",
+    "skill": 7,
+    "move": 7,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "pitbulls",
+  "name": "Pit Bulls"
+ },
+ {
+  "players": [
+   {
+    "num": 6,
+    "name": "Thor Odinson",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "RUN BLOCK",
+     "BLOCK +1"
+    ],
+    "tier": "star"
+   },
+   {
+    "num": 7,
+    "name": "Randy Lichen",
+    "skill": 7,
+    "move": 7,
+    "abilities": [
+     "CATCH",
+     "SIDELINER"
+    ],
+    "tier": "star"
+   },
+   {
+    "num": 38,
+    "name": "Jordin Peterson",
+    "skill": 3,
+    "move": 3,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 45,
+    "name": "Darren Olsen",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 46,
+    "name": "Alex Skayne",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Scott Boggs",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 59,
+    "name": "Alex Salem",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 65,
+    "name": "Chuck Theel",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "ragnarok",
+  "name": "Ragnarok"
+ },
+ {
+  "players": [
+   {
+    "num": 4,
+    "name": "Ryan Hammer",
+    "skill": 4,
+    "move": 4,
+    "abilities": [
+     "PITCH"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 55,
+    "name": "J.J. Joule",
+    "skill": 5,
+    "move": 5,
+    "abilities": [
+     "BLITZ",
+     "BLOCK +1",
+     "DIVING TACKLE"
+    ],
+    "tier": "superstar"
+   },
+   {
+    "num": 34,
+    "name": "Bruce Spivey",
+    "skill": 3,
+    "move": 3,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 45,
+    "name": "Andrew Olson",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Jeff 'TNT' Paul",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 63,
+    "name": "Big Daddy Grubaugh",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 68,
+    "name": "Jaina Andreson",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 75,
+    "name": "Glenn Manser",
+    "skill": 7,
+    "move": 7,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "rattlers",
+  "name": "Rattlers"
+ },
+ {
+  "players": [
+   {
+    "num": 44,
+    "name": "Howie Short",
+    "skill": 4,
+    "move": 4,
+    "abilities": [
+     "BLITZ"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 77,
+    "name": "Donnie Lock",
+    "skill": 7,
+    "move": 7,
+    "abilities": [
+     "TACKLE +3"
+    ],
+    "tier": "superstar"
+   },
+   {
+    "num": 31,
+    "name": "Chris Cuddy",
+    "skill": 3,
+    "move": 3,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 41,
+    "name": "Daniel 'The Bear' McKay",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Chopper Lewis",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 58,
+    "name": "Bill Door",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 65,
+    "name": "Weapon Xtreme",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 67,
+    "name": "Marcus Ervin III",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "alternate": {
+   "note": "Alternate lineup: #44 Howie Short -> #4 John McFadden (impact: Shove; note number 4 not 44, both skill 4); #77 Donnie Lock -> #77 Bo Nose (superstar: Juke, Stiff Arm, Sideliner).",
+   "replacements": [
+    {
+     "num": 4,
+     "name": "John McFadden",
+     "skill": 4,
+     "move": 4,
+     "abilities": [
+      "SHOVE"
+     ],
+     "tier": "impact"
+    },
+    {
+     "num": 77,
+     "name": "Bo Nose",
+     "skill": 7,
+     "move": 7,
+     "abilities": [
+      "JUKE",
+      "STIFF ARM",
+      "SIDELINER"
+     ],
+     "tier": "superstar"
+    }
+   ]
+  },
+  "id": "reapers",
+  "name": "Reapers"
+ },
+ {
+  "players": [
+   {
+    "num": 6,
+    "name": "Mack Koi",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "SPIN MOVE"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 7,
+    "name": "Quentin Bartholomew Eagles",
+    "skill": 7,
+    "move": 7,
+    "abilities": [
+     "JUKE",
+     "ROUTE PASSER",
+     "QB READ"
+    ],
+    "tier": "superstar"
+   },
+   {
+    "num": 34,
+    "name": "Roberto Ordonez",
+    "skill": 3,
+    "move": 3,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 48,
+    "name": "Markus Gustav Igel",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 49,
+    "name": "Joey Scar",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Alex 'Frenchie' Theys",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 56,
+    "name": "Clem 'Mister Green' Dokines",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 63,
+    "name": "Matt Gort",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "regals",
+  "name": "Regals"
+ },
+ {
+  "players": [
+   {
+    "num": 6,
+    "name": "Don Fast",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "PITCH",
+     "OPTION"
+    ],
+    "tier": "star"
+   },
+   {
+    "num": 7,
+    "name": "Larry Thompson",
+    "skill": 7,
+    "move": 7,
+    "abilities": [
+     "JUKE",
+     "SPIN MOVE"
+    ],
+    "tier": "star"
+   },
+   {
+    "num": 38,
+    "name": "A.C. Ohmic",
+    "skill": 3,
+    "move": 3,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 46,
+    "name": "Shane Fitzgerald",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 49,
+    "name": "Zach 'Coulomb' Croy",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Nick Tesla",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 59,
+    "name": "Harry Wheeler",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 64,
+    "name": "J R Angus",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "revolt",
+  "name": "Revolt"
+ },
+ {
+  "players": [
+   {
+    "num": 33,
+    "name": "Mary Gold",
+    "skill": 3,
+    "move": 3,
+    "abilities": [
+     "TEAM PLAYER"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 5,
+    "name": "Patrick Fritz",
+    "skill": 5,
+    "move": 5,
+    "abilities": [
+     "POCKET PASSER"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 66,
+    "name": "Derek Reeves",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "ZONE DEFENDER"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 7,
+    "name": "Mark Curtis",
+    "skill": 7,
+    "move": 7,
+    "abilities": [
+     "SPIN MOVE"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 41,
+    "name": "Todd 'The Grognard' Warren",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 47,
+    "name": "Matt Mancuso",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Millennium Solo",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 67,
+    "name": "David Forest",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "spaceships",
+  "name": "Spaceships"
+ },
+ {
+  "players": [
+   {
+    "num": 55,
+    "name": "Larry Bonkers",
+    "skill": 5,
+    "move": 5,
+    "abilities": [
+     "RUN BLOCK"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 6,
+    "name": "Stan Marina",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "ROUTE PASSER",
+     "POCKET PASSER"
+    ],
+    "tier": "star"
+   },
+   {
+    "num": 66,
+    "name": "Mark Super",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "SPIN MOVE"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 31,
+    "name": "Peter Greico",
+    "skill": 3,
+    "move": 3,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 42,
+    "name": "Alison Giordano",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 43,
+    "name": "Heather Peletis",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Tom Sophie",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 71,
+    "name": "John Wiser",
+    "skill": 7,
+    "move": 7,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "sushi",
+  "name": "Sushi"
+ },
+ {
+  "players": [
+   {
+    "num": 40,
+    "name": "Mike Money",
+    "skill": 4,
+    "move": 4,
+    "abilities": [
+     "BLOCK +1"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 44,
+    "name": "Max Bruce",
+    "skill": 4,
+    "move": 4,
+    "abilities": [
+     "TEAM PLAYER"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 6,
+    "name": "Mary Iota",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "ROUTE PASSER"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 7,
+    "name": "George Edwards",
+    "skill": 7,
+    "move": 7,
+    "abilities": [
+     "SPIN MOVE"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 37,
+    "name": "Sarah McNeely",
+    "skill": 3,
+    "move": 3,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Daniel George",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 54,
+    "name": "Darrell Sackman",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 63,
+    "name": "Derrick Nathan",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "tridents",
+  "name": "Tridents"
+ },
+ {
+  "players": [
+   {
+    "num": 33,
+    "name": "Al Stop",
+    "skill": 3,
+    "move": 3,
+    "abilities": [
+     "SHOVE",
+     "BLOCK +1"
+    ],
+    "tier": "star"
+   },
+   {
+    "num": 44,
+    "name": "Warren Sack",
+    "skill": 4,
+    "move": 4,
+    "abilities": [
+     "SHOVE"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 55,
+    "name": "Derrin Books",
+    "skill": 5,
+    "move": 5,
+    "abilities": [
+     "BLITZ"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 43,
+    "name": "Pablo Desviat Cruzado",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Christopher Rixen",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 65,
+    "name": "Eric 'No' Sack",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal",
+    "inferno": "INFERNO: gains QB READ while ON FIRE"
+   },
+   {
+    "num": 68,
+    "name": "Pete Shirey",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 79,
+    "name": "Evan Vernon",
+    "skill": 7,
+    "move": 7,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "trucks",
+  "name": "Trucks"
+ },
+ {
+  "players": [
+   {
+    "num": 60,
+    "name": "Ken Chance",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "ZONE DEFENDER"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 66,
+    "name": "Tom Earl",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "MAN DEFENDER"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 77,
+    "name": "Rex Surewin",
+    "skill": 7,
+    "move": 7,
+    "abilities": [
+     "ZONE DEFENDER",
+     "INTERCEPTOR"
+    ],
+    "tier": "star"
+   },
+   {
+    "num": 34,
+    "name": "Warren 'Wazza' Fenton",
+    "skill": 3,
+    "move": 3,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 43,
+    "name": "Walter Jo-Daniels",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 46,
+    "name": "Kam Wow",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Erikk Teschlog",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 56,
+    "name": "Christian Muhl",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "tyrants",
+  "name": "Tyrants"
+ },
+ {
+  "players": [
+   {
+    "num": 55,
+    "name": "Rock Knockowski",
+    "skill": 5,
+    "move": 5,
+    "abilities": [
+     "STIFF ARM",
+     "RUN BLOCK"
+    ],
+    "tier": "star"
+   },
+   {
+    "num": 6,
+    "name": "Tom Baby",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "POCKET PASSER"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 66,
+    "name": "Troy Black",
+    "skill": 6,
+    "move": 6,
+    "abilities": [
+     "CATCH"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 39,
+    "name": "Richard Pants",
+    "skill": 3,
+    "move": 3,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 46,
+    "name": "Chalupa Wayne",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 49,
+    "name": "Jan Kador",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Brady Cowette",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 71,
+    "name": "Jordan 'J-Town' Nickle",
+    "skill": 7,
+    "move": 7,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "warriors",
+  "name": "Warriors"
+ },
+ {
+  "players": [
+   {
+    "num": 33,
+    "name": "Tony Boss",
+    "skill": 3,
+    "move": 3,
+    "abilities": [
+     "SHOVE",
+     "BLOCK +1",
+     "TEAM PLAYER"
+    ],
+    "tier": "superstar"
+   },
+   {
+    "num": 7,
+    "name": "Freddy Thunder",
+    "skill": 7,
+    "move": 7,
+    "abilities": [
+     "STIFF ARM"
+    ],
+    "tier": "impact"
+   },
+   {
+    "num": 45,
+    "name": "Charlie Cox",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 46,
+    "name": "P.W. Sweezy",
+    "skill": 4,
+    "move": 4,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 51,
+    "name": "Sean 'El Fuego' Blanco",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 58,
+    "name": "Lenny La France",
+    "skill": 5,
+    "move": 5,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 61,
+    "name": "Walter Greer",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   },
+   {
+    "num": 68,
+    "name": "Kail Kordan",
+    "skill": 6,
+    "move": 6,
+    "abilities": [],
+    "tier": "normal"
+   }
+  ],
+  "id": "yellowjackets",
+  "name": "Yellow Jackets"
+ }
+]
