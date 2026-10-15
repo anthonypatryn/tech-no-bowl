@@ -24,9 +24,11 @@ function wake() {
   if (!AC()) return null;
   ctx ??= new (AC())();
   if (ctx.state === 'closed') ctx = new (AC())();
-  if (ctx.state !== 'running') ctx.resume().catch(() => {});
+  if (ctx.state !== 'running') ctx.resume().catch(() => {}); // iPad: 'suspended' or 'interrupted' (a call, the lock screen)
   return ctx;
 }
+// the one audio context every sound shares (the synthesized dice, hits and coin too): iPad unlocks one per tap
+export const audioContext = () => wake();
 let master = null;
 function out() {
   if (!master || master.context !== ctx) {
@@ -48,10 +50,13 @@ const load = (file) => (buffers[file] ??= fetch(`/sfx/${file}.mp3`).then((r) => 
 export function preload(slots) { if (!wake()) return; for (const s of slots) for (const c of SOUNDS[s] ?? []) load(c.file); }
 
 // one clip -> { stop(fade), gain } ; loop clips keep going until stopped
-export async function playClip(c, mix = 1) {
+export async function playClip(c, mix = 1, { late = 0.6 } = {}) {
   if (!wake() || settings().muted) return null;
+  const asked = performance.now();
   const buf = await load(c.file);
   if (!buf) return null;
+  // a sound whose file was still loading is skipped rather than played late (iPads decode big files slowly)
+  if (!c.loop && late && (performance.now() - asked) / 1000 > late) return null;
   const start = c.start ?? 0;
   const len = Math.max(0.05, Math.min(c.len ?? buf.duration - start, buf.duration - start));
   const fade = Math.min(c.fade ?? 0.1, len / 2);
@@ -86,7 +91,7 @@ export function play(slot, opts = {}) {
 let bed = null, bedStarting = null;
 export async function startCrowd() {
   if (bed || bedStarting) return;
-  bedStarting = play('crowd');
+  bedStarting = play('crowd'); // a loop: never skipped for being late
   bed = await bedStarting;
   bedStarting = null;
 }
@@ -110,16 +115,26 @@ export async function playTheme(seconds = 24) {
   const list = SOUNDS.theme ?? [];
   if (!list.length) return null;
   const c = list[Math.floor(Math.random() * list.length)];
-  const clip = await playClip({ ...c, len: Math.min(c.len, seconds) }, level('theme'));
+  const clip = await playClip({ ...c, len: Math.min(c.len, seconds) }, level('theme'), { late: 0 });
   if (token !== themeToken) { clip?.stop(0.3); return null; }
   music = clip;
   return c.name;
 }
 export function stopTheme(f = 1.5) { themeToken++; music?.stop(f); music = null; }
 
-// browsers only start audio after a tap / key: wake it on the first one
+// Browsers only start audio from a tap / key. iPad Safari / Chrome want it inside a touchend or click (not pointerdown),
+// with a sound actually started in that moment, and they suspend the context again after calls, the lock screen or
+// an app switch. So: on every tap while it isn't running, resume it and play a silent blip; and warm up every clip
+// file once it's awake, so the first whistle isn't waiting on a download.
 export function unlockAudioOnFirstTap() {
   if (typeof window === 'undefined') return;
-  const go = () => { wake(); window.removeEventListener('pointerdown', go); window.removeEventListener('keydown', go); };
-  window.addEventListener('pointerdown', go); window.addEventListener('keydown', go);
+  let warmed = false;
+  const go = () => {
+    const c = wake();
+    if (!c) return;
+    try { const b = c.createBuffer(1, 1, 22050), s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(0); } catch { /* fine */ }
+    if (!warmed) { warmed = true; setTimeout(() => preload(Object.keys(SOUNDS).filter((k) => k !== 'theme')), 300); }
+  };
+  for (const ev of ['touchend', 'click', 'keydown', 'pointerup']) window.addEventListener(ev, () => { if (!ctx || ctx.state !== 'running') go(); }, { passive: true });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && ctx && ctx.state !== 'running') ctx.resume().catch(() => {}); });
 }

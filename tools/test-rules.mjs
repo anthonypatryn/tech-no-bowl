@@ -571,3 +571,16 @@ test('INFERNO: a dirty hit on a downed player earns a token (3 on a critical)', 
   await g.runActivation('0:42', 'card');
   assert.equal(g.s.fire[0], 3);
 });
+
+test('an adjustment can be called off before a partner is picked (owner bug #2): his turn carries on', async () => {
+  const g = scenario([[0, 42, 6, 10], [0, 33, 2, 12], [1, 45, 0, 0]], null);
+  let acts = 0, adjustSeen = false;
+  g.agents[0] = scripted({
+    act: (req) => { acts++; if (acts === 1) { adjustSeen = req.canAdjust; return { kind: 'adjust' }; } return { kind: 'end' }; },
+    adjustPartner: () => null,
+  });
+  await g.runActivation('0:42', 'card');
+  assert.equal(adjustSeen, true);
+  assert.equal(acts, 2); // asked again after cancelling
+  assert.equal(g.s.play.adjustUsed[0], false);
+});

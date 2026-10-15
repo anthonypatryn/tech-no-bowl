@@ -721,7 +721,7 @@ export class Game {
         p.down = false; ctx.spent += 3;
         this.log(`${this.name(p)} gets up.`, 'stand', { pid: p.pid });
         return;
-      case 'adjust': ctx.done = true; await this.adjustment(p); return;
+      case 'adjust': if (await this.adjustment(p)) ctx.done = true; return; // called off: back to his normal turn
       case 'move': {
         const m = moveReach(s, p, ctx.budget - ctx.spent, ctx.parity, { allowOut: ctx.mode !== 'dogpile', hurdle: ctx.hurdle }).get(key(...a.to));
         ctx.spent += m.cost; ctx.parity = m.parity;
@@ -867,16 +867,19 @@ export class Game {
     if (v != null) await this.runActivation(v, b.kind, { party: b.party });
   }
 
+  // an adjustment: he and a partner each move up to half. Picking no partner (null) calls it off before anything moves.
   async adjustment(p) {
     const s = this.s;
-    s.play.adjustUsed[p.side] = true;
     const holder = carrier(s);
     const options = this.roster(p.side).filter((m) => m.pid !== p.pid && m.pid !== holder?.pid).map((m) => m.pid);
     const v = await this.askValid(p.side, { type: 'adjustPartner', pid: p.pid, options },
-      (x) => (x && options.includes(x.pid) && (x.first === 'self' || x.first === 'partner') ? null : 'pick a partner'), () => ({ pid: options[0], first: 'self' }));
+      (x) => (x == null || (options.includes(x.pid) && (x.first === 'self' || x.first === 'partner')) ? null : 'pick a partner'), () => ({ pid: options[0], first: 'self' }));
+    if (v == null) return false;
+    s.play.adjustUsed[p.side] = true;
     this.log(`${this.team(p.side).name} make an adjustment: ${this.name(p)} and ${this.name(s.players[v.pid])}.`, 'adjust', { side: p.side, pids: [p.pid, v.pid] });
     const order = v.first === 'self' ? [p.pid, v.pid] : [v.pid, p.pid];
     for (const pid of order) await this.runActivation(pid, 'adjust');
+    return true;
   }
 
   // ---------- checks ----------

@@ -502,7 +502,11 @@ function Prompt(props) {
       return (<><h3>{req.kind === 'dogpile' ? 'DOGPILE! Pick a player to put a dirty hit on a downed opponent.' : req.kind === 'full' ? `Total success! Free activation: click any of your players.${req.party ? ' BLOCK PARTY: +2 if he blocks.' : ''}` : 'They only partly made it: half move for one of your players.'}</h3>
         <div className="btns"><button className="btn" onClick={() => answer(null)}>No thanks <Kbd a="primary" /></button></div></>);
     }
-    case 'adjustPartner': return (<><h3>Adjustment: click the second player to move (each moves up to half)</h3></>);
+    case 'adjustPartner':
+      primary.current = () => answer(null);
+      return (<><h3>Adjustment: click the second player to move (each moves up to half)</h3>
+        <p className="hint">Changed your mind? Nothing has moved yet.</p>
+        <div className="btns"><button className="btn" onClick={() => answer(null)}>Cancel the adjustment <Kbd a="primary" /></button></div></>);
     case 'boost': return <BoostPrompt key={req.id} {...props} name={name} />;
     case 'kick': {
       const p = pKick(req.dist);

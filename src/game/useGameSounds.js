@@ -1,7 +1,7 @@
 // Game-day sound for a live game: the crowd bed, a TV theme to open, whistles, grunts and hits, all driven by the
 // engine's log (each new entry may play something).
 import { useEffect, useRef } from 'react';
-import { crowd, play, playTheme, preload, startCrowd, stopCrowd, stopTheme } from './sound';
+import { audioContext, crowd, play, playTheme, preload, startCrowd, stopCrowd, stopTheme } from './sound';
 import { settings } from './prefs';
 
 // a dice rattle: quick synthesized clicks (no recording for it)
@@ -9,8 +9,7 @@ function rattle() {
   const vol = settings().muted ? 0 : settings().mix?.fx ?? 1;
   if (!vol) return;
   try {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    const ctx = (rattle.ctx ??= new AC());
+    const ctx = audioContext();
     const t0 = ctx.currentTime;
     for (let i = 0; i < 6; i++) {
       const t = t0 + i * (0.05 + Math.random() * 0.05);
@@ -28,8 +27,7 @@ function thump(kind) {
   const vol = settings().muted ? 0 : settings().mix?.fx ?? 1;
   if (!vol) return;
   try {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    const ctx = (rattle.ctx ??= new AC());
+    const ctx = audioContext();
     const t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain();
     o.type = kind === 'sack' ? 'sine' : 'square';
     o.frequency.setValueAtTime(kind === 'sack' ? 120 : 420, t);
@@ -45,8 +43,7 @@ function whoosh(kind = 'fire') {
   const vol = settings().muted ? 0 : settings().mix?.fx ?? 1;
   if (!vol) return;
   try {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    const ctx = (rattle.ctx ??= new AC());
+    const ctx = audioContext();
     const t = ctx.currentTime, len = kind === 'kick' ? 0.12 : 1.1;
     const b = ctx.createBuffer(1, Math.floor(ctx.sampleRate * len), ctx.sampleRate), d = b.getChannelData(0);
     for (let k = 0; k < d.length; k++) d[k] = Math.random() * 2 - 1;
@@ -57,6 +54,25 @@ function whoosh(kind = 'fire') {
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime((kind === 'kick' ? 0.8 : 0.35) * vol, t + 0.04);
     g.gain.exponentialRampToValueAtTime(0.0001, t + len);
     src.connect(f).connect(g).connect(ctx.destination); src.start(t);
+  } catch { /* no audio */ }
+}
+
+// a coin flipping (a run of bright tinks as it turns over) and landing (a duller clink)
+function coin() {
+  const vol = settings().muted ? 0 : settings().mix?.fx ?? 1;
+  const ctx = vol && audioContext();
+  if (!ctx) return;
+  try {
+    const t0 = ctx.currentTime;
+    const tink = (t, f, v, d) => {
+      const o = ctx.createOscillator(), o2 = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o2.type = 'sine'; o.frequency.value = f; o2.frequency.value = f * 2.76; // a coin's inharmonic ring
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v * vol, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      o.connect(g); o2.connect(g); g.connect(ctx.destination); o.start(t); o2.start(t); o.stop(t + d + 0.05); o2.stop(t + d + 0.05);
+    };
+    tink(t0, 2400, 0.25, 0.5); // the flick off the thumb
+    for (let i = 0; i < 7; i++) tink(t0 + 0.12 + i * 0.13, 3100 + (i % 2) * 380, 0.05, 0.08);
+    tink(t0 + 1.25, 1700, 0.3, 0.35); tink(t0 + 1.42, 1900, 0.12, 0.2); tink(t0 + 1.52, 1800, 0.05, 0.12); // the landing
   } catch { /* no audio */ }
 }
 
@@ -100,6 +116,7 @@ function cue(e) {
     case 'turnover': crowd(2, 2); break;
     case 'td': crowd(2.6, 4.5); break;
     case 'safety': crowd(2.2, 3); break;
+    case 'cointoss': coin(); break;
     case 'onfire': case 'heat': case 'firebomb': case 'fuego': whoosh(); crowd(2, 2); break;
     case 'stiffarm': play('hit'); thump('hit'); crowd(1.8, 1.4); break;
     case 'spin': case 'dodge': case 'intercept': crowd(1.8, 1.4); break;

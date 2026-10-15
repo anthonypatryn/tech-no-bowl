@@ -490,8 +490,9 @@ const VIEW = {
   endzone: (f, dir) => ({ pos: [f.x, 7.5, f.z - dir * 11], target: [f.x, 0, f.z + dir * 2] }),
   overhead: (f) => ({ pos: [f.x + 0.01, 25, f.z], target: [f.x, 0, f.z] }),
   low: (f) => ({ pos: [f.x + 6, 1.2, f.z + 2.5], target: [f.x - 1, 0.6, f.z - 0.5] }),
+  follow: (f) => ({ pos: [f.x + 7.5, 6, f.z + 1.5], target: [f.x - 0.3, 0, f.z - 0.2] }), // close on whoever's turn it is
 };
-export const VIEWS = [['broadcast', 'Broadcast'], ['endzone', 'End zone'], ['overhead', 'Overhead'], ['low', 'Field level'], ['free', 'Free']];
+export const VIEWS = [['broadcast', 'Broadcast'], ['follow', 'Follow'], ['endzone', 'End zone'], ['overhead', 'Overhead'], ['low', 'Field level'], ['free', 'Free']];
 
 // the cinematic camera for a shot (see game/shots.js): { pos, target, rate } or null
 function shotCam(shot, positions) {
@@ -566,7 +567,7 @@ function Rig({ view, focus, dir, shot, positions, intro, setup }) {
     if (view === 'free') { if (controls) target.current.copy(controls.target); return; }
     const goal = focus();
     const kf = 1 - Math.exp(-dt * 1.6);
-    if (goal) f.current.lerp(new THREE.Vector3(Math.max(-3, Math.min(3, goal.x * 0.4)), 0, goal.z), kf);
+    if (goal) f.current.lerp(new THREE.Vector3(view === 'follow' ? goal.x : Math.max(-3, Math.min(3, goal.x * 0.4)), 0, goal.z), kf);
     // setting a formation: pull back wide enough to see everyone on the field round the ball
     const s = setup && view !== 'free' && view !== 'overhead' ? { pos: [f.current.x + 17, 14, f.current.z + 0.5], target: [f.current.x - 0.5, 0, f.current.z] } : VIEW[view](f.current, dir);
     // tall screens (phones held upright): pull the lens back so the play still fits across
@@ -626,6 +627,8 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
   const showLine = s.phase !== 'setup' && s.phase !== 'over';
   const focus = () => {
     if (focusSq) { const [x, , z] = sq(...focusSq); return { x, z }; }
+    // Follow: the player whose turn it is (then the ball as usual)
+    if (view === 'follow' && s.active?.pid && positions.current[s.active.pid]) return positions.current[s.active.pid];
     if (s.ball.at === 'held') return positions.current[s.ball.pid] ?? null;
     if (s.ball.at === 'ground' || s.ball.at === 'air') { const [x, , z] = sq(s.ball.col, s.ball.row); return { x, z }; }
     return { x: (s.spot - 6) * 1, z: lineZ };
