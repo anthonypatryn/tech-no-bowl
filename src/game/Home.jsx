@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { Stage } from '../three/Stage';
 import { Field, Lights, sq } from '../three/Field';
 import { PlayerCube } from '../three/Cube';
-import { TEAMS, uniformOf } from '../data/art';
+import { TEAMS, uniformOf, artUrl } from '../data/art';
 import { lineUp } from './formation';
 import { settings } from './prefs';
 
@@ -23,6 +23,7 @@ export default function Home({ go }) {
         <Orbit />
       </Stage>
       <div className="home-menu">
+        <img className="home-logo" src={artUrl('techno-logo.webp')} alt="" />
         <h1 className="led big">TECHNO BOWL</h1>
         <p className="tagline">8-bit tabletop football from the More Fun! League</p>
         <div className="menu-cards">

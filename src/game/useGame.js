@@ -11,7 +11,7 @@ export const HUMAN = 0; // you are side 0: you attack the blue end zone (row 0),
 
 // how long each kind of moment stays on screen before the next decision (ms at normal speed)
 const BEATS = {
-  move: (e) => 150 + 150 * (e.path?.length ?? 1), push: () => 450, check: (e) => (e.action === 'pass' && e.dist >= 8 ? 3300 : 1800), sport: () => 1300, scatter: () => 1500, dice: () => 1400,
+  move: (e) => 150 + 150 * (e.path?.length ?? 1), push: () => 450, check: (e) => (e.action === 'pass' && e.dist >= 8 ? 3300 : 1800), sport: () => 1300, scatter: () => 1500, dice: () => 1400, cointoss: () => 3600,
   snap: () => 700, flip: () => 500, readReact: () => 700, td: () => 3500, safety: () => 2000, whistle: () => 1300, turnover: () => 1200,
   fumble: () => 500, catch: () => 500, inflight: () => 800, offtarget: () => 300, formation: () => 450, motion: () => 700,
   handoff: () => 500, sack: () => 1700, pressure: () => 900, down: () => 500, stand: () => 350, knockdown: () => 500, tackle: () => 1500,

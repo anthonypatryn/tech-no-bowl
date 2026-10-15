@@ -17,8 +17,15 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
   letterbox, Moment Lab, AI run/pass play plans.
 - **B4b done:** head-to-head team select (helmets, ability players, alternate lineups), opening show (head-to-head +
   tunnel run-out), TV score bug, chyrons, stat cards, MFL wipes, instant replays, engine box score + drives.
-- **Next is B4c:** the owner's polish list in docs/PLAN.md (laces, billboard numbers, coin toss, pre-game cinematic
-  with records and helmet smash, 8-bit everywhere, UI/UX pass).
+- **B4c done:** owner's polish list: laces + spiral, Lab knocked-down, distinct sack (dust, low push-in, boom), helmet
+  cleanup + Techno Bowl logo, pre-game logo / helmet smash / records, numbers that stay upright, coin toss, 8-bit UI.
+- **Next is B5:** sound editor + Art Review Board v2.
+
+## Look (8-bit everywhere)
+- Type: Press Start 2P (`--pixel`) for titles, buttons, chips, labels; Pixelify Sans (`--body`) for running text.
+- Building blocks in `src/game/ui.jsx`: `Panel` (the box), `Row` (label | control grid), `Button` (kind / size /
+  keyAction), `Chips`, `Toggle`, `Kbd`. Spacing tokens `--s1`..`--s6`, the pixel `--px`. Hard edges, offset shadows
+  that press in. Use these instead of one-off markup.
 
 ## Working with the owner
 - Push in batches the owner can play-test. Say what's verified and what isn't.
@@ -67,6 +74,8 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
 | `src/game/Broadcast.jsx` | `ScoreBug`, `Chyrons` (lower thirds from the log + box score), `StatCard` (half time / final), `Wipe` (shield stinger) |
 | `src/game/OpeningShow.jsx` | Head-to-head card, then Board's `RunOut` + intro camera, then KICK-OFF; the engine starts after (`game.begin()`) |
 | `src/game/replay.js` | `lastPlay(state)` rebuilds the last play from the log; `useReplay` plays it back on the Board in slow motion |
+| `src/game/CoinToss.jsx` | The coin flip overlay (engine logs `cointoss` before asking the winner) |
+| `src/game/records.js` | W-L per team on this device (pre-game card); `recordResult` at game end |
 | `src/game/Lab.jsx` | `?view=moments`: Moment Lab, a button per cinematic and roll |
 | `src/game/keys.js` | Rebindable keys: `KEY_ACTIONS`, `isKey(e, action)`, `labelFor`, `rebind` (swaps on conflict). Bound in Settings → Keys; `<Kbd a="throw" />` shows the live key |
 | `tools/simulate.mjs` | `npm run sim -- 300`: bot-vs-bot games with invariant checks. Must print `errors: 0` |
@@ -76,6 +85,8 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
 - 1 world unit = 1 square = 5 yards. The play area is **13 columns × 24 rows**, end zones included (2 rows each end).
   It's centred on the origin: columns run along x, rows along z.
 - Row 0 is the blue end zone (−z), row 23 the orange one. The broadcast camera sits on the +x sideline.
+- `cutout()` in the pipeline: border white, facemask pockets and the white fringe removed (helmets + `techno-logo.webp`, the rulebook-cover helmet).
+- Cube tops turn in quarter steps to stay upright from the camera (`topTexture` + `PlayerCube`).
 - Helmets: `public/art/helmets/<team>.webp`, cropped from the team guide (`npm run art helmets`). The MFL shield comes from the scoreboard art.
 - Field image calibration (inner sideline and end-line edges) is in `art.json` → `field`. Check it on Art Review → Field.
 

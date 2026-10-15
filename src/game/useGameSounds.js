@@ -23,6 +23,23 @@ function rattle() {
   } catch { /* no audio */ }
 }
 
+// low boom (a sack) and a sharp crack (a big hit): synthesized so the two sound different from the plain hits
+function thump(kind) {
+  const vol = settings().muted ? 0 : settings().mix?.fx ?? 1;
+  if (!vol) return;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    const ctx = (rattle.ctx ??= new AC());
+    const t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = kind === 'sack' ? 'sine' : 'square';
+    o.frequency.setValueAtTime(kind === 'sack' ? 120 : 420, t);
+    o.frequency.exponentialRampToValueAtTime(kind === 'sack' ? 38 : 90, t + (kind === 'sack' ? 0.5 : 0.12));
+    g.gain.setValueAtTime((kind === 'sack' ? 0.55 : 0.22) * vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + (kind === 'sack' ? 0.6 : 0.18));
+    o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + 0.7);
+  } catch { /* no audio */ }
+}
+
 export function useGameSounds(game) {
   const seen = useRef(0);
   useEffect(() => {
@@ -56,8 +73,9 @@ function cue(e) {
       break;
     case 'sport': case 'scatter': case 'dice': rattle(); break;
     case 'push': play('hit', { vol: 0.7 }); break;
-    case 'knockdown': case 'fumble': play('hit'); play('grunt'); crowd(1.8, 1.5); break;
-    case 'sack': play('hit'); play('grunt'); crowd(2.1, 2); break;
+    case 'knockdown': case 'fumble': play('hit'); play('grunt'); thump('hit'); crowd(1.8, 1.5); break;
+    case 'sack': thump('sack'); play('hit', { vol: 0.6 }); play('grunt'); setTimeout(() => play('grunt', { vol: 0.8 }), 260); crowd(2.6, 2.6); break;
+    case 'tackle': thump('hit'); break;
     case 'catch': crowd(1.7, 1.5); break;
     case 'turnover': crowd(2, 2); break;
     case 'td': crowd(2.6, 4.5); break;

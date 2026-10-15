@@ -64,3 +64,21 @@ export function toggleFullscreen() {
 // a small keyboard-key label next to a control (computers only: hidden on touch screens by CSS)
 // a = a rebindable action from keys.js (shows whatever key it's bound to), k = a fixed label
 export const Kbd = ({ k, a }) => <kbd className="kh" aria-hidden="true">{a ? labelFor(a) : k}</kbd>;
+
+// ---------- building blocks (use these instead of hand-rolled markup, so spacing and look stay consistent) ----------
+// Panel: the dark pixel-edged box. as = the element ('section', 'aside', 'div'…)
+export function Panel({ as: As = 'section', className = '', children, ...rest }) {
+  return <As className={`glass ${className}`} {...rest}>{children}</As>;
+}
+// Row: a label and its control, on the shared label | control grid
+export function Row({ label, children }) {
+  return <div className="opt"><span>{label}</span><div className="opt-ctl">{children}</div></div>;
+}
+// Button: kind = primary | danger | (plain); size = small | big; keyAction = a rebindable key to show on it
+export function Button({ kind, size, keyAction, className = '', children, ...rest }) {
+  return (
+    <button type="button" className={`btn ${kind ?? ''} ${size ?? ''} ${className}`} {...rest}>
+      {children}{keyAction && <Kbd a={keyAction} />}
+    </button>
+  );
+}

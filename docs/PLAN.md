@@ -132,7 +132,7 @@ Template: Long Shot (look, 3D/R3F, camera rig, cinematics) + Escape Order 66 (so
 - **Instant replays** (nice to have): the board can already replay the logged moves, so a big play re-runs from a
   replay camera with a REPLAY bug and slow motion.
 
-### B4c · Owner's polish list (after B4b)
+### B4c · Owner's polish list (after B4b) ✅
 - **Football:** laces, and a visible spiral in flight.
 - **Moment Lab:** add KNOCKED DOWN.
 - **Big hit vs sack:** different looks and sounds.

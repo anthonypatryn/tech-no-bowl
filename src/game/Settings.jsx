@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Chips, Toggle } from './ui';
+import { Button, Chips, Panel, Row, Toggle } from './ui';
 import { setSettings, useSettings } from './prefs';
 import { applyMute } from './sound';
 import { DEFAULT_KEYS, KEY_ACTIONS, RESERVED, keyLabel, rebind } from './keys';
@@ -9,31 +9,31 @@ export default function Settings() {
   return (
     <main className="page settings">
       <h1 className="page-title">Settings</h1>
-      <section className="glass setting-list">
-        <div className="opt"><span>Text size</span>
+      <Panel className="setting-list">
+        <Row label="Text size">
           <Chips value={s.text} onChange={(text) => setSettings({ text })} options={[['normal', 'Normal'], ['large', 'Large'], ['larger', 'Larger']]} />
-        </div>
-        <div className="opt"><span>Game speed</span>
+        </Row>
+        <Row label="Game speed">
           <Chips value={s.speed} onChange={(speed) => setSettings({ speed })} options={[['slow', 'Slow'], ['normal', 'Normal'], ['fast', 'Fast']]} />
-        </div>
-        <div className="opt"><span>Calm motion</span>
+        </Row>
+        <Row label="Calm motion">
           <Toggle checked={s.calm} onChange={(calm) => setSettings({ calm })}>Skip camera moves and cinematics</Toggle>
-        </div>
-        <div className="opt"><span>Field detail</span>
+        </Row>
+        <Row label="Field detail">
           <Toggle checked={s.fieldHi} onChange={(fieldHi) => setSettings({ fieldHi })}>Sharp 4K field (turn off on slow phones)</Toggle>
-        </div>
-        <div className="opt"><span>Play clocks</span>
+        </Row>
+        <Row label="Play clocks">
           <Toggle checked={s.clocks} onChange={(clocks) => setSettings({ clocks })}>1:00 to set up and to call plays, 0:30 for motion, with the rulebook penalties</Toggle>
-        </div>
-        <div className="opt"><span>Sound</span>
+        </Row>
+        <Row label="Sound">
           <Toggle checked={!s.muted} onChange={(on) => { setSettings({ muted: !on }); applyMute(); }}>Sound on</Toggle>
-        </div>
+        </Row>
         {[['fx', 'Effects'], ['crowd', 'Crowd'], ['music', 'Music']].map(([k, label]) => (
-          <div className="opt" key={k}><span>{label}</span>
+          <Row key={k} label={label}>
             <Chips small value={s.mix[k]} onChange={(v) => setSettings({ mix: { [k]: v } })} options={[[0, 'Off'], [0.25, '25%'], [0.5, '50%'], [0.75, '75%'], [1, '100%']]} />
-          </div>
+          </Row>
         ))}
-      </section>
+      </Panel>
       <KeysSection keys={s.keys} />
     </main>
   );
@@ -58,7 +58,7 @@ function KeysSection({ keys }) {
   }, [listening, keys]);
   const cur = { ...DEFAULT_KEYS, ...keys };
   return (
-    <section className="glass setting-list keys">
+    <Panel className="setting-list keys">
       <h2>Keys</h2>
       <p className="hint">Click a key, then press the one you want.</p>
       <div className="key-grid">
@@ -72,7 +72,7 @@ function KeysSection({ keys }) {
         ))}
       </div>
       {note && <p className="warn">{note}</p>}
-      <div className="btns"><button className="btn small" onClick={() => { setSettings({ keys: { ...DEFAULT_KEYS } }); setNote('Keys reset.'); }}>Reset to defaults</button></div>
-    </section>
+      <div className="btns"><Button size="small" onClick={() => { setSettings({ keys: { ...DEFAULT_KEYS } }); setNote('Keys reset.'); }}>Reset to defaults</Button></div>
+    </Panel>
   );
 }

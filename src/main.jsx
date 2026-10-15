@@ -1,9 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import '@fontsource/press-start-2p'
-import '@fontsource/chakra-petch/400.css'
-import '@fontsource/chakra-petch/600.css'
-import '@fontsource/chakra-petch/700.css'
+import '@fontsource/pixelify-sans/400.css'
+import '@fontsource/pixelify-sans/600.css'
 import './index.css'
 import App from './App.jsx'
 import { unlockAudioOnFirstTap } from './game/sound'
@@ -11,7 +10,7 @@ import { unlockAudioOnFirstTap } from './game/sound'
 unlockAudioOnFirstTap()
 
 // canvas-painted textures (later: scoreboard, labels) need the fonts ready first
-const fonts = ['16px "Press Start 2P"', '600 16px "Chakra Petch"']
+const fonts = ['16px "Press Start 2P"', '400 16px "Pixelify Sans"']
 Promise.all(fonts.map((f) => document.fonts.load(f, 'Aa 0123456789'))).finally(() => {
   createRoot(document.getElementById('root')).render(
     <StrictMode>

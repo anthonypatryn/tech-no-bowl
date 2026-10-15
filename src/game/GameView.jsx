@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Stage } from '../three/Stage';
 import { Board, VIEWS } from '../three/Board';
-import { Chips, Kbd, useConfirm, toggleFullscreen } from './ui';
+import { Button, Chips, Kbd, useConfirm, toggleFullscreen } from './ui';
 import { useSettings } from './prefs';
 import { isKey } from './keys';
 import { Sprite } from './TeamPicker';
@@ -20,6 +20,8 @@ import { useShot } from './shots';
 import { ScoreBug, Chyrons, StatCard, Wipe } from './Broadcast';
 import OpeningShow, { SHOW } from './OpeningShow';
 import { lastPlay, useReplay } from './replay';
+import CoinToss from './CoinToss';
+import { recordResult } from './records';
 import { settings } from './prefs';
 
 const COLORS = { move: '#2fd06b', ball: '#ffd34a', td: '#ffffff', out: '#ff6a5a', good: '#2fd06b', ok: '#f5e04a', bad: '#ff5a4a', push: '#ff9a3c', scatter: '#c77dff', motion: '#4ab8ff', place: '#4ab8ff' };
@@ -34,6 +36,7 @@ export default function GameView({ match, onExit, onRematch }) {
 function Screen({ game, match, onExit, onRematch }) {
   const s = game.state;
   useGameSounds(game);
+  useEffect(() => { if (s.phase === 'over') recordResult([s.teams[0].id, s.teams[1].id], s.winner, match.seed); }, [s.phase]); // eslint-disable-line react-hooks/exhaustive-deps
   // instant replay: the last play played back on the board (automatic after a touchdown, or the Replay button)
   const [replay, setReplay] = useState(null);
   const rs = useReplay(s, replay, () => setReplay(null));
@@ -203,6 +206,7 @@ function Screen({ game, match, onExit, onRematch }) {
       <Chyrons s={s} />
       <Halftime s={s} />
       <Wipe s={s} />
+      <CoinToss s={s} />
       <LogFeed s={s} />
       <Moment s={s} />
       <div className="game-bottom">
@@ -216,8 +220,7 @@ function Screen({ game, match, onExit, onRematch }) {
       </div>
       <div className="game-tools">
         <button className="btn small" onClick={leave}>Exit <Kbd a="back" /></button>
-        <span className="cam-chips"><Chips small value={view} onChange={setView} options={VIEWS} /></span>
-        <span className="kh-wrap"><Kbd a="camera" /></span>
+        <span className="cam-chips"><Chips small value={view} onChange={setView} options={VIEWS.map(([k, l], i) => [k, i === 0 ? <>{l} <Kbd a="camera" /></> : l])} /></span>
         <button className="btn small cam-cycle" onClick={nextView}>Camera: {VIEWS.find(([k]) => k === view)[1]}</button>
         <button className="btn small" onClick={() => setRules((r) => !r)}>Rules <Kbd a="rules" /></button>
         <button className="btn small" onClick={() => setBug(true)}>Report a bug <Kbd a="bug" /></button>
@@ -248,7 +251,7 @@ function Prompt(props) {
   const name = (pid) => { const p = P(pid); return `#${p.num}`; };
   const yesNo = (q, yes = 'Yes', no = 'No', def = true) => {
     primary.current = () => answer(def);
-    return (<><h3>{q}</h3><div className="btns"><button className="btn primary" onClick={() => answer(true)}>{yes}{def && <Kbd a="primary" />}</button><button className="btn" onClick={() => answer(false)}>{no}</button></div></>);
+    return (<><h3>{q}</h3><div className="btns"><Button kind={def ? 'primary' : undefined} keyAction={def ? 'primary' : undefined} onClick={() => answer(true)}>{yes}</Button><Button kind={def ? undefined : 'primary'} keyAction={def ? undefined : 'primary'} onClick={() => answer(false)}>{no}</Button></div></>);
   };
   switch (req.type) {
     case 'toss':

@@ -64,6 +64,12 @@ export default function Lab() {
       game.log(`${game.name(c)} is brought down.`, 'tackle', { pid: c.pid, at: [c.col, c.row] });
     },
     sack: () => { const c = holder(); c.down = true; game.log(`SACKED (Lab).`, 'sack', { pid: c.pid }); },
+    knock: () => {
+      const v = game.roster(1).find((p) => !p.down) ?? game.roster(1)[0];
+      game.log(`Block (Lab).`, 'check', roll({ pid: holder().pid, action: 'block', result: 'total', success: true, crit: true }));
+      v.down = true;
+      game.log(`${game.name(v)} is knocked down (Lab).`, 'knockdown', { pid: v.pid });
+    },
     td: () => {
       const c = holder(); c.down = false; c.row = 1;
       game.log(`TOUCHDOWN ${game.team(0).name}! (Lab)`, 'td', { side: 0, pid: c.pid, at: [c.col, c.row] });
@@ -82,6 +88,7 @@ export default function Lab() {
           <button className="btn primary" onClick={moments.throw}>Long throw</button>
           <button className="btn" onClick={moments.hit}>Big hit</button>
           <button className="btn" onClick={moments.sack}>Sack</button>
+          <button className="btn" onClick={moments.knock}>Knocked down</button>
           <button className="btn" onClick={moments.td}>Touchdown</button>
           <button className="btn" onClick={moments.dice}>Dice roll</button>
           <button className="btn" onClick={moments.scatter}>Scatter dice</button>

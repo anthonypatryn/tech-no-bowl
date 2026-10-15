@@ -50,11 +50,25 @@ export function turfTexture() {
   return turf;
 }
 
+// the top face (the number) as its own texture that can turn in quarter steps round the tile's centre, so the number
+// can always read upright from the camera (PlayerCube turns it). One per cube.
+export function topTexture(file, row, cols, rows = 8) {
+  const base = baseTexture(file);
+  const t = base.clone();
+  t.repeat.set(1 / cols, 1 / rows);
+  t.center.set(0.5, 0.5);
+  // with a centre, the tile centre must land at uv 0.5: shift the offset to match
+  t.offset.set(0.5 / cols - 0.5, 1 - (row + 1) / rows + 0.5 / rows - 0.5);
+  if (base.image) t.needsUpdate = true;
+  else waiting.set(file, [...(waiting.get(file) ?? []), t]);
+  return t;
+}
+
 // BoxGeometry material order: +x, -x, +y (top), -y (bottom), +z (front), -z (back)
 export function playerMaterials(uniform, row) {
   const mat = (map) => new THREE.MeshStandardMaterial({ map, roughness: 0.85, metalness: 0 });
   const side = mat(tileTexture(uniform.file, row, 1, uniform.cols));
-  const top = mat(tileTexture(uniform.file, row, 0, uniform.cols));
+  const top = mat(topTexture(uniform.file, row, uniform.cols));
   const bottom = mat(turfTexture());
   return [side, side, top, bottom, side, side];
 }

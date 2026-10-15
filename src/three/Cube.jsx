@@ -2,6 +2,7 @@
 // Knocked down = tipped onto its side, just like the tabletop rule.
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
 import { downMaterials, playerMaterials } from './textures';
 
 export const CUBE = 0.8; // in squares
@@ -12,9 +13,16 @@ export function PlayerCube({ uniform, row, position = [0, 0, 0], facing = 0, dow
   const mats = useMemo(() => playerMaterials(uniform, row), [uniform, row]);
   const ref = useRef();
   const tip = useRef(down ? 1 : 0);
-  useFrame((_, dt) => {
+  const quarter = useRef(0);
+  const local = useMemo(() => new THREE.Vector3(), []);
+  useFrame(({ camera }, dt) => {
     const g = ref.current;
     if (!g) return;
+    // keep the number readable: turn the top face in quarter steps so it's upright from the camera
+    local.copy(camera.position);
+    g.worldToLocal(local);
+    const q = ((Math.round(Math.atan2(-local.x, local.z) / (Math.PI / 2)) % 4) + 4) % 4;
+    if (q !== quarter.current) { quarter.current = q; mats[2].map.rotation = -q * (Math.PI / 2); }
     tip.current = damp(tip.current, down ? 1 : 0, 9, dt);
     const t = tip.current;
     // tip over the front-bottom edge: rotate about x, keeping the cube resting on the turf

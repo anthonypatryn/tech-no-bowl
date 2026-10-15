@@ -152,6 +152,8 @@ export class Game {
   async run() {
     try {
       const winner = this.rand(2);
+      // the flip itself (the UI shows a coin): heads = side 0 wins
+      this.log(`Coin toss: ${winner === 0 ? 'heads' : 'tails'}.`, 'cointoss', { winner, face: winner === 0 ? 'heads' : 'tails' });
       const choice = await this.askValid(winner, { type: 'toss' }, (v) => (v === 'offense' || v === 'defense' ? null : 'offense or defense'), () => 'offense');
       const first = choice === 'offense' ? winner : 1 - winner;
       this.log(`${this.team(winner).name} win the toss and take the ${choice === 'offense' ? 'ball' : 'defense'}.`, 'toss', { side: winner, choice });
@@ -167,6 +169,7 @@ export class Game {
       if (this.s.score[0] === this.s.score[1]) {
         this.s.overtime = true;
         const w = this.rand(2);
+        this.log(`Overtime coin toss: ${w === 0 ? 'heads' : 'tails'}.`, 'cointoss', { winner: w, face: w === 0 ? 'heads' : 'tails', overtime: true });
         this.log(`Tied at ${this.s.score[0]}! Overtime: ${this.team(w).name} win the coin flip. First score wins.`, 'half', { half: 3 });
         this.startDrive(w);
         for (let n = 0; this.s.score[0] === this.s.score[1]; n++) {

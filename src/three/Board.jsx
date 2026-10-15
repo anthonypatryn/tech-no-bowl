@@ -58,6 +58,7 @@ function Mover({ p, uniform, row, path, positions, ring, onPick }) {
 function Ball({ ball, positions, slowmo }) {
   const g = useRef();
   const from = useRef(null), to = useRef(new THREE.Vector3()), t = useRef(1), arc = useRef(0), long = useRef(false);
+  const spin = useRef(), roll = useRef();
   const goalOf = () => {
     if (ball.at === 'held') { const p = positions.current[ball.pid]; return p ? new THREE.Vector3(p.x, CUBE + 0.18 + p.y, p.z) : null; }
     if (ball.at === 'dead') return null;
@@ -85,12 +86,19 @@ function Ball({ ball, positions, slowmo }) {
       const dur = long.current ? 2.2 : 0.25 + from.current.distanceTo(to.current) * 0.06;
       t.current = Math.min(1, t.current + dt / dur);
       const k = long.current ? t.current + (0.8 * Math.sin(2 * Math.PI * t.current)) / (2 * Math.PI) : t.current;
+      const prev = g.current.position.clone();
       g.current.position.lerpVectors(from.current, goal, k);
       g.current.position.y += Math.sin(k * Math.PI) * arc.current;
-      g.current.rotation.z += dt * 12;
+      // a spiral: nose along the flight path, spinning round its long axis
+      const vel = g.current.position.clone().sub(prev);
+      if (vel.lengthSq() > 1e-8) spin.current.lookAt(g.current.position.clone().add(vel)); // world point ahead of the ball
+      roll.current.rotation.z += dt * (long.current ? 14 : 22);
     } else {
       g.current.position.copy(goal);
       if (ball.at === 'air') g.current.position.y += Math.sin(performance.now() / 300) * 0.08;
+      // at rest / carried: lying along the field, laces up
+      spin.current.rotation.set(0, 0, 0);
+      roll.current.rotation.z *= 0.9;
     }
     positions.current.__ball = g.current.position;
   });
@@ -98,12 +106,22 @@ function Ball({ ball, positions, slowmo }) {
   return (
     <>
       <group ref={g}>
-        <mesh castShadow scale={[0.17, 0.17, 0.27]}>
-          <sphereGeometry args={[1, 20, 14]} />
-          <meshStandardMaterial color="#7a3f1c" roughness={0.6} />
-        </mesh>
-        <mesh scale={[0.175, 0.175, 0.04]} position={[0, 0, 0.12]}><sphereGeometry args={[1, 16, 8]} /><meshStandardMaterial color="#f2efe6" /></mesh>
-        <mesh scale={[0.175, 0.175, 0.04]} position={[0, 0, -0.12]}><sphereGeometry args={[1, 16, 8]} /><meshStandardMaterial color="#f2efe6" /></mesh>
+        <group ref={spin}>
+          <group ref={roll}>
+            <mesh castShadow scale={[0.17, 0.17, 0.27]}>
+              <sphereGeometry args={[1, 24, 16]} />
+              <meshStandardMaterial color="#7a3f1c" roughness={0.55} />
+            </mesh>
+            {/* the white stripes near each end, and the laces along the top */}
+            {[0.17, -0.17].map((z) => (
+              <mesh key={z} position={[0, 0, z]} rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.136, 0.136, 0.022, 24, 1, true]} /><meshStandardMaterial color="#f2efe6" side={THREE.DoubleSide} /></mesh>
+            ))}
+            <mesh position={[0, 0.17, 0]}><boxGeometry args={[0.024, 0.02, 0.16]} /><meshStandardMaterial color="#f7f4ec" /></mesh>
+            {[-0.06, -0.03, 0, 0.03, 0.06].map((z) => (
+              <mesh key={z} position={[0, 0.168, z]}><boxGeometry args={[0.085, 0.02, 0.016]} /><meshStandardMaterial color="#f7f4ec" /></mesh>
+            ))}
+          </group>
+        </group>
       </group>
       {target && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[target[0], 0.03, target[2]]}>
@@ -149,6 +167,41 @@ function Burst({ at, colors, count = 40, confetti }) {
         <meshStandardMaterial roughness={0.6} />
       </instancedMesh>
       {!confetti && <pointLight color="#ffd27a" intensity={6} distance={4} decay={2} position={[0, 0.8, 0]} />}
+    </group>
+  );
+}
+
+// ---------- a sack: a ring of dust kicked up round the passer ----------
+function Dust({ at }) {
+  const ref = useRef();
+  const tmp = useMemo(() => new THREE.Object3D(), []);
+  const n = 34;
+  const parts = useMemo(() => Array.from({ length: n }, (_, i) => {
+    const a = (i / n) * Math.PI * 2 + Math.random() * 0.2;
+    return { a, sp: 1.6 + Math.random() * 1.4, up: 0.4 + Math.random() * 0.8, s: 0.12 + Math.random() * 0.12 };
+  }), []);
+  const t = useRef(0);
+  useFrame((_, dt) => {
+    if (!ref.current) return;
+    t.current += dt;
+    const k = 1 - Math.exp(-t.current * 2.2);
+    parts.forEach((q, i) => {
+      const r = 0.3 + q.sp * k;
+      tmp.position.set(Math.cos(q.a) * r, 0.08 + q.up * k * Math.exp(-t.current * 1.2), Math.sin(q.a) * r);
+      tmp.scale.setScalar(q.s * (1 + k * 1.8));
+      tmp.rotation.set(t.current * 2, q.a, 0);
+      tmp.updateMatrix();
+      ref.current.setMatrixAt(i, tmp.matrix);
+    });
+    ref.current.instanceMatrix.needsUpdate = true;
+    ref.current.material.opacity = Math.max(0, 0.85 - t.current * 0.38);
+  });
+  return (
+    <group position={at}>
+      <instancedMesh ref={ref} args={[null, null, n]} raycast={() => null}>
+        <icosahedronGeometry args={[1, 0]} />
+        <meshStandardMaterial color="#b49a72" roughness={1} transparent opacity={0.85} depthWrite={false} />
+      </instancedMesh>
     </group>
   );
 }
@@ -290,6 +343,12 @@ function shotCam(shot, positions) {
     const j = () => (Math.random() - 0.5) * shake;
     return { pos: c.clone().add(new THREE.Vector3(2.4 + j(), 1.5 + j(), 1.3 + j())), target: c.clone().setY(0.4), rate: 12 };
   }
+  if (shot.kind === 'sack') {
+    // low and slow: the camera creeps in at turf level while the dust settles
+    const c = new THREE.Vector3(...sq(...shot.at));
+    const push = 1 - Math.min(1, now / shot.dur) * 0.45;
+    return { pos: c.clone().add(new THREE.Vector3(2.6 * push, 0.5 + 0.3 * push, -1.8 * push)), target: c.clone().setY(0.35), rate: 3.2 };
+  }
   if (shot.kind === 'td') {
     const c = new THREE.Vector3(...sq(...shot.at));
     const ang = 0.4 + p * Math.PI * 1.1;
@@ -374,6 +433,7 @@ export function Board({ game, view, tiles, onTile, onHover, rings = {}, onPlayer
       ))}
       <Ball ball={s.ball} positions={positions} slowmo={!settings().calm} />
       {shot?.kind === 'hit' && <Burst key={shot.id} at={sq(...shot.at, 0)} colors={['#c9c9c9', '#7a5a3a', '#3f6b2a', '#ffffff']} count={shot.big ? 46 : 26} />}
+      {shot?.kind === 'sack' && <Dust key={shot.id} at={sq(...shot.at, 0)} />}
       {shot?.kind === 'td' && <Burst key={shot.id} confetti at={sq(...shot.at, 0)} colors={teamColors(s.teams[shot.side].id, s.teams[shot.side].uniform).concat(['#f5e04a', '#ffffff'])} count={120} />}
       <DiceRolls log={s.log} players={s.players} offense={s.offense} home={[s.spot, s.line]}
         teamColors={s.teams.map((t) => teamColors(t.id, t.uniform))} />

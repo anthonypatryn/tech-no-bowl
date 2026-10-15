@@ -209,6 +209,52 @@ def do_board():
     return {'punch': {'cols': 10, 'rows': 8, 'files': [f'punch/pb{n}{s}.webp' for n in range(1, 5) for s in 'fb']}}
 
 
+def cutout(rgb, pocket_from=(0.5, 0.0)):
+    """Helmet-style cutout on a white page: RGBA with
+    - the background (pure white connected to the border) removed
+    - page white showing through the facemask removed (enclosed pure-white pockets on the facemask side)
+    - the near-white fringe peeled off the edges, then a soft edge"""
+    h, w = rgb.shape[:2]
+    pure = (rgb.min(2) > 251).astype(np.uint8)
+    bg = pure.copy()
+    mask = np.zeros((h + 2, w + 2), np.uint8)
+    for y, x in [(0, 0), (0, w - 1), (h - 1, 0), (h - 1, w - 1)]:
+        if pure[y, x]:
+            cv2.floodFill(bg, mask, (x, y), 2)
+    alpha = np.where(bg == 2, 0, 255).astype(np.uint8)
+    # enclosed pockets: page white (very flat, >= 253) on the facemask side (right of the shell)
+    flat = ((rgb.min(2) >= 253) & (alpha > 0)).astype(np.uint8)
+    n, lab, st, cen = cv2.connectedComponentsWithStats(flat)
+    for k in range(1, n):
+        area = st[k, cv2.CC_STAT_AREA]
+        if area >= 25 and cen[k][0] > w * pocket_from[0] and cen[k][1] > h * pocket_from[1]:
+            alpha[lab == k] = 0
+    # peel: light pixels touching transparency go too (twice), then soften
+    for _ in range(2):
+        edge = (cv2.dilate((alpha == 0).astype(np.uint8), np.ones((3, 3), np.uint8)) > 0) & (alpha > 0)
+        alpha[edge & (rgb.min(2) > 225)] = 0
+    alpha = cv2.erode(alpha, np.ones((2, 2), np.uint8))
+    alpha = cv2.GaussianBlur(alpha, (3, 3), 0)
+    im = Image.fromarray(np.dstack([rgb, alpha]), 'RGBA')
+    bbox = im.getbbox()
+    return im.crop(bbox) if bbox else im
+
+
+def do_logo():
+    """The TECHNO BOWL helmet logo from the rulebook cover (pre-game show, in place of a league shield)."""
+    d = fitz.open(os.path.join(ROOT, 'TECHNO_BOWL_Rulebook_DriveThru.pdf'))
+    p = d[0]
+    r = p.rect
+    clip = fitz.Rect(r.width * 0.2, r.height * 0.27, r.width * 0.8, r.height * 0.64)
+    pix = p.get_pixmap(clip=clip, dpi=300, colorspace=fitz.csRGB)
+    rgb = np.frombuffer(pix.samples, np.uint8).reshape(pix.h, pix.w, pix.n)[:, :, :3].copy()
+    im = cutout(rgb, pocket_from=(0.62, 0.45))  # spare the white TECHNO BOWL lettering
+    im.thumbnail((900, 900), Image.LANCZOS)
+    im.save(os.path.join(OUT, 'techno-logo.webp'), 'WEBP', quality=90, method=6)
+    print('logo', im.size)
+    return 'techno-logo.webp'
+
+
 def do_helmets():
     """Team guide pages 2-17: two helmets per page (team order = teams.json), white background -> transparent."""
     os.makedirs(os.path.join(OUT, 'helmets'), exist_ok=True)
@@ -227,18 +273,7 @@ def do_helmets():
         for x in half[1:]: r |= fitz.Rect(x['bbox'])
         pix = page.get_pixmap(clip=r + (-2, -2, 2, -4), dpi=320, colorspace=fitz.csRGB)  # bottom trimmed: the title bar starts right below
         rgb = np.frombuffer(pix.samples, np.uint8).reshape(pix.h, pix.w, pix.n)[:, :, :3].copy()
-        # background = pure-white pixels connected to the border (white helmets are shaded, so they survive)
-        white = (rgb.min(2) > 251).astype(np.uint8)
-        mask = np.zeros((pix.h + 2, pix.w + 2), np.uint8)
-        bg = white.copy()
-        for y, x in [(0, 0), (0, pix.w - 1), (pix.h - 1, 0), (pix.h - 1, pix.w - 1)]:
-            if white[y, x]:
-                cv2.floodFill(bg, mask, (x, y), 2)
-        alpha = np.where(bg == 2, 0, 255).astype(np.uint8)
-        alpha = cv2.GaussianBlur(cv2.erode(alpha, np.ones((3, 3), np.uint8)), (3, 3), 0)  # soft edge, no white fringe
-        im = Image.fromarray(np.dstack([rgb, alpha]), 'RGBA')
-        bbox = im.getbbox()
-        if bbox: im = im.crop(bbox)
+        im = cutout(rgb)
         im.thumbnail((640, 640), Image.LANCZOS)
         name = f"helmets/{t['id']}.webp"
         im.save(os.path.join(OUT, name), 'WEBP', quality=88, method=6)
@@ -248,7 +283,7 @@ def do_helmets():
 
 
 if __name__ == '__main__':
-    what = set(sys.argv[1:]) or {'teams', 'cubes', 'field', 'board', 'helmets'}
+    what = set(sys.argv[1:]) or {'teams', 'cubes', 'field', 'board', 'helmets', 'logo'}
     os.makedirs(OUT, exist_ok=True)
     mpath = os.path.join(DATA, 'art.json')
     man = json.load(open(mpath)) if os.path.exists(mpath) else {}
@@ -257,5 +292,6 @@ if __name__ == '__main__':
     if 'field' in what: man['field'] = do_field()
     if 'board' in what: man.update(do_board())
     if 'helmets' in what: man['helmets'] = do_helmets()
+    if 'logo' in what: man['logo'] = do_logo()
     json.dump(man, open(mpath, 'w'), indent=1)
     print('wrote', mpath)
