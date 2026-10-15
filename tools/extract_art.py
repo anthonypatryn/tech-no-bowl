@@ -18,7 +18,7 @@ Outputs (committed):
 Every uniform sheet uses the same template: 8 cube nets (crosses). The middle square is the top of the cube
 (number on team colour); the 4 arms show the player standing with his head towards the middle.
 """
-import glob, json, os, re, sys
+import glob, hashlib, json, os, re, sys
 import cv2, fitz
 import numpy as np
 from PIL import Image
@@ -135,6 +135,7 @@ def do_cubes():
     os.makedirs(os.path.join(OUT, 'cubes'), exist_ok=True)
     teams = {t['id']: t for t in json.load(open(os.path.join(DATA, 'teams.json'), encoding='utf8'))}
     manifest = {}
+    seen = {}  # team -> {pixel hash: uniform label}: some sheets are the same art under two names
     for pdf in sorted(glob.glob(os.path.join(ROOT, '*pixelblock*.pdf'))):
         base = os.path.basename(pdf)
         m = re.match(r'([A-Za-z]+)_+(.*?)_*pixelblock', base)
@@ -152,6 +153,11 @@ def do_cubes():
         if tid not in teams:
             tid = TEAM_ALIAS.get(slug(file_team), slug(file_team))
         uid = slug(variant) or 'home'
+        h = hashlib.sha1(b''.join(f.tobytes() for fs in faces for f in fs[:2])).hexdigest()
+        if h in seen.setdefault(tid, {}):
+            print(f'{tid:15s} {uid:16s} same art as {seen[tid][h]}: skipped')
+            continue
+        seen[tid][h] = uid
         fname = f'cubes/{tid}-{uid}.webp'
         diff = max(side_diff(f) for f in faces)
         cols = 2 if diff < 70 else 5   # same sprite on all sides: keep just top + front

@@ -1054,27 +1054,6 @@
      "#0c0c24",
      "#b40c3c"
     ]
-   },
-   {
-    "id": "redrattler",
-    "label": "Red Rattler",
-    "file": "cubes/rattlers-redrattler.webp",
-    "nums": [
-     4,
-     34,
-     45,
-     51,
-     55,
-     63,
-     68,
-     75
-    ],
-    "count": 8,
-    "cols": 2,
-    "colors": [
-     "#0c0c24",
-     "#b40c3c"
-    ]
    }
   ],
   "reapers": [

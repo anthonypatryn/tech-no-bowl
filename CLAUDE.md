@@ -47,6 +47,9 @@ Settings, plus a field preview of the game screen). Next is B1: the headless rul
   player standing, head toward the middle, rotated upright by the script.
 - The sides are the same sprite (only its placement on the turf varies), so atlases keep just **top + front**
   (`cols: 2`), one row per player in ascending jersey order.
+- The team comes from the title printed on each sheet, so a misnamed file still lands on the right team. If two sheets
+  for a team have identical art, only the first is kept: `Rattlers_RattlerRed` and `Rattlers_RedRattler` are the same,
+  so "Rattler Red" is kept. (The owner confirmed that sheet is Rattlers; it was once misnamed `Reapers_RattlerRed`.)
 - The down-marker sheet keeps all 5 faces. Row 6 is the 1/2/3/4 cube.
 - Turf is the middle square of a plain grass net. Field: 4K and 2K WebP.
 - Re-run with `npm run art` (needs Python + PyMuPDF, OpenCV, Pillow). The source art must sit in the project root.
