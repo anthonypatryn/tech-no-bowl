@@ -164,7 +164,7 @@ const VIEW = {
 export const VIEWS = [['broadcast', 'Broadcast'], ['endzone', 'End zone'], ['overhead', 'Overhead'], ['low', 'Field level']];
 
 function Rig({ view, focus, dir }) {
-  const { camera } = useThree();
+  const { camera, size } = useThree();
   const target = useRef(new THREE.Vector3(0, 0, 6));
   const f = useRef(new THREE.Vector3(0, 0, 6));
   useFrame((_, dt) => {
@@ -172,6 +172,12 @@ function Rig({ view, focus, dir }) {
     const kf = 1 - Math.exp(-dt * 1.6);
     if (goal) f.current.lerp(new THREE.Vector3(Math.max(-3, Math.min(3, goal.x * 0.4)), 0, goal.z), kf);
     const s = VIEW[view](f.current, dir);
+    // tall screens (phones held upright): pull the lens back so the play still fits across
+    const aspect = size.width / size.height;
+    if (aspect < 1.2) {
+      const back = Math.min(1.9, 1.2 / aspect);
+      for (let i = 0; i < 3; i++) s.pos[i] = s.target[i] + (s.pos[i] - s.target[i]) * back;
+    }
     const k = settings().calm ? 1 : 1 - Math.exp(-dt * 2.6);
     camera.position.lerp(new THREE.Vector3(...s.pos), k);
     target.current.lerp(new THREE.Vector3(...s.target), k);

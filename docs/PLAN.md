@@ -77,7 +77,7 @@ Template: Long Shot (look, 3D/R3F, camera rig, cinematics) + Escape Order 66 (so
 - **Navs:** Home → Mode/Teams (base or alt uniform) → Formation → Play.
 - Settings and Rules drawer (QRS on tap), end screen, resume.
 
-### B3 · AI ×3, bug system, keybinds, phone, clocks
+### B3 · AI ×3, bug system, keybinds, phone, clocks ✅
 - AI levels (names are placeholders): **Rookie**, **Starter**, **All-Pro**.
   - Rookie: legal and greedy, with slips.
   - Starter: heuristic formations, play calls and read-and-react.

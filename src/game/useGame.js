@@ -2,7 +2,7 @@
 // step with it, and paces it so moves animate and dice can be read.
 import { useEffect, useReducer, useState } from 'react';
 import { Game } from '../engine/game.js';
-import { makeBot } from '../engine/bot.js';
+import { makeAI } from '../engine/ai.js';
 import { teamById } from '../data/art';
 import { settings } from './prefs';
 
@@ -30,7 +30,7 @@ export function useGame(match) {
   const [, bump] = useReducer((x) => x + 1, 0);
   useEffect(() => {
     let raf = 0;
-    const bot = makeBot({ slip: match.level === 'rookie' ? 0.2 : match.level === 'allpro' ? 0.04 : 0.1 });
+    const bot = makeAI(match.level);
     // the computer "thinks" for a moment before acting, so you can follow along
     const cpu = (g, side, req) => {
       const v = bot(g, side, req);

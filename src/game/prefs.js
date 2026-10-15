@@ -5,10 +5,10 @@ import { useEffect, useReducer } from 'react';
 
 const KEY = 'tb-settings';
 const reduceMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-const DEFAULTS = { text: 'normal', calm: !!reduceMotion, fieldHi: true, clocks: false, speed: 'normal', mix: { fx: 1, crowd: 0.8, music: 0.7 } };
+const DEFAULTS = { text: 'normal', calm: !!reduceMotion, fieldHi: true, clocks: false, speed: 'normal', keys: {}, mix: { fx: 1, crowd: 0.8, music: 0.7 } };
 
 let cur = DEFAULTS;
-try { const saved = JSON.parse(localStorage.getItem(KEY) || '{}'); cur = { ...DEFAULTS, ...saved, mix: { ...DEFAULTS.mix, ...saved.mix } }; } catch { /* defaults */ }
+try { const saved = JSON.parse(localStorage.getItem(KEY) || '{}'); cur = { ...DEFAULTS, ...saved, mix: { ...DEFAULTS.mix, ...saved.mix }, keys: { ...saved.keys } }; } catch { /* defaults */ }
 const subs = new Set();
 
 export const settings = () => cur;

@@ -1,15 +1,21 @@
 // Plays bot-vs-bot games with the real engine and checks the rules hold up.
-//   node tools/simulate.mjs [games=200] [firstSeed=1] [passive]   (passive: side 0 never acts unless it must)
+//   node tools/simulate.mjs [games=200] [firstSeed=1] [mode]
+//   mode: (none) = simple bot vs bot · passive = side 0 never acts unless it must · allpro:starter = AI level vs level
+//         (levels swap sides every game; the win rates per level are printed)
 // Must print `errors: 0`. Any crash prints its seed so the game can be replayed exactly.
 import { readFileSync } from 'node:fs';
 import { Game } from '../src/engine/game.js';
 import { makeBot, makePassive } from '../src/engine/bot.js';
+import { makeAI } from '../src/engine/ai.js';
 import { playerList } from '../src/engine/rules.js';
 
 const TEAMS = JSON.parse(readFileSync(new URL('../src/data/teams.json', import.meta.url), 'utf8'));
 const N = Number(process.argv[2] ?? 200);
 const SEED0 = Number(process.argv[3] ?? 1);
-const PASSIVE = process.argv[4] === 'passive';
+const MODE = process.argv[4] ?? '';
+const PASSIVE = MODE === 'passive';
+const LADDER = MODE.includes(':') ? MODE.split(':') : null;
+const wins = {};
 
 const tally = { maxActs: 0, games: 0, errors: 0, ties: 0, overtime: 0, points: 0, tds: 0, safeties: 0, downs: 0, activations: 0, checks: 0, passes: 0, catches: 0,
   turnovers: 0, sacks: 0, fumbles: 0, pressure: 0, stalls: 0, botFixes: 0, invariant: 0 };
@@ -40,7 +46,7 @@ for (let i = 0; i < N; i++) {
   const a = pick(0), b = pick(1) === a ? pick(2) : pick(1);
   const teams = [a, b].map((t) => ({ id: t.id, name: t.name, uniform: 'home', roster: t.players.map((p) => ({ num: p.num, name: p.name })) }));
   let lastScore = [0, 0];
-  const g = new Game({ teams, seed, agents: [PASSIVE ? makePassive() : makeBot(), makeBot()] }, {
+  const g = new Game({ teams, seed, agents: LADDER ? (i % 2 ? [makeAI(LADDER[1]), makeAI(LADDER[0])] : [makeAI(LADDER[0]), makeAI(LADDER[1])]) : [PASSIVE ? makePassive() : makeBot(), makeBot()] }, {
     onChange: (st) => {
       const last = st.log[st.log.length - 1];
       if (!last || last.seen) return;
@@ -66,6 +72,7 @@ for (let i = 0; i < N; i++) {
     tally.games++;
     tally.points += end.score[0] + end.score[1];
     if (end.winner == null) tally.ties++;
+    if (LADDER && end.winner != null) { const lv = LADDER[(end.winner + i) % 2]; wins[lv] = (wins[lv] ?? 0) + 1; }
     if (end.overtime) tally.overtime++;
     for (const k of ['downs', 'activations', 'checks', 'stalls', 'botFixes']) tally[k] += g.stats[k];
     for (const [k, v] of Object.entries(g.stats.fixedBy)) fixedBy[k] = (fixedBy[k] ?? 0) + v;
@@ -82,6 +89,7 @@ console.log(`games: ${tally.games}/${N}  points/game: ${per('points')}  TDs/game
 console.log(`downs/game: ${per('downs')}  activations/down: ${(tally.activations / Math.max(1, tally.downs)).toFixed(1)}  checks/game: ${per('checks')}`);
 console.log(`passes: ${tally.passes} (caught ${tally.catches})  turnovers: ${tally.turnovers}  fumbles: ${tally.fumbles}  pressure: ${tally.pressure}  sacks: ${tally.sacks}`);
 console.log(`most activations in one down: ${tally.maxActs}`);
+if (LADDER) console.log(`wins: ${LADDER.map((l) => `${l} ${wins[l] ?? 0} (${Math.round(100 * (wins[l] ?? 0) / Math.max(1, tally.games))}%)`).join(' · ')}`);
 console.log(`bot answers fixed by fallback: ${tally.botFixes} ${JSON.stringify(fixedBy)}  stalled downs: ${tally.stalls}`);
 for (const f of fails.slice(0, 8)) console.log(f);
 console.log(`errors: ${tally.errors}`);

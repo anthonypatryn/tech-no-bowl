@@ -5,7 +5,7 @@ import { Stage } from '../three/Stage';
 import { Lights } from '../three/Field';
 import { PlayerCube } from '../three/Cube';
 
-export const LEVELS = [['rookie', 'Rookie'], ['starter', 'Starter'], ['allpro', 'All-Pro']];
+import { LEVELS } from '../engine/ai.js';
 export const MODES = [['techno', 'Techno'], ['alltechno', 'All Techno', true], ['pro', 'Pro', true], ['allpro', 'All Pro', true], ['inferno', 'Inferno!', true]];
 
 const pick = (not) => { let t; do { t = TEAMS[Math.floor(Math.random() * TEAMS.length)].id; } while (t === not); return t; };
@@ -27,7 +27,7 @@ export default function TeamPicker({ onStart }) {
       <section className="glass picker-opts">
         <div className="opt"><span>Difficulty</span><Chips value={level} onChange={setLevel} options={LEVELS} /></div>
         <div className="opt"><span>Rules</span><Chips value={mode} onChange={setMode} options={MODES} /></div>
-        <p className="hint">Techno = 7-vs-7, no skills, no field goals. The other modes unlock in later batches.</p>
+        <p className="hint">Rookie makes mistakes. Starter plays the odds. All-Pro manages cards, the clock and coverage. Techno = 7-vs-7, no skills, no field goals; the other modes unlock in later batches.</p>
         {clash && <p className="warn">Same team in the same uniform: pick a different uniform for one side.</p>}
         <button className="btn primary big" disabled={clash} onClick={() => onStart({ you, cpu, level, mode })}>Take the field</button>
       </section>

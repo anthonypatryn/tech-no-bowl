@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { labelFor } from './keys';
 
 // On-brand replacements for the browser's own UI: no confirm()/alert() boxes, no native drop-downs or
 // checkboxes anywhere in the game. (Same kit as Long Shot / Escape Order 66.)
@@ -61,4 +62,5 @@ export function toggleFullscreen() {
 }
 
 // a small keyboard-key label next to a control (computers only: hidden on touch screens by CSS)
-export const Kbd = ({ k }) => <kbd className="kh" aria-hidden="true">{k}</kbd>;
+// a = a rebindable action from keys.js (shows whatever key it's bound to), k = a fixed label
+export const Kbd = ({ k, a }) => <kbd className="kh" aria-hidden="true">{a ? labelFor(a) : k}</kbd>;

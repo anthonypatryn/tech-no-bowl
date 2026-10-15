@@ -12,7 +12,8 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
   field preview of the game screen).
 - **B1 done:** a headless rules engine for TECHNO mode (`src/engine/`), with the simulator and rules tests.
 - **B2 done:** a playable game vs the computer on the 3D field (`?view=game` after the Team Picker).
-- **Next is B3:** the 3 AI levels, the bug system, rebindable keys, phone layout and play clocks.
+- **B3 done:** AI levels (Rookie / Starter / All-Pro), bug reports, rebindable keys, phone layout, play clocks.
+- **Next is B4:** cinematics. Also tune the AI's passing game there: it rarely throws (the long-throw cam needs throws).
 
 ## Working with the owner
 - Push in batches the owner can play-test. Say what's verified and what isn't.
@@ -20,7 +21,8 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
   (`useConfirm`, `Toggle`, `Chips`, `Kbd`).
 - Dark see-through glass panels, big text, keyboard labels on buttons.
 - Local play is vs AI only. Human vs human waits for online (B7). Play clocks are off by default (Settings toggle).
-- AI level names are placeholders: Rookie / Starter / All-Pro.
+- AI levels: Rookie / Starter / All-Pro (`src/engine/ai.js`). Ladder in simulation: Starter beats Rookie ~80%,
+  All-Pro beats Starter ~60%.
 
 ## Code map
 | Path | What |
@@ -44,7 +46,11 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
 | `src/engine/rules.js` | Pure rules: threat, `moveReach` (Dijkstra with diagonal parity), checks, block pushes, scatter, `passInfo`, formation checks |
 | `src/engine/game.js` | `Game`: the async down loop. `ask(side, req)` choke point; every answer is validated |
 | `src/engine/formations.js` | `autoOffense` / `autoDefense`: always-legal formations (auto button, bots, fallback) |
-| `src/engine/bot.js` | `makeBot()`: a legal, greedy, sloppy coach. Placeholder Rookie and the simulator's opponent |
+| `src/engine/ai.js` | `makeAI(level)`: the computer coach. Scores every legal choice; the level sets noise and features (odds, read-and-react, boosts, zone, clock, formation picks). `LEVELS`, `pAtLeast` |
+| `src/engine/bot.js` | `makeBot()`: the simple coach the default simulator uses, and `makePassive()` |
+| `lib/bugs.js`, `api/bugs.js` | Bug reports (Long Shot kit). Redis key prefix `tech-no-bowl:`; dev saves to `.data/bugs.json`, PIN 1234 |
+| `src/game/BugReport.jsx`, `BugList.jsx` | Report form (top bar + in game, key B) and the owner's list at `?view=bugs` |
+| `src/game/keys.js` | Rebindable keys: `KEY_ACTIONS`, `isKey(e, action)`, `labelFor`, `rebind` (swaps on conflict). Bound in Settings → Keys; `<Kbd a="throw" />` shows the live key |
 | `tools/simulate.mjs` | `npm run sim -- 300`: bot-vs-bot games with invariant checks. Must print `errors: 0` |
 | `tools/test-rules.mjs` | `npm test`: the rulebook's worked examples, plus engine scenarios with forced dice |
 
@@ -53,6 +59,16 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
   It's centred on the origin: columns run along x, rows along z.
 - Row 0 is the blue end zone (−z), row 23 the orange one. The broadcast camera sits on the +x sideline.
 - Field image calibration (inner sideline and end-line edges) is in `art.json` → `field`. Check it on Art Review → Field.
+
+## Vercel env vars (needed for bug reports on the live site)
+`KV_REST_API_URL`, `KV_REST_API_TOKEN` (the Upstash database Long Shot / EO66 already use, which is fine to share; the
+key prefix differs) and `BUG_PIN`. Without them the live site answers that bug reports aren't set up yet.
+
+## Play clocks (Settings, off by default)
+- Formation and play call: 1:00 each. Motion: 0:30. They apply to the human only; the computer answers instantly.
+- Running out = the rulebook's delay of game: your formation is completed for you (kept if it's legal), your play
+  call is filled with random bench cards in random slots, and motion is skipped.
+- Done in `GameView` (`delayOfGame`). Online play (B7) will move it to the host.
 
 ## Engine (Techno mode)
 - Request types a coach answers:
@@ -105,5 +121,7 @@ npx vite build
 npm test
 npm run sim -- 300      # must print errors: 0
 node tools/simulate.mjs 60 1 passive   # side 0 never acts: games must still end
+node tools/simulate.mjs 100 1 allpro:starter   # AI ladder: the first level must win clearly
+node tools/simulate.mjs 100 1 starter:rookie
 ```
 Dev server: `.claude/launch.json` → port 5192.
