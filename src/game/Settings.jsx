@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Chips, Toggle } from './ui';
 import { setSettings, useSettings } from './prefs';
+import { applyMute } from './sound';
 import { DEFAULT_KEYS, KEY_ACTIONS, RESERVED, keyLabel, rebind } from './keys';
 
 export default function Settings() {
@@ -24,7 +25,14 @@ export default function Settings() {
         <div className="opt"><span>Play clocks</span>
           <Toggle checked={s.clocks} onChange={(clocks) => setSettings({ clocks })}>1:00 to set up and to call plays, 0:30 for motion, with the rulebook penalties</Toggle>
         </div>
-        <p className="hint">Sound mixer arrives with the audio batch.</p>
+        <div className="opt"><span>Sound</span>
+          <Toggle checked={!s.muted} onChange={(on) => { setSettings({ muted: !on }); applyMute(); }}>Sound on</Toggle>
+        </div>
+        {[['fx', 'Effects'], ['crowd', 'Crowd'], ['music', 'Music']].map(([k, label]) => (
+          <div className="opt" key={k}><span>{label}</span>
+            <Chips small value={s.mix[k]} onChange={(v) => setSettings({ mix: { [k]: v } })} options={[[0, 'Off'], [0.25, '25%'], [0.5, '50%'], [0.75, '75%'], [1, '100%']]} />
+          </div>
+        ))}
       </section>
       <KeysSection keys={s.keys} />
     </main>

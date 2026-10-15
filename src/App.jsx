@@ -4,6 +4,7 @@
 //   ?view=settings    Settings
 //   ?view=game        a game vs the computer (after the Team Picker)
 //   ?view=bugs        the owner's bug list (PIN)
+//   ?view=moments     Moment Lab: fire each cinematic on demand
 import { lazy, Suspense, useEffect, useState } from 'react';
 import Home from './game/Home.jsx';
 import TeamPicker from './game/TeamPicker.jsx';
@@ -13,6 +14,7 @@ import { TEXT_ZOOM, useSettings } from './game/prefs';
 
 const ArtReview = lazy(() => import('./game/ArtReview.jsx'));
 const BugList = lazy(() => import('./game/BugList.jsx'));
+const Lab = lazy(() => import('./game/Lab.jsx'));
 import BugReport from './game/BugReport.jsx';
 
 const viewFromUrl = () => new URLSearchParams(location.search).get('view') || 'home';
@@ -37,6 +39,7 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
+  if (view === 'moments') return <Suspense fallback={<div className="loading">Loading…</div>}><Lab /></Suspense>;
   if (view === 'bugs') return <Suspense fallback={<div className="loading">Loading…</div>}><BugList /></Suspense>;
   if (view === 'game' && match) return <GameView key={match.seed} match={match} onExit={() => go('teams')} onRematch={() => setMatch({ ...match, seed: Date.now() })} />;
 

@@ -219,11 +219,21 @@ button.card:hover { border-color: var(--led); }
 .rules-drawer h2 { font-size: 1.1em; margin: 0; }
 .rules-drawer h3 { color: var(--led); }
 .rules-drawer ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.lab-bar { position: absolute; left: 12px; right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 6px; transition: opacity .3s; }
+.lab-bar.hide { opacity: 0; pointer-events: none; }
+.lab-bar h3 { margin: 0; color: var(--led); }
+.lab-bar .btns { display: flex; gap: 8px; flex-wrap: wrap; }
 .end-card { text-align: center; }
 .end-card .final { font-size: 1.3em; }
 .end-card .final .led { font-size: 1.4em; }
 .end-card .btns { justify-content: center; }
 
+.game::before, .game::after { content: ''; position: absolute; left: 0; right: 0; height: 0; background: #000; z-index: 25; transition: height .35s ease; pointer-events: none; }
+.game::before { top: 0; }
+.game::after { bottom: 0; }
+.game.cine::before, .game.cine::after { height: 11vh; }
+.game-bottom, .logfeed, .game-tools, .scoreboard { transition: opacity .3s; }
+.game.cine .game-bottom, .game.cine .logfeed, .game.cine .game-tools, .game.cine .scoreboard { opacity: 0; pointer-events: none; }
 @media (min-width: 761px) { .cam-cycle, .cards-sum { display: none; } }
 @media (max-width: 760px) {
   .rules-drawer { width: auto; left: 12px; }

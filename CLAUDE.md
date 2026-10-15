@@ -13,7 +13,10 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
 - **B1 done:** a headless rules engine for TECHNO mode (`src/engine/`), with the simulator and rules tests.
 - **B2 done:** a playable game vs the computer on the 3D field (`?view=game` after the Team Picker).
 - **B3 done:** AI levels (Rookie / Starter / All-Pro), bug reports, rebindable keys, phone layout, play clocks.
-- **Next is B4:** cinematics. Also tune the AI's passing game there: it rarely throws (the long-throw cam needs throws).
+- **B4 done:** game-day sound (owner's clips), 3D dice for every roll, cinematics (long throw, big hits, TD),
+  letterbox, Moment Lab, AI run/pass play plans.
+- **Next is B4b:** Madden-style team select (logos, ability players, alternate-player choice), the opening show,
+  TV overlays, wipes, replays.
 
 ## Working with the owner
 - Push in batches the owner can play-test. Say what's verified and what isn't.
@@ -21,8 +24,10 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
   (`useConfirm`, `Toggle`, `Chips`, `Kbd`).
 - Dark see-through glass panels, big text, keyboard labels on buttons.
 - Local play is vs AI only. Human vs human waits for online (B7). Play clocks are off by default (Settings toggle).
-- AI levels: Rookie / Starter / All-Pro (`src/engine/ai.js`). Ladder in simulation: Starter beats Rookie ~80%,
-  All-Pro beats Starter ~60%.
+- AI levels: Rookie / Starter / All-Pro (`src/engine/ai.js`). Ladder in simulation: Starter beats Rookie ~85-90%,
+  All-Pro beats Starter ~55-60%. Each down the offense picks a run or pass plan (pass: the passer holds in the
+  pocket, receivers run go-routes).
+- The site link is private (owner and friends), so the real TV themes are fine to ship.
 
 ## Code map
 | Path | What |
@@ -50,6 +55,12 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
 | `src/engine/bot.js` | `makeBot()`: the simple coach the default simulator uses, and `makePassive()` |
 | `lib/bugs.js`, `api/bugs.js` | Bug reports (Long Shot kit). Redis key prefix `tech-no-bowl:`; dev saves to `.data/bugs.json`, PIN 1234 |
 | `src/game/BugReport.jsx`, `BugList.jsx` | Report form (top bar + in game, key B) and the owner's list at `?view=bugs` |
+| `src/game/sound.js` | Sound runtime: `play(slot)`, crowd bed `startCrowd` / `crowd(x, hold)` swells, `playTheme`, mixer channels fx / crowd / music, mute |
+| `src/data/sounds.json` | Clip table: slot -> [{ file, start, len, vol, fade, loop? }] cut from `public/sfx/*.mp3` (crowd, whistles, 28 grunts, 6 hits, 5 TV themes). The B5 sound editor will edit it |
+| `src/game/useGameSounds.js` | Log-driven cues (snap, whistle, contact, catches, TDs) + synthesized dice rattle |
+| `src/three/Dice.jsx` | `DiceRolls`: real dice thrown next to whoever rolls (checks red pips, sport checks black, scatter / order in team colours), landing on the engine's numbers |
+| `src/game/shots.js` | Shot director: `useShot(log)` -> throw (pass of 8+) / hit / td; `Board`'s `Rig` flies `shotCam`, `Burst` = debris / confetti, `.game.cine` = letterbox + HUD hidden |
+| `src/game/Lab.jsx` | `?view=moments`: Moment Lab, a button per cinematic and roll |
 | `src/game/keys.js` | Rebindable keys: `KEY_ACTIONS`, `isKey(e, action)`, `labelFor`, `rebind` (swaps on conflict). Bound in Settings → Keys; `<Kbd a="throw" />` shows the live key |
 | `tools/simulate.mjs` | `npm run sim -- 300`: bot-vs-bot games with invariant checks. Must print `errors: 0` |
 | `tools/test-rules.mjs` | `npm test`: the rulebook's worked examples, plus engine scenarios with forced dice |

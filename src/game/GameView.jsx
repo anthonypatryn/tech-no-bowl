@@ -15,6 +15,8 @@ import { checkDefense, checkOffense, sideRows } from '../engine/rules.js';
 import { autoDefense, autoOffense } from '../engine/formations.js';
 import RulesDrawer from './RulesDrawer.jsx';
 import BugReport from './BugReport.jsx';
+import { useGameSounds } from './useGameSounds';
+import { useShot } from './shots';
 
 const COLORS = { move: '#2fd06b', ball: '#ffd34a', td: '#ffffff', out: '#ff6a5a', good: '#2fd06b', ok: '#f5e04a', bad: '#ff5a4a', push: '#ff9a3c', scatter: '#c77dff', motion: '#4ab8ff', place: '#4ab8ff' };
 const RING = { active: '#f5e04a', block: '#ff9a3c', tackle: '#ff3b3b', handoff: '#3ce0ff', option: '#3ce0ff', selected: '#ffffff' };
@@ -27,6 +29,8 @@ export default function GameView({ match, onExit, onRematch }) {
 
 function Screen({ game, match, onExit, onRematch }) {
   const s = game.state;
+  useGameSounds(game);
+  const shot = useShot(s.log, s.players);
   const req = s.request && s.request.side === HUMAN ? s.request : null;
   // portrait phones: the field runs up the screen from the end-zone camera, so start there
   const [view, setView] = useState(() => (window.innerWidth < 760 && window.innerHeight > window.innerWidth ? 'endzone' : 'broadcast'));
@@ -171,9 +175,9 @@ function Screen({ game, match, onExit, onRematch }) {
   const leave = async () => { if (s.phase === 'over' || await confirmIt({ title: 'Leave this game?', body: 'The game will be lost.', yes: 'Leave', danger: true })) onExit(); };
 
   return (
-    <div className="game">
+    <div className={`game ${shot ? 'cine' : ''}`}>
       <Stage className="game-stage">
-        <Board game={game} view={view} tiles={board.tiles} rings={board.rings} onTile={board.onTile} onHover={setHover} onPlayer={board.onPlayer}
+        <Board game={game} view={view} shot={shot} tiles={board.tiles} rings={board.rings} onTile={board.onTile} onHover={setHover} onPlayer={board.onPlayer}
           edit={edit && req?.type === 'formation' ? { side: HUMAN, spots: edit } : null} />
       </Stage>
       <Scoreboard s={s} />

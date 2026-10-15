@@ -89,21 +89,52 @@ Template: Long Shot (look, 3D/R3F, camera rig, cinematics) + Escape Order 66 (so
 - Phone layout.
 - Play clocks: off by default, with a Settings toggle for the 1:00 setup/play-call and 0:30 motion clocks and their penalties.
 
-### B4 · Cinematics (the Long Shot bar)
-- Camera rig presets: Broadcast (sideline), End Zone, Overhead, Follow Ball, Free. Press `C` to cycle.
-- **Long throw cam.** It fires on passes of 8 or more squares, or deep balls.
-  - Cut to a chase cam behind the ball's arc.
-  - Slow-mo at the apex, then a low lens at the target square.
-  - The catch, interception or scatter plays out in the shot, then cut back.
-- **Big hits.** These fire on critical tackles (fumbles), sacks from defensive pressure, and critical blocks.
-  - Snap zoom, hit-stop freeze, the cube tumbles with a particle burst and screen shake.
-- Touchdown celebration and a drive intro crane shot (there are no kickoffs in Techno Bowl).
-- Letterbox bars hide the HUD. Calm mode skips all of it.
-- Moment Lab (`?view=moments`) has a button that fires each cinematic, for tuning.
+### B4 · Game-day sound + in-play cinematics (the Long Shot bar) ✅
+- **Sound runtime** (EO66 `sound.js` pattern: slots, random clip per play, mixer channels from Settings).
+  Owner's files, in `public/_audio-src/` (gitignored), cut into clips:
+  - crowd bed: a 39 s loop that swells on big plays and dips pre-snap
+  - whistles: start (the snap), final (end of the half / game)
+  - grunts: 28 clips, picked at random on blocks, tackles and pile-ups
+  - effects: 6 hits (contact, catches, landing cubes)
+  - TV themes: 5 opening tracks split from the compilation (≈0:00 / 1:36 / 2:50 / 4:03 / 4:39); each game opens with a
+    random one. (Owner: private link, the real themes are fine.)
+- Camera rig: Broadcast (sideline), End Zone, Overhead, Field level, Follow Ball. `C` cycles.
+- **Long throw cam.** Fires on passes of 8+ squares.
+  - Chase cam behind the ball's arc, slow-mo at the apex, low lens at the target square.
+  - Catch, interception or scatter plays out in the shot, then cut back.
+- **Big hits.** Fire on critical tackles (fumbles), sacks and critical blocks.
+  - Snap zoom, hit-stop freeze, the cube tumbles with a particle burst, screen shake, grunt and crowd swell.
+- Touchdown celebration: crowd roar, confetti burst, slow orbit on the scorer.
+- Letterbox bars hide the HUD during shots. Calm mode skips all of it.
+- **AI passing game tuned** so the computer throws (the long-throw cam needs throws).
+- Moment Lab (`?view=moments`) has a button per cinematic, for tuning.
 
-### B5 · Audio editor + Art Review Board v2
-- Sound slots: hike, hit, crunch, catch, crowd, TD horn, whistle, dice, UI, and so on.
-- EO66 SoundEditor port: waveform trim, loudness matching, Blob uploads, PIN save.
+### B4b · The broadcast package (owner's wishlist)
+- **Team select, Madden head-to-head style** (owner's reference screenshot):
+  - split screen in each team's colours, big team logo in the middle of each half. The logos come from the art: the
+    helmet/logo on the punchboards and team sheets, cropped by the art pipeline (Art Review checks them)
+  - city/team name in big type at the bottom, home/away tag
+  - down the outer side: only the players with special abilities (cube portrait, #, name, ability chips); tap a
+    player to read what his abilities do
+  - teams with alternate players who share a number (Ankhs #6, Chefs #55/#70, Reapers #4/#44): after picking the
+    team, choose who suits up, with both players' abilities side by side
+- **Opening show** (skippable, tap or `Space`):
+  - the TV theme plays
+  - head-to-head graphic: both teams' cubes spinning, names in team colours, key players and skills, MFL branding
+  - tunnel run-out: each team pours out from under its end-zone stands onto the field, smoke and sparks, crowd
+    swell; crane and sweep shots cut to the music. Energetic, kinetic, high quality
+- **Broadcast overlays, TV style** (MFL-branded, not NFL marks):
+  - score bug always on: team colours, score, half, time cubes, down, ball on, timeouts
+  - lower-third chyrons when a player makes a play ("#7 MARK FAULT · 3 carries, 24 yds"), drive summary after
+    each drive, halftime and final stat cards. The engine gains a stats tracker: carries, yards, passes, catches,
+    tackles, sacks, fumbles
+- **Transitions / wipes:** MFL-shield stinger on change of possession, after scores, at half time and for overtime.
+- **Instant replays** (nice to have): the board can already replay the logged moves, so a big play re-runs from a
+  replay camera with a REPLAY bug and slow motion.
+
+### B5 · Sound editor + Art Review Board v2
+- EO66 SoundEditor port (`?view=sounds`): waveform trim per slot (e.g. fine-tune the theme splits and grunt cuts),
+  loudness matching, Blob uploads, PIN save.
 - Art Review Board v2: approve, reject or request a fix with notes per asset, stored in Redis on the bug-kit
   pattern. "Copy for Claude" exports the open notes.
 

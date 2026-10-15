@@ -1,0 +1,323 @@
+{
+ "crowd": [
+  {
+   "file": "crowd",
+   "start": 0,
+   "len": 39.2,
+   "vol": 0.7,
+   "fade": 0.5,
+   "loop": true
+  }
+ ],
+ "whistle": [
+  {
+   "file": "whistle-start",
+   "start": 0.8,
+   "len": 1.45,
+   "vol": 0.55,
+   "fade": 0.15
+  }
+ ],
+ "whistleStart": [
+  {
+   "file": "whistle-start",
+   "start": 0.8,
+   "len": 1.45,
+   "vol": 0.9,
+   "fade": 0.15
+  }
+ ],
+ "whistleFinal": [
+  {
+   "file": "whistle-final",
+   "start": 0.25,
+   "len": 1.4,
+   "vol": 0.95,
+   "fade": 0.2
+  }
+ ],
+ "grunt": [
+  {
+   "file": "grunts",
+   "start": 0.06,
+   "len": 0.37,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 1.01,
+   "len": 0.32,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 2.11,
+   "len": 0.32,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 2.81,
+   "len": 0.52,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 3.76,
+   "len": 0.42,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 4.56,
+   "len": 0.37,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 5.26,
+   "len": 0.32,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 6.01,
+   "len": 0.32,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 7.16,
+   "len": 0.42,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 8.01,
+   "len": 0.47,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 8.91,
+   "len": 1.32,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 10.56,
+   "len": 0.37,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 11.36,
+   "len": 0.27,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 12.06,
+   "len": 0.22,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 12.66,
+   "len": 0.27,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 13.41,
+   "len": 0.22,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 14.26,
+   "len": 0.82,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 16.56,
+   "len": 0.27,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 17.36,
+   "len": 0.32,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 18.06,
+   "len": 0.37,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 18.91,
+   "len": 0.32,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 19.76,
+   "len": 0.22,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 20.86,
+   "len": 0.37,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 21.81,
+   "len": 0.32,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 22.66,
+   "len": 0.22,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 23.26,
+   "len": 0.27,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 23.61,
+   "len": 0.27,
+   "vol": 0.8,
+   "fade": 0.05
+  },
+  {
+   "file": "grunts",
+   "start": 24.01,
+   "len": 1.4,
+   "vol": 0.8,
+   "fade": 0.05
+  }
+ ],
+ "hit": [
+  {
+   "file": "effects",
+   "start": 0.39,
+   "len": 0.5,
+   "vol": 0.9,
+   "fade": 0.08
+  },
+  {
+   "file": "effects",
+   "start": 2.19,
+   "len": 0.5,
+   "vol": 0.9,
+   "fade": 0.08
+  },
+  {
+   "file": "effects",
+   "start": 2.79,
+   "len": 0.5,
+   "vol": 0.9,
+   "fade": 0.08
+  },
+  {
+   "file": "effects",
+   "start": 5.19,
+   "len": 0.5,
+   "vol": 0.9,
+   "fade": 0.08
+  },
+  {
+   "file": "effects",
+   "start": 5.79,
+   "len": 0.5,
+   "vol": 0.9,
+   "fade": 0.08
+  },
+  {
+   "file": "effects",
+   "start": 6.94,
+   "len": 0.5,
+   "vol": 0.9,
+   "fade": 0.08
+  }
+ ],
+ "theme": [
+  {
+   "file": "themes",
+   "start": 0.6,
+   "len": 94.9,
+   "vol": 0.8,
+   "fade": 2.0,
+   "name": "NBC"
+  },
+  {
+   "file": "themes",
+   "start": 95.8,
+   "len": 74.3,
+   "vol": 0.8,
+   "fade": 2.0,
+   "name": "CBS"
+  },
+  {
+   "file": "themes",
+   "start": 170.3,
+   "len": 72.9,
+   "vol": 0.8,
+   "fade": 2.0,
+   "name": "FOX"
+  },
+  {
+   "file": "themes",
+   "start": 243.6,
+   "len": 35.3,
+   "vol": 0.8,
+   "fade": 2.0,
+   "name": "ABC"
+  },
+  {
+   "file": "themes",
+   "start": 279.1,
+   "len": 40.5,
+   "vol": 0.8,
+   "fade": 2.0,
+   "name": "ESPN"
+  }
+ ]
+}

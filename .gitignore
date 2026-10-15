@@ -14,3 +14,4 @@ __pycache__/
 # tools/extract_art.py turns it into the web textures under public/art/, which ARE committed.
 /*.pdf
 /*.jpg
+

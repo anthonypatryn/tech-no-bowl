@@ -6,6 +6,9 @@ import '@fontsource/chakra-petch/600.css'
 import '@fontsource/chakra-petch/700.css'
 import './index.css'
 import App from './App.jsx'
+import { unlockAudioOnFirstTap } from './game/sound'
+
+unlockAudioOnFirstTap()
 
 // canvas-painted textures (later: scoreboard, labels) need the fonts ready first
 const fonts = ['16px "Press Start 2P"', '600 16px "Chakra Petch"']

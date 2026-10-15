@@ -10,9 +10,9 @@ import { autoDefense, autoOffense } from './formations.js';
 export const LEVELS = [['rookie', 'Rookie'], ['starter', 'Starter'], ['allpro', 'All-Pro']];
 
 const TRAITS = {
-  rookie: { noise: 2.2, slip: 0.15, odds: false, readReact: 0, smartCalls: false, smartFirst: false, boost: 'never', zone: false, clock: false, formations: 1 },
-  starter: { noise: 0.8, slip: 0.04, odds: true, readReact: 0.6, smartCalls: true, smartFirst: true, boost: 'big', zone: false, clock: false, formations: 3 },
-  allpro: { noise: 0.25, slip: 0, odds: true, readReact: 1, smartCalls: true, smartFirst: true, boost: 'smart', zone: true, clock: true, formations: 8 },
+  rookie: { passRate: 0.2, noise: 2.2, slip: 0.15, odds: false, readReact: 0, smartCalls: false, smartFirst: false, boost: 'never', zone: false, clock: false, formations: 1 },
+  starter: { passRate: 0.35, pocket: 0.6, noise: 0.8, slip: 0.04, odds: true, readReact: 0.6, smartCalls: true, smartFirst: true, boost: 'big', zone: false, clock: false, formations: 3 },
+  allpro: { passRate: 0.42, pocket: 1, noise: 0.25, slip: 0, odds: true, readReact: 1, smartCalls: true, smartFirst: true, boost: 'smart', zone: true, clock: true, formations: 8 },
 };
 
 // P(2d6 + net >= target)
@@ -53,6 +53,23 @@ function decide(game, side, req, T) {
 }
 
 // ---------- reading the field ----------
+// each down the offense picks a plan: a pass play (passer stays in the pocket, receivers run routes) or a run
+const plans = new WeakMap();
+function planFor(game, side, T) {
+  let m = plans.get(game);
+  if (!m) { m = {}; plans.set(game, m); }
+  const k = `${game.stats.downs}:${side}`;
+  if (!(k in m)) {
+    const s = game.state;
+    // All-Pro throws more when behind late, runs more to bleed the clock when ahead
+    const diff = s.score[side] - s.score[1 - side];
+    const late = s.pile.length <= 2 && s.half === 2;
+    const rate = T.passRate + (T.clock && late ? (diff < 0 ? 0.3 : diff > 0 ? -0.25 : 0) : 0);
+    m[k] = game.random() < rate ? 'pass' : 'run';
+  }
+  return m[k];
+}
+
 // bigger = closer to scoring
 const progress = (game, side, sq) => game.dir(side) * sq[1];
 const opps = (game, side) => game.roster(1 - side).filter((p) => !p.down && p.col != null);
@@ -215,7 +232,11 @@ function act(game, side, req, T) {
   const canStillAct = (cost) => (req.mode === 'card' || req.mode === 'full') && req.spent + cost <= halfOf(me.skill);
   const pSucc = (net) => (T.odds ? pAtLeast(7, net) : 0.6);
   const noise = () => (game.random() - 0.5) * T.noise;
-  const cands = [{ a: { kind: 'end' }, v: endValue(game, side, me, c, T) }];
+  // pass plays: an untouched passer behind the line waits in the pocket for his receivers to get open
+  const plan = c && c.side === side ? planFor(game, side, T) : null;
+  const behind = c && (game.dir(side) < 0 ? c.row >= s.play.line : c.row <= s.play.line - 1);
+  const pocket = plan === 'pass' && c?.pid === me.pid && req.spent === 0 && (s.play?.activations ?? 99) < 22 && !threatCount(s, here, 1 - side) && behind;
+  const cands = [{ a: { kind: 'end' }, v: endValue(game, side, me, c, T) + (pocket ? 5 : 0) }];
 
   for (const pid of req.tackles) {
     const t = s.players[pid];
@@ -256,7 +277,7 @@ function act(game, side, req, T) {
         if (ours >= theirs * 0.7 || ours > 1) continue;
         space = -2;
       }
-      const v = p * (gainSq * 1.1 + tdBonus + space) * (ps.target ? 1 : 5 / 6) - (1 - p) * 6;
+      const v = p * (gainSq * 1.6 + tdBonus + space) * (ps.target ? 1 : 5 / 6) - (1 - p) * 4 + (plan === 'pass' && ps.target ? 3 : 0);
       cands.push({ a: { kind: 'pass', to: ps.to }, v });
     }
   }
@@ -305,7 +326,13 @@ function moveValue(game, side, me, mv, c, ball, canAct, T) {
     const threats = opps(game, side).filter((o) => distance(sqOf(o), sqOf(c)) <= 3);
     const screen = threats.some((o) => distance(mv.to, sqOf(o)) === 1 && distance(mv.to, sqOf(c)) <= 2) ? 2.5 : 0;
     const ahead = progress(game, side, mv.to) - progress(game, side, sqOf(c));
-    const open = ahead >= 2 && nearestOpp(game, side, mv.to) >= 2 ? 1.5 + Math.min(ahead, 8) * 0.25 : 0;
+    // fast receivers run go-routes while the passer is still behind the line: get deep, get open
+    const behindLos = game.dir(side) < 0 ? c.row >= (s.play?.line ?? s.line) : c.row <= (s.play?.line ?? s.line) - 1;
+    if (behindLos && (me.skill >= 6 || (planFor(game, side, T) === 'pass' && me.skill >= 5))) {
+      const was = progress(game, side, here) - progress(game, side, sqOf(c));
+      return (Math.min(ahead, 12) - Math.min(was, 12)) * 0.7 + (nearestOpp(game, side, mv.to) >= 2 ? 1.2 : 0) - mv.cost * 0.03;
+    }
+    const open = ahead >= 2 && nearestOpp(game, side, mv.to) >= 2 ? 2 + Math.min(ahead, 10) * 0.35 : 0;
     const wasScreen = threats.some((o) => adjacent(here, sqOf(o)) && distance(here, sqOf(c)) <= 2) ? 2.5 : 0;
     return screen + open - wasScreen - mv.cost * 0.05;
   }

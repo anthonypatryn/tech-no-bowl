@@ -5,7 +5,8 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Field, Lights, sq, ROWS, COLS } from './Field';
 import { PlayerCube, DownCube, CUBE } from './Cube';
-import { uniformOf, rosterFor } from '../data/art';
+import { uniformOf, rosterFor, teamColors } from '../data/art';
+import { DiceRolls } from './Dice';
 import { settings } from '../game/prefs';
 
 const SPEED = 6.5; // squares per second when walking
@@ -54,9 +55,9 @@ function Mover({ p, uniform, row, path, positions, ring, onPick }) {
 }
 
 // ---------- the ball ----------
-function Ball({ ball, positions }) {
+function Ball({ ball, positions, slowmo }) {
   const g = useRef();
-  const from = useRef(null), to = useRef(new THREE.Vector3()), t = useRef(1), arc = useRef(0);
+  const from = useRef(null), to = useRef(new THREE.Vector3()), t = useRef(1), arc = useRef(0), long = useRef(false);
   const goalOf = () => {
     if (ball.at === 'held') { const p = positions.current[ball.pid]; return p ? new THREE.Vector3(p.x, CUBE + 0.18 + p.y, p.z) : null; }
     if (ball.at === 'dead') return null;
@@ -71,7 +72,8 @@ function Ball({ ball, positions }) {
     to.current = goal;
     const d = from.current.distanceTo(goal);
     t.current = settings().calm || d < 0.05 ? 1 : 0;
-    arc.current = Math.min(4, d * 0.35);
+    arc.current = Math.min(4.5, d * 0.35);
+    long.current = d >= 7.5 && slowmo;
   }, [sig]);
   useFrame((_, dt) => {
     if (!g.current) return;
@@ -79,9 +81,10 @@ function Ball({ ball, positions }) {
     if (!goal) { g.current.visible = false; return; }
     g.current.visible = true;
     if (t.current < 1 && from.current) {
-      const dur = 0.25 + from.current.distanceTo(to.current) * 0.06;
+      // a long throw hangs: slow motion through the top of the arc (fast off the hand, fast into the hands)
+      const dur = long.current ? 2.2 : 0.25 + from.current.distanceTo(to.current) * 0.06;
       t.current = Math.min(1, t.current + dt / dur);
-      const k = t.current;
+      const k = long.current ? t.current + (0.8 * Math.sin(2 * Math.PI * t.current)) / (2 * Math.PI) : t.current;
       g.current.position.lerpVectors(from.current, goal, k);
       g.current.position.y += Math.sin(k * Math.PI) * arc.current;
       g.current.rotation.z += dt * 12;
@@ -89,6 +92,7 @@ function Ball({ ball, positions }) {
       g.current.position.copy(goal);
       if (ball.at === 'air') g.current.position.y += Math.sin(performance.now() / 300) * 0.08;
     }
+    positions.current.__ball = g.current.position;
   });
   const target = ball.at === 'air' ? sq(ball.col, ball.row) : null;
   return (
@@ -108,6 +112,44 @@ function Ball({ ball, positions }) {
         </mesh>
       )}
     </>
+  );
+}
+
+// ---------- particles: debris on a big hit, confetti on a touchdown ----------
+function Burst({ at, colors, count = 40, confetti }) {
+  const ref = useRef();
+  const tmp = useMemo(() => new THREE.Object3D(), []);
+  const parts = useMemo(() => Array.from({ length: count }, () => ({
+    p: new THREE.Vector3(0, confetti ? 1.2 : 0.5, 0),
+    v: new THREE.Vector3((Math.random() - 0.5) * (confetti ? 4 : 5), confetti ? 2.5 + Math.random() * 2.5 : 2 + Math.random() * 4, (Math.random() - 0.5) * (confetti ? 4 : 5)),
+    r: new THREE.Euler(Math.random() * 6, Math.random() * 6, 0), s: confetti ? 0.09 : 0.05 + Math.random() * 0.07,
+  })), [count, confetti]);
+  const col = useMemo(() => new THREE.Color(), []);
+  useLayoutEffect(() => {
+    parts.forEach((_, i) => ref.current?.setColorAt(i, col.set(colors[i % colors.length])));
+    if (ref.current?.instanceColor) ref.current.instanceColor.needsUpdate = true;
+  }, [parts, colors, col]);
+  useFrame((_, dt) => {
+    if (!ref.current) return;
+    parts.forEach((q, i) => {
+      q.v.y -= (confetti ? 2.6 : 9) * dt;
+      if (confetti) { q.v.x *= 0.98; q.v.z *= 0.98; }
+      q.p.addScaledVector(q.v, dt);
+      if (q.p.y < 0.02) { q.p.y = 0.02; q.v.multiplyScalar(0.3); }
+      q.r.x += dt * 6; q.r.y += dt * 4;
+      tmp.position.copy(q.p); tmp.rotation.copy(q.r); tmp.scale.setScalar(q.s); tmp.updateMatrix();
+      ref.current.setMatrixAt(i, tmp.matrix);
+    });
+    ref.current.instanceMatrix.needsUpdate = true;
+  });
+  return (
+    <group position={at}>
+      <instancedMesh ref={ref} args={[null, null, count]} raycast={() => null}>
+        <boxGeometry args={[1, confetti ? 0.15 : 1, 1]} />
+        <meshStandardMaterial roughness={0.6} />
+      </instancedMesh>
+      {!confetti && <pointLight color="#ffd27a" intensity={6} distance={4} decay={2} position={[0, 0.8, 0]} />}
+    </group>
   );
 }
 
@@ -163,11 +205,48 @@ const VIEW = {
 };
 export const VIEWS = [['broadcast', 'Broadcast'], ['endzone', 'End zone'], ['overhead', 'Overhead'], ['low', 'Field level']];
 
-function Rig({ view, focus, dir }) {
+// the cinematic camera for a shot (see game/shots.js): { pos, target, rate } or null
+function shotCam(shot, positions) {
+  const now = (performance.now() - shot.t0) / 1000, p = Math.min(1, now / shot.dur);
+  if (shot.kind === 'throw') {
+    const a = new THREE.Vector3(...sq(...shot.from)), b = new THREE.Vector3(...sq(...shot.to));
+    const dirv = b.clone().sub(a).setY(0).normalize();
+    const side = new THREE.Vector3(-dirv.z, 0, dirv.x);
+    const ball = positions.current.__ball ? positions.current.__ball.clone() : a.clone();
+    if (p < 0.62) {
+      // chase cam: behind and above the ball, looking where it's going
+      return { pos: ball.clone().addScaledVector(dirv, -3.6).addScaledVector(side, 1.2).setY(Math.max(1.6, ball.y + 1.6)), target: ball.clone().addScaledVector(dirv, 2.5), rate: 7 };
+    }
+    // low lens at the target square, the catch (or not) in frame
+    return { pos: b.clone().addScaledVector(side, 3).addScaledVector(dirv, -1.4).setY(0.9), target: b.clone().setY(0.6), rate: 5 };
+  }
+  if (shot.kind === 'hit') {
+    const c = new THREE.Vector3(...sq(...shot.at));
+    const shake = Math.max(0, 1 - now / 0.6) * (shot.big ? 0.22 : 0.12);
+    const j = () => (Math.random() - 0.5) * shake;
+    return { pos: c.clone().add(new THREE.Vector3(2.4 + j(), 1.5 + j(), 1.3 + j())), target: c.clone().setY(0.4), rate: 12 };
+  }
+  if (shot.kind === 'td') {
+    const c = new THREE.Vector3(...sq(...shot.at));
+    const ang = 0.4 + p * Math.PI * 1.1;
+    return { pos: c.clone().add(new THREE.Vector3(Math.cos(ang) * 4.2, 1.8 + p * 1.5, Math.sin(ang) * 4.2)), target: c.clone().setY(0.6), rate: 4 };
+  }
+  return null;
+}
+
+function Rig({ view, focus, dir, shot, positions }) {
   const { camera, size } = useThree();
   const target = useRef(new THREE.Vector3(0, 0, 6));
   const f = useRef(new THREE.Vector3(0, 0, 6));
   useFrame((_, dt) => {
+    const sc = shot ? shotCam(shot, positions) : null;
+    if (sc) {
+      const k = 1 - Math.exp(-dt * sc.rate);
+      camera.position.lerp(sc.pos, k);
+      target.current.lerp(sc.target, k);
+      camera.lookAt(target.current);
+      return;
+    }
     const goal = focus();
     const kf = 1 - Math.exp(-dt * 1.6);
     if (goal) f.current.lerp(new THREE.Vector3(Math.max(-3, Math.min(3, goal.x * 0.4)), 0, goal.z), kf);
@@ -188,7 +267,7 @@ function Rig({ view, focus, dir }) {
 
 // ---------- the scene ----------
 // edit: { side, spots:[{num,col,row}] } shows a formation being placed instead of that side's real positions
-export function Board({ game, view, tiles, onTile, onHover, rings = {}, onPlayer, edit, focusSq }) {
+export function Board({ game, view, tiles, onTile, onHover, rings = {}, onPlayer, edit, focusSq, shot }) {
   const s = game.state;
   const positions = useRef({});
   const unis = useMemo(() => s.teams.map((t) => uniformOf(t.id, t.uniform)), [s.teams]);
@@ -228,9 +307,13 @@ export function Board({ game, view, tiles, onTile, onHover, rings = {}, onPlayer
         <Mover key={p.pid} p={p} uniform={unis[p.side]} row={rows[p.side][p.num]} path={paths[p.pid]} positions={positions}
           ring={rings[p.pid]} onPick={onPlayer} />
       ))}
-      <Ball ball={s.ball} positions={positions} />
+      <Ball ball={s.ball} positions={positions} slowmo={!settings().calm} />
+      {shot?.kind === 'hit' && <Burst key={shot.id} at={sq(...shot.at, 0)} colors={['#c9c9c9', '#7a5a3a', '#3f6b2a', '#ffffff']} count={shot.big ? 46 : 26} />}
+      {shot?.kind === 'td' && <Burst key={shot.id} confetti at={sq(...shot.at, 0)} colors={teamColors(s.teams[shot.side].id, s.teams[shot.side].uniform).concat(['#f5e04a', '#ffffff'])} count={120} />}
+      <DiceRolls log={s.log} players={s.players} offense={s.offense} home={[s.spot, s.line]}
+        teamColors={s.teams.map((t) => teamColors(t.id, t.uniform))} />
       <Tiles tiles={tiles} onPick={onTile} onHover={onHover} />
-      <Rig view={view} focus={focus} dir={s.teams[s.offense].dir} />
+      <Rig view={view} focus={focus} dir={s.teams[s.offense].dir} shot={shot} positions={positions} />
     </>
   );
 }
