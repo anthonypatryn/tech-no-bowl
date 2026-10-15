@@ -667,3 +667,4 @@ button.card:hover { border-color: var(--led); }
 html.calm *, html.calm *::before { transition: none !important; animation: none !important; }
 .moment-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--s3); }
 .moment-row { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s2); border: var(--px) solid var(--line); }
+.ts-lineup { align-self: stretch; margin-top: var(--s1); }

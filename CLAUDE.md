@@ -33,7 +33,9 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
   fixes: wide camera while setting up, the touchdown waits for the runner, "Go in motion" becomes the primary button,
   turn marker (green diamond) over the active player, alternates show their own number on the cube top, helmet
   de-fringe. 58 tests.
-- **Next:** colour-blind shapes, B7 online.
+- **After B6:** team select Random button, Lineup under the ability players, team-coloured turn marker, colour-blind mode
+  (Settings: Okabe-Ito colours + smaller squares for move-only / risky).
+- **Next:** B7 online.
 
 ## Look (8-bit everywhere)
 - Type: Press Start 2P (`--pixel`) for titles, buttons, chips, labels; Pixelify Sans (`--body`) for running text.

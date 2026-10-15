@@ -62,7 +62,7 @@ function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge,
     <group ref={g} onPointerOver={onHover ? (e) => { e.stopPropagation(); onHover(p.pid); } : undefined} onPointerOut={onHover ? () => onHover(null) : undefined}>
       <PlayerCube uniform={uniform} row={row} facing={Math.PI / 2} down={p.down} label={p.artNum != null && p.artNum !== p.num ? p.num : null} labelColors={colors}
         onClick={onPick ? (e) => { e.stopPropagation(); onPick(p.pid); } : undefined} />
-      {active && <TurnMarker />}
+      {active && <TurnMarker colors={colors} />}
       {ring && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
           <ringGeometry args={[0.5, 0.6, 32]} />
@@ -74,8 +74,8 @@ function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge,
   );
 }
 
-// ---------- whose turn: a glowing diamond bobbing over his head (like the Sims' plumbob) ----------
-function TurnMarker() {
+// ---------- whose turn: a glowing diamond in his team's colours bobbing over his head (like the Sims' plumbob) ----------
+function TurnMarker({ colors = ['#39ff6a', '#ffffff'] }) {
   const ref = useRef();
   useFrame(() => {
     if (!ref.current) return;
@@ -87,9 +87,14 @@ function TurnMarker() {
     <group ref={ref}>
       <mesh scale={[0.16, 0.3, 0.16]} raycast={() => null}>
         <octahedronGeometry args={[1, 0]} />
-        <meshStandardMaterial color="#39ff6a" emissive="#1fd14c" emissiveIntensity={1.4} roughness={0.25} flatShading toneMapped={false} />
+        <meshStandardMaterial color={colors[0]} emissive={colors[0]} emissiveIntensity={0.9} roughness={0.25} flatShading toneMapped={false} />
       </mesh>
-      <pointLight color="#39ff6a" intensity={1.6} distance={2.2} decay={2} />
+      {/* a trim-coloured edge so a dark team colour still reads against the night sky */}
+      <mesh scale={[0.19, 0.34, 0.19]} raycast={() => null}>
+        <octahedronGeometry args={[1, 0]} />
+        <meshBasicMaterial color={colors[1]} wireframe toneMapped={false} />
+      </mesh>
+      <pointLight color={colors[0]} intensity={1.6} distance={2.2} decay={2} />
     </group>
   );
 }
@@ -427,7 +432,7 @@ function Tiles({ tiles, onPick, onHover }) {
     if (!m) return;
     tiles.forEach((t, i) => {
       const [x, , z] = sq(t.sq[0], t.sq[1]);
-      tmp.position.set(x, 0.015, z); tmp.rotation.set(-Math.PI / 2, 0, 0); tmp.updateMatrix();
+      tmp.position.set(x, 0.015, z); tmp.rotation.set(-Math.PI / 2, 0, 0); tmp.scale.setScalar(t.size ?? 1); tmp.updateMatrix();
       m.setMatrixAt(i, tmp.matrix);
       m.setColorAt(i, col.set(t.color));
     });

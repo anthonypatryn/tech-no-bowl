@@ -56,8 +56,8 @@ export default function TeamPicker({ onStart }) {
   return (
     <main className="ts">
       <div className="ts-halves">
-        <Half who="you" label="You" tag="HOME" sel={you} set={setYou} step={(d) => step('you', d)} openGrid={() => setGrid('you')} onInfo={setInfo} onLineup={() => setLineupFor('you')} />
-        <Half who="cpu" label="Computer" tag="AWAY" mirror sel={cpu} set={setCpu} step={(d) => step('cpu', d)} openGrid={() => setGrid('cpu')} onInfo={setInfo} onLineup={() => setLineupFor('cpu')} />
+        <Half who="you" label="You" tag="HOME" sel={you} set={setYou} step={(d) => step('you', d)} random={() => pickTeam('you', randomTeam(you.team), false)} openGrid={() => setGrid('you')} onInfo={setInfo} onLineup={() => setLineupFor('you')} />
+        <Half who="cpu" label="Computer" tag="AWAY" mirror sel={cpu} set={setCpu} step={(d) => step('cpu', d)} random={() => pickTeam('cpu', randomTeam(cpu.team), false)} openGrid={() => setGrid('cpu')} onInfo={setInfo} onLineup={() => setLineupFor('cpu')} />
       </div>
       <div className="ts-center glass">
         <div className="opt"><span>Computer</span><Chips small value={level} onChange={setLevel} options={LEVELS} /></div>
@@ -74,7 +74,7 @@ export default function TeamPicker({ onStart }) {
   );
 }
 
-function Half({ who, label, tag, sel, set, step, openGrid, onInfo, onLineup, mirror }) {
+function Half({ who, label, tag, sel, set, step, random, openGrid, onInfo, onLineup, mirror }) {
   const team = teamById(sel.team);
   // very light primaries (white jerseys) would wash out the white lettering: use the trim colour behind instead
   const [p0, p1] = teamColors(sel.team, sel.uni);
@@ -92,6 +92,7 @@ function Half({ who, label, tag, sel, set, step, openGrid, onInfo, onLineup, mir
           <button className="btn small" onClick={() => step(-1)} aria-label="Previous team">◀</button>
           <button className="btn small" onClick={openGrid}>All teams</button>
           <button className="btn small" onClick={() => step(1)} aria-label="Next team">▶</button>
+          <button className="btn small" onClick={random} title="Random team">Random</button>
         </div>
       </header>
       <div className="ts-body">
@@ -106,6 +107,8 @@ function Half({ who, label, tag, sel, set, step, openGrid, onInfo, onLineup, mir
               <span className="ts-card-skill">{p.abilities.join(' · ')}</span>
             </button>
           ))}
+          {/* alternates: who suits up, right under the players it changes */}
+          {hasAlt && <button className="btn small ts-lineup" onClick={onLineup}>Lineup{Object.values(sel.picks).includes('alt') ? ' (alternate)' : ''}</button>}
         </div>
         <div className="ts-logo">{helmet && <img src={helmet} alt={`${team.name} helmet`} />}</div>
       </div>
@@ -117,7 +120,6 @@ function Half({ who, label, tag, sel, set, step, openGrid, onInfo, onLineup, mir
         </div>
         <div className="ts-opts">
           <Chips small value={sel.uni} onChange={(u) => set({ ...sel, uni: u })} options={uniformsFor(sel.team).map((u) => [u.id, u.label])} />
-          {hasAlt && <button className="btn small" onClick={onLineup}>Lineup{Object.values(sel.picks).includes('alt') ? ' (alternate)' : ''}</button>}
         </div>
       </footer>
       <span className="sr-only">{who}</span>

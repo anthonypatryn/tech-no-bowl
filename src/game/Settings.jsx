@@ -19,6 +19,9 @@ export default function Settings() {
         <Row label="Quick play">
           <Toggle checked={s.quick} onChange={(quick) => setSettings({ quick })}>Answer the small prompts for me (bench boost, who goes first, follow-ups, read and react, motion)</Toggle>
         </Row>
+        <Row label="Colour-blind mode">
+          <Toggle checked={!!s.cb} onChange={(cb) => setSettings({ cb })}>Safe colours, and shapes too: full squares = you can still act, small = move only / risky</Toggle>
+        </Row>
         <Row label="Calm motion">
           <Toggle checked={s.calm} onChange={(calm) => setSettings({ calm })}>Skip camera moves and cinematics</Toggle>
         </Row>

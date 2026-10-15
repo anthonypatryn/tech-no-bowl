@@ -35,9 +35,14 @@ import { loadSeason, reportResult } from './season';
 import { crowd, stopTheme } from './sound';
 import { settings } from './prefs';
 
-const COLORS = { act: '#2fd06b', moveOnly: '#1f9e8f', legal: '#2fd06b', move: '#2fd06b', ball: '#ffd34a', td: '#ffffff', out: '#ff6a5a', good: '#2fd06b', ok: '#f5e04a', bad: '#ff5a4a', push: '#ff9a3c', scatter: '#c77dff', motion: '#4ab8ff', place: '#4ab8ff' };
-const RING = { active: '#f5e04a', skill: '#ffb000', block: '#ff9a3c', tackle: '#ff3b3b', handoff: '#3ce0ff', option: '#3ce0ff', selected: '#ffffff', dirty: '#c77dff', fire: '#ff5a1f' };
+const BASE_COLORS = { act: '#2fd06b', moveOnly: '#1f9e8f', legal: '#2fd06b', move: '#2fd06b', ball: '#ffd34a', td: '#ffffff', out: '#ff6a5a', good: '#2fd06b', ok: '#f5e04a', bad: '#ff5a4a', push: '#ff9a3c', scatter: '#c77dff', motion: '#4ab8ff', place: '#4ab8ff' };
+const BASE_RING = { active: '#f5e04a', skill: '#ffb000', block: '#ff9a3c', tackle: '#ff3b3b', handoff: '#3ce0ff', option: '#3ce0ff', selected: '#ffffff', dirty: '#c77dff', fire: '#ff5a1f' };
 const BOMB = '#ff7a1a';
+// colour-blind mode (Settings): the Okabe-Ito palette, and shapes as well as colours. Squares you can still act from
+// (or good throws) are full size; move-only / risky ones shrink, so the meaning never rests on colour alone.
+const CB_COLORS = { ...BASE_COLORS, act: '#0072b2', moveOnly: '#56b4e9', legal: '#0072b2', move: '#0072b2', good: '#0072b2', ok: '#f0e442', bad: '#d55e00', push: '#e69f00', scatter: '#cc79a7', motion: '#56b4e9', place: '#e69f00', out: '#d55e00' };
+const CB_RING = { ...BASE_RING, active: '#f0e442', skill: '#f0e442', block: '#e69f00', tackle: '#d55e00', handoff: '#56b4e9', option: '#56b4e9', dirty: '#cc79a7', fire: '#d55e00' };
+const CB_SIZE = { '#56b4e9': 0.6, '#f0e442': 0.72, '#d55e00': 0.45, '#e69f00': 0.6 };
 // a skill he can use right now (the prompt lights its chip, the board rings him gold)
 function liveSkills(req, s, p) {
   if (!req || req.type !== 'act' || !s.skills) return new Set();
@@ -170,6 +175,8 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
 
   // ---------- what the board shows for the open question ----------
   const board = useMemo(() => {
+    const cb = !!prefsNow.cb;
+    const COLORS = cb ? CB_COLORS : BASE_COLORS, RING = cb ? CB_RING : BASE_RING;
     const tiles = [], rings = {};
     let onTile = null, onPlayer = null;
     if (s.active) rings[s.active.pid] = RING.active;
@@ -269,8 +276,9 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
       const within = (r) => { const out = []; for (let c = 0; c < COLS; c++) for (let rr = 0; rr < 24; rr++) if (distance(at, [c, rr]) <= r) out.push([c, rr]); return out; };
       outlines = [{ squares: within(me.skill * 2), color: '#f5e04a' }, { squares: within(me.skill), color: '#2fd06b' }];
     }
+    if (cb) for (const t of tiles) t.size = CB_SIZE[t.color] ?? 1;
     return { tiles, rings, onTile, onPlayer, outlines };
-  }, [req, s.active, edit, sel, mode, motion, suggest]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [req, s.active, edit, sel, mode, motion, suggest, prefsNow.cb]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---------- keyboard ----------
   const primary = useRef(null);
