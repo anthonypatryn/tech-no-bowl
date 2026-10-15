@@ -11,8 +11,8 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
 - **B0 done:** scaffold, art pipeline, Art Review Board v1, and stub navs (Home, Team picker, Settings, plus a
   field preview of the game screen).
 - **B1 done:** a headless rules engine for TECHNO mode (`src/engine/`), with the simulator and rules tests.
-  The UI doesn't use it yet.
-- **Next is B2:** the playable game vs the computer on the 3D field.
+- **B2 done:** a playable game vs the computer on the 3D field (`?view=game` after the Team Picker).
+- **Next is B3:** the 3 AI levels, the bug system, rebindable keys, phone layout and play clocks.
 
 ## Working with the owner
 - Push in batches the owner can play-test. Say what's verified and what isn't.
@@ -28,7 +28,9 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
 | `src/App.jsx` | No router. `?view=` = home / teams / settings / art / preview |
 | `src/game/Home.jsx` | Title screen over a 3D fly-around. `Teams` = two line-ups on the field |
 | `src/game/TeamPicker.jsx` | Team, uniform, difficulty and mode for you and the CPU. `Sprite` = flat face from an atlas |
-| `src/game/Preview.jsx` | Stand-in game screen: camera presets (C), LED scoreboard HUD, down cube |
+| `src/game/GameView.jsx` | The game screen: board + scoreboard, cards, log, dice toast, banners, a prompt for every request type, end screen |
+| `src/game/useGame.js` | Builds the `Game` for a match (you = side 0, CPU = side 1), CPU think time, pacing (`BEATS` per log kind), speed |
+| `src/three/Board.jsx` | Live scene: `Mover` cubes walk their logged paths, `Ball` (held / loose / in the air, arcs), LOS + down cube, `Tiles` (instanced highlights; clicks go through one invisible pick plane), camera `Rig` that follows the ball |
 | `src/game/ArtReview.jsx` | `?view=art`: Teams (live cubes), Down marker, Field (calibration grid), Scoreboard & tokens, Checks |
 | `src/game/formation.js` | Stand-in line-ups until the engine exists |
 | `src/game/prefs.js` | Per-device settings (`tb-settings`). Not settings.js, because of a Windows name clash with Settings.jsx |
@@ -65,7 +67,9 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
   need spent ≤ half the move (read-and-react: nothing spent yet).
 - A play ends by throwing `PlayEnd` (td / safety / tackle / out / incomplete / stall). `endPlay` handles score, downs,
   turnovers on downs and the clock.
-- Log entries carry data (pid, from/to/path, dice, result). B2 animates from them.
+- Log entries carry data (pid, from/to/path, dice, result). The board animates from them.
+- Pacing: `new Game(…, { pace, delay })`. Each log entry adds owed time and the next `ask` waits for it, so the UI
+  stays readable while the simulator (no pace) runs flat out. In dev builds the live game is `window.__tb`.
 
 ### Rulings (things the rulebook leaves open; change here if the owner disagrees)
 - Benches are dealt fresh every down (2 cards per player on the field).
@@ -78,6 +82,8 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
 - Defensive pressure triggers once per defender activation, when he moves from outside the carrier's threat zone to
   inside it (never after he has stepped out of it in the same activation).
 - Teams don't switch ends at half time (side 0 always attacks row 0).
+- Dead ball: if a whole cycle of cards passes with no movement, contact or ball handling, the play is blown dead with
+  the carrier down where he stands. This stops endless downs against a coach who keeps passing.
 - Not implemented yet: play clocks (off by default anyway), PRO/ALL PRO/INFERNO, skills, field goals.
 
 ## Art pipeline
@@ -98,5 +104,6 @@ npx oxlint src tools
 npx vite build
 npm test
 npm run sim -- 300      # must print errors: 0
+node tools/simulate.mjs 60 1 passive   # side 0 never acts: games must still end
 ```
 Dev server: `.claude/launch.json` → port 5192.

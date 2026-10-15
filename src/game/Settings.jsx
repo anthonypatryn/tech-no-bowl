@@ -10,6 +10,9 @@ export default function Settings() {
         <div className="opt"><span>Text size</span>
           <Chips value={s.text} onChange={(text) => setSettings({ text })} options={[['normal', 'Normal'], ['large', 'Large'], ['larger', 'Larger']]} />
         </div>
+        <div className="opt"><span>Game speed</span>
+          <Chips value={s.speed} onChange={(speed) => setSettings({ speed })} options={[['slow', 'Slow'], ['normal', 'Normal'], ['fast', 'Fast']]} />
+        </div>
         <div className="opt"><span>Calm motion</span>
           <Toggle checked={s.calm} onChange={(calm) => setSettings({ calm })}>Skip camera moves and cinematics</Toggle>
         </div>

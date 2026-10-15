@@ -1,16 +1,17 @@
 // Plays bot-vs-bot games with the real engine and checks the rules hold up.
-//   node tools/simulate.mjs [games=200] [firstSeed=1]
+//   node tools/simulate.mjs [games=200] [firstSeed=1] [passive]   (passive: side 0 never acts unless it must)
 // Must print `errors: 0`. Any crash prints its seed so the game can be replayed exactly.
 import { readFileSync } from 'node:fs';
 import { Game } from '../src/engine/game.js';
-import { makeBot } from '../src/engine/bot.js';
+import { makeBot, makePassive } from '../src/engine/bot.js';
 import { playerList } from '../src/engine/rules.js';
 
 const TEAMS = JSON.parse(readFileSync(new URL('../src/data/teams.json', import.meta.url), 'utf8'));
 const N = Number(process.argv[2] ?? 200);
 const SEED0 = Number(process.argv[3] ?? 1);
+const PASSIVE = process.argv[4] === 'passive';
 
-const tally = { games: 0, errors: 0, ties: 0, overtime: 0, points: 0, tds: 0, safeties: 0, downs: 0, activations: 0, checks: 0, passes: 0, catches: 0,
+const tally = { maxActs: 0, games: 0, errors: 0, ties: 0, overtime: 0, points: 0, tds: 0, safeties: 0, downs: 0, activations: 0, checks: 0, passes: 0, catches: 0,
   turnovers: 0, sacks: 0, fumbles: 0, pressure: 0, stalls: 0, botFixes: 0, invariant: 0 };
 const fails = [];
 const fixedBy = {};
@@ -39,7 +40,7 @@ for (let i = 0; i < N; i++) {
   const a = pick(0), b = pick(1) === a ? pick(2) : pick(1);
   const teams = [a, b].map((t) => ({ id: t.id, name: t.name, uniform: 'home', roster: t.players.map((p) => ({ num: p.num, name: p.name })) }));
   let lastScore = [0, 0];
-  const g = new Game({ teams, seed, agents: [makeBot(), makeBot()] }, {
+  const g = new Game({ teams, seed, agents: [PASSIVE ? makePassive() : makeBot(), makeBot()] }, {
     onChange: (st) => {
       const last = st.log[st.log.length - 1];
       if (!last || last.seen) return;
@@ -54,6 +55,7 @@ for (let i = 0; i < N; i++) {
       const d = [st.score[0] - lastScore[0], st.score[1] - lastScore[1]];
       for (const x of d) if (x && x !== 7 && x !== 2) throw new Error(`score jumped by ${x}`);
       if (last.kind === 'td') tally.tds++;
+      tally.maxActs = Math.max(tally.maxActs, st.play?.activations ?? 0);
       if (last.kind === 'safety') tally.safeties++;
       lastScore = [...st.score];
     },
@@ -79,6 +81,7 @@ const per = (k) => (tally[k] / Math.max(1, tally.games)).toFixed(2);
 console.log(`games: ${tally.games}/${N}  points/game: ${per('points')}  TDs/game: ${per('tds')}  safeties: ${tally.safeties}  ties: ${tally.ties}  overtime: ${tally.overtime}`);
 console.log(`downs/game: ${per('downs')}  activations/down: ${(tally.activations / Math.max(1, tally.downs)).toFixed(1)}  checks/game: ${per('checks')}`);
 console.log(`passes: ${tally.passes} (caught ${tally.catches})  turnovers: ${tally.turnovers}  fumbles: ${tally.fumbles}  pressure: ${tally.pressure}  sacks: ${tally.sacks}`);
+console.log(`most activations in one down: ${tally.maxActs}`);
 console.log(`bot answers fixed by fallback: ${tally.botFixes} ${JSON.stringify(fixedBy)}  stalled downs: ${tally.stalls}`);
 for (const f of fails.slice(0, 8)) console.log(f);
 console.log(`errors: ${tally.errors}`);

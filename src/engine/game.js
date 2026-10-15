@@ -35,7 +35,12 @@ const MAX_ACTIVATIONS = 400; // per down: a safety net, never reached in a real 
 export class Game {
   // teams: [{ id, name, uniform, roster: [{ num, name }] }, …] (side 0 attacks row 0, side 1 attacks row 23)
   // agents: [fn | null, fn | null]: a computer coach is fn(game, side, request) -> answer; null = a person
-  constructor({ teams, seed = Date.now(), mode = 'techno', agents = [null, null] }, { onChange } = {}) {
+  // pacing (UI only): pace(logEntry) -> ms that entry needs on screen; delay(ms) -> Promise. The next decision waits for
+  // the time owed, so moves animate and dice can be read. The simulator passes neither and runs flat out.
+  constructor({ teams, seed = Date.now(), mode = 'techno', agents = [null, null] }, { onChange, pace, delay } = {}) {
+    this.pace = pace;
+    this.delay = delay;
+    this.owed = 0;
     this.setup = { teams, seed, mode };
     this.rules = MODES[mode];
     this.random = mulberry32(seed);
@@ -83,7 +88,9 @@ export class Game {
   get state() { return this.s; }
   emit() { this.onChange(this.s); }
   log(text, kind = 'info', data = {}) {
-    this.s.log = [...this.s.log.slice(-299), { ...data, text, kind, id: ++this.logNo }];
+    const entry = { ...data, text, kind, id: ++this.logNo };
+    this.s.log = [...this.s.log.slice(-299), entry];
+    if (this.pace) this.owed += this.pace(entry) ?? 0;
     this.emit();
   }
   rand(n) { return Math.floor(this.random() * n); }
@@ -96,18 +103,22 @@ export class Game {
 
   ask(side, req) {
     if (this.stopped) return new Promise(() => {});
-    const id = ++this.reqNo;
-    this.s.request = { ...req, side, id };
-    this.emit();
-    return new Promise((resolve) => {
+    const wait = this.owed;
+    this.owed = 0;
+    const ready = wait && this.delay ? this.delay(wait) : Promise.resolve();
+    return ready.then(() => new Promise((resolve) => {
+      if (this.stopped) return;
+      const id = ++this.reqNo;
+      this.s.request = { ...req, side, id };
+      this.emit();
       this.pending = (v) => {
         this.pending = null; this.s.request = null;
         if (!this.agents[side]) this.trail.push({ req: id, side, type: req.type, value: v });
         resolve(v);
       };
       const agent = this.agents[side];
-      if (agent) queueMicrotask(() => this.pending?.(agent(this, side, this.s.request)));
-    });
+      if (agent) Promise.resolve(agent(this, side, this.s.request)).then((v) => { if (this.s.request?.id === id) this.pending?.(v); });
+    }));
   }
   answer(value, reqId) { if (reqId == null || reqId === this.s.request?.id) this.pending?.(value); }
 
@@ -333,6 +344,15 @@ export class Game {
         await this.round(n0, n1);
       }
       if (s.ball.at === 'air') throw new PlayEnd('incomplete', { why: 'nobody caught it' });
+      // a whole cycle of cards where nobody moved, hit anyone or touched the ball: the officials blow it dead
+      const busy = s.log.some((e) => e.id > (s.play.cycleMark ?? 0) && ['move', 'push', 'check', 'handoff', 'sport', 'stand'].includes(e.kind));
+      s.play.cycleMark = this.logNo;
+      if (!busy) {
+        this.log('Nobody is going anywhere: the officials blow the play dead.', 'deadball');
+        const c = carrier(s);
+        if (c) this.endWithBall(c, 'tackle');
+        throw new PlayEnd('stall');
+      }
       // everybody has gone and the ball is still alive: coaches take control again with fresh 5-card plays
       for (const c of s.cards) { c.bench = [...c.bench, ...c.discard].sort((a, b) => a - b); c.discard = []; }
       if (!s.cards[0].bench.length && !s.cards[1].bench.length) { this.stats.stalls++; throw new PlayEnd('stall'); }

@@ -2,11 +2,12 @@
 //   /                 Home
 //   ?view=art         Art Review Board
 //   ?view=settings    Settings
+//   ?view=game        a game vs the computer (after the Team Picker)
 import { lazy, Suspense, useEffect, useState } from 'react';
 import Home from './game/Home.jsx';
 import TeamPicker from './game/TeamPicker.jsx';
 import Settings from './game/Settings.jsx';
-import Preview from './game/Preview.jsx';
+import GameView from './game/GameView.jsx';
 import { TEXT_ZOOM, useSettings } from './game/prefs';
 
 const ArtReview = lazy(() => import('./game/ArtReview.jsx'));
@@ -33,13 +34,13 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
-  if (view === 'preview' && match) return <Preview match={match} onExit={() => go('teams')} />;
+  if (view === 'game' && match) return <GameView key={match.seed} match={match} onExit={() => go('teams')} onRematch={() => setMatch({ ...match, seed: Date.now() })} />;
 
   return (
     <div className="app">
       <TopBar view={view} go={go} />
       {view === 'home' && <Home go={go} />}
-      {(view === 'teams' || (view === 'preview' && !match)) && <TeamPicker onStart={(m) => { setMatch(m); go('preview'); }} />}
+      {(view === 'teams' || (view === 'game' && !match)) && <TeamPicker onStart={(m) => { setMatch({ ...m, seed: Date.now() }); go('game'); }} />}
       {view === 'settings' && <Settings />}
       {view === 'art' && <Suspense fallback={<div className="loading">Loading the art…</div>}><ArtReview /></Suspense>}
     </div>

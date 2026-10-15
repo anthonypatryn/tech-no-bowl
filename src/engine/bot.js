@@ -113,6 +113,14 @@ function act(game, side, req, slip) {
       if (v > score + 0.01) { score = v; best = m; }
     }
     if (best) return { kind: 'move', to: best.to };
+    // boxed in: slide towards the side of the field with fewer defenders ahead
+    if (req.left >= 2 && !req.spent) {
+      const ahead = (dc) => game.roster(1 - side).filter((o) => !o.down && Math.sign(o.col - me.col) === dc && progress(game, side, sqOf(o)) >= progress(game, side, here)).length;
+      const dc = ahead(-1) <= ahead(1) ? -1 : 1;
+      const slide = moves.filter((m) => Math.sign(m.to[0] - me.col) === dc && progress(game, side, m.to) >= progress(game, side, here))
+        .sort((a, b) => Math.abs(b.to[0] - me.col) - Math.abs(a.to[0] - me.col))[0];
+      if (slide && r() < 0.8) return { kind: 'move', to: slide.to };
+    }
     if (req.handoffs.length && r() < 0.3) {
       const mate = req.handoffs.map((pid) => s.players[pid]).sort((a, b) => progress(game, side, sqOf(b)) - progress(game, side, sqOf(a)))[0];
       if (progress(game, side, sqOf(mate)) > progress(game, side, here)) return { kind: 'handoff', pid: mate.pid };
@@ -123,8 +131,9 @@ function act(game, side, req, slip) {
 
   if (c && c.side === side) {
     // teammate of the ball carrier: block someone near him, or get open downfield
-    const near = req.blocks.filter((pid) => distance(sqOf(s.players[pid]), sqOf(c)) <= 2);
-    if (near.length && r() < 0.7) return { kind: 'block', pid: near[0] };
+    const near = req.blocks.filter((pid) => distance(sqOf(s.players[pid]), sqOf(c)) <= 3);
+    if (near.length && r() < 0.75) return { kind: 'block', pid: near[0] };
+    if (req.blocks.length && r() < 0.35) return { kind: 'block', pid: req.blocks[0] };
     let best = null, score = progress(game, side, here) - threatCount(s, here, 1 - side);
     for (const m of moves) {
       const v = progress(game, side, m.to) - threatCount(s, m.to, 1 - side) - m.cost * 0.05;
@@ -153,3 +162,17 @@ function closer(moves, here, target) {
   return best ? { kind: 'move', to: best.to } : null;
 }
 
+
+// a coach who never does anything he doesn't have to (tests that games still end against a passive player)
+export function makePassive() {
+  const bot = makeBot({ slip: 0 });
+  return (game, side, req) => {
+    switch (req.type) {
+      case 'act': return { kind: 'end' };
+      case 'motion': case 'readReact': case 'bonus': return null;
+      case 'boost': return 0;
+      case 'timeout': return false;
+      default: return bot(game, side, req);
+    }
+  };
+}

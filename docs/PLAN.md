@@ -66,7 +66,7 @@ Template: Long Shot (look, 3D/R3F, camera rig, cinematics) + Escape Order 66 (so
 - `tools/simulate.mjs`: thousands of random legal games, which must finish with `errors: 0`. Unit tests on the
   rulebook's worked examples.
 
-### B2 · Playable vs AI (local is vs AI only; human-vs-human waits for online)
+### B2 · Playable vs AI (local is vs AI only; human-vs-human waits for online) ✅
 - Rookie AI arrives here so there's an opponent from the first playable build.
 - 3D field, cube players, ball, dice.
 - Move overlays: reachable squares with their costs, threat heat, pass range rings (+1 zone shaded).
