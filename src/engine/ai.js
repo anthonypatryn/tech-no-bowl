@@ -48,6 +48,13 @@ function decide(game, side, req, T) {
     case 'followUp': return followUp(game, side, req);
     case 'scatter': return scatterPick(game, side, req);
     case 'act': return act(game, side, req, T);
+    case 'dodge': return /tackles|dives/.test(req.label) && s.cards[side].bench.length > 4 ? Math.min(1, req.max) : 0;
+    case 'spin': return true;
+    case 'heatCrit': return 'fire';
+    case 'kick': return kickCall(game, side, req, T);
+    case 'fireDefend': return T.odds && /tackles|dives|throws/.test(req.label) && carrier(s)?.side === side ? 1 : 0;
+    case 'onFire': return onFirePick(game, side, req);
+    case 'option': return optionPick(game, side, req);
     default: return any([null]);
   }
 }
@@ -151,7 +158,7 @@ function readReact(game, side, req, T) {
   const s = game.state;
   const mine = urgency(game, side, s.players[`${side}:${req.card}`]);
   let best = null, bv = mine + 2.5; // only swap for a clearly better player
-  for (const n of new Set(req.bench)) { const v = urgency(game, side, s.players[`${side}:${n}`]); if (v > bv) { bv = v; best = n; } }
+  for (const n of new Set(req.only ?? req.bench)) { const v = urgency(game, side, s.players[`${side}:${n}`]); if (v > bv) { bv = v; best = n; } }
   return best;
 }
 
@@ -175,7 +182,7 @@ function bestPlayer(game, side, options, kind) {
 }
 
 function boost(game, side, req, T) {
-  if (T.boost === 'never') return 0;
+  if (T.boost === 'never' || !req.max) return 0;
   const s = game.state;
   const bench = s.cards[side].bench.length;
   const net = netModifier(req.bonus, req.penalty);
@@ -185,6 +192,37 @@ function boost(game, side, req, T) {
   if (!big && net >= 0) return 0;
   const want = Math.max(0, Math.min(req.max, 1 - net + (big ? 1 : 0)));
   return Math.min(want, Math.max(0, bench - 4));
+}
+
+// field goal: 3d6 >= dist. Kick on 4th down when it's a decent shot, or when the clock says points now
+const P3D6 = (() => { const c = Array(19).fill(0); for (let a = 1; a <= 6; a++) for (let b = 1; b <= 6; b++) for (let d = 1; d <= 6; d++) c[a + b + d]++; return c.map((n) => n / 216); })();
+export const pKick = (dist) => P3D6.reduce((p, x, t) => (t >= dist ? p + x : p), 0);
+function kickCall(game, side, req, T) {
+  const s = game.state;
+  const p = pKick(req.dist);
+  const late = s.half === 2 && s.pile.length <= 1;
+  const diff = s.score[side] - s.score[1 - side];
+  if (T.clock && late && diff <= 0 && diff >= -3) return p >= 0.3;
+  if (req.down === 4) return p >= (T.odds ? 0.4 : 0.25);
+  return false;
+}
+// ON FIRE: the passer / best runner (the highest rating; skill players first)
+function onFirePick(game, side, req) {
+  const s = game.state;
+  const best = [...req.options].sort((a, b) => s.players[b].skill - s.players[a].skill || (s.players[b].abilities?.length ?? 0) - (s.players[a].abilities?.length ?? 0))[0];
+  return best ? { pid: best, skill: 'JUKE' } : null;
+}
+// OPTION: pitch to the most open teammate when he's better placed than our carrier
+function optionPick(game, side, req) {
+  const s = game.state;
+  const c = s.players[req.pid];
+  let best = null, bv = threatCount(s, sqOf(c), 1 - side) * -2 + progress(game, side, sqOf(c));
+  for (const pid of req.targets) {
+    const m = s.players[pid];
+    const v = threatCount(s, sqOf(m), 1 - side) * -2 + progress(game, side, sqOf(m)) - 0.5;
+    if (v > bv) { bv = v; best = pid; }
+  }
+  return best;
 }
 
 function pushPick(game, side, req) {
@@ -240,7 +278,7 @@ function act(game, side, req, T) {
 
   for (const pid of req.tackles) {
     const t = s.players[pid];
-    const m = contactMods(s, me, t);
+    const m = contactMods(s, me, t, 'tackle');
     const p = pSucc(netModifier(m.bonus, m.penalty));
     const urgencyGain = 12 + Math.max(0, 8 - toGo(game, t.side, sqOf(t)));
     cands.push({ a: { kind: 'tackle', pid }, v: p * urgencyGain - (1 - p) * 3 });
@@ -255,7 +293,30 @@ function act(game, side, req, T) {
     else if (c && c.side === side && distance(sqOf(t), sqOf(c)) <= 3) gain = 2.5;
     else if (c && c.side !== side && distance(sqOf(t), sqOf(c)) <= 2) gain = 2; // shove a lead blocker
     if (c?.pid === me.pid) gain = 2.5; // trucking
-    cands.push({ a: { kind: 'block', pid }, v: p * gain - (1 - p) * 3 });
+    // a blitz / run block keeps the activation going: worth a little more
+    const keep = req.asMove.includes('block') ? 0.8 : 0;
+    cands.push({ a: { kind: 'block', pid }, v: p * gain - (1 - p) * 3 + keep });
+    if (req.shoves.includes(pid)) cands.push({ a: { kind: 'shove', pid }, v: p * (gain + 0.6) - (1 - p) * 3 + keep });
+  }
+  // JUKE: the carrier beats the defender in his way (and keeps running); SHAKE: a receiver gets open
+  for (const pid of req.jukes) {
+    const t = s.players[pid];
+    const p = pSucc(netModifier(...Object.values((({ bonus, penalty }) => ({ bonus, penalty }))(contactMods(s, me, t, 'juke')))));
+    const ahead = progress(game, side, sqOf(t)) >= progress(game, side, here) ? 3 : 1;
+    cands.push({ a: { kind: 'juke', pid }, v: p * ahead - (1 - p) * 5 });
+  }
+  for (const pid of req.shakes) {
+    const t = s.players[pid];
+    const m = contactMods(s, me, t, 'shake');
+    const p = pSucc(netModifier(m.bonus, m.penalty));
+    cands.push({ a: { kind: 'shake', pid }, v: p * 1.6 - (1 - p) * 3 });
+  }
+  // INFERNO: a dirty hit is worth tokens when nothing better is on
+  for (const pid of req.dirty) {
+    const t = s.players[pid];
+    const m = contactMods(s, me, t, 'dirty');
+    const p = pSucc(netModifier(m.bonus, m.penalty));
+    cands.push({ a: { kind: 'dirty', pid }, v: req.mode === 'dogpile' ? 5 : (s.fire[side] < 3 ? p * 1.4 - (1 - p) * 2 : -1) });
   }
   if (req.passes.length && c?.pid === me.pid) {
     for (const ps of req.passes) {
@@ -280,6 +341,10 @@ function act(game, side, req, T) {
       const v = p * (gainSq * 1.6 + tdBonus + space) * (ps.target ? 1 : 5 / 6) - (1 - p) * 4 + (plan === 'pass' && ps.target ? 3 : 0);
       cands.push({ a: { kind: 'pass', to: ps.to }, v });
     }
+  }
+  // INFERNO: buy the last squares to the end zone
+  if (req.fire?.canBuy && c?.pid === me.pid && !req.moves.some((mv) => mv.end === 'td') && toGo(game, side, here) <= req.left + req.fire.tokens && toGo(game, side, here) > req.left) {
+    cands.push({ a: { kind: 'buy', n: Math.min(req.fire.tokens, toGo(game, side, here) - req.left + 1) }, v: 20 });
   }
   for (const pid of req.handoffs) {
     const m = s.players[pid];

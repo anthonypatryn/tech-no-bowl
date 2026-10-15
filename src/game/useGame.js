@@ -16,6 +16,9 @@ const BEATS = {
   fumble: () => 500, catch: () => 500, inflight: () => 800, offtarget: () => 300, formation: () => 450, motion: () => 700,
   handoff: () => 500, sack: () => 1700, pressure: () => 900, down: () => 500, stand: () => 350, knockdown: () => 500, tackle: () => 1500,
   adjust: () => 500, half: () => 1500, timeout: () => 800, final: () => 0,
+  // B6: abilities, field goals, INFERNO
+  onfire: () => 2700, kick: () => 3600, fieldgoal: () => 1500, stiffarm: () => 1700, spin: () => 1600, heat: () => 1700, intercept: () => 1200,
+  fuego: () => 1600, firebomb: () => 900, dogpile: () => 1500, fire: () => 500, fireout: () => 700, dodge: () => 900, firebuy: () => 400,
 };
 export const SPEEDS = { slow: 0.7, normal: 1, fast: 1.8 };
 

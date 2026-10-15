@@ -2,6 +2,7 @@
 // calibration grid, scoreboard, logos and punchboards. Each asset gets a verdict (approve / needs fix / reject + a
 // note), saved for everyone with the bug-list PIN; the Review tab lists them and copies the open notes for Claude.
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { MOMENTS } from './Lab';
 import { OrbitControls, Html } from '@react-three/drei';
 import { Stage } from '../three/Stage';
 import { Field, Lights } from '../three/Field';
@@ -11,7 +12,7 @@ import { TEAMS, uniformsFor, uniformOf, rosterFor, artUrl, helmetUrl, teamById, 
 import { Button } from './ui';
 import { Sprite } from './TeamPicker';
 
-const SECTIONS = [['teams', 'Teams'], ['helmets', 'Helmets'], ['downs', 'Down marker'], ['field', 'Field'], ['board', 'Scoreboard & tokens'], ['checks', 'Checks'], ['review', 'Review']];
+const SECTIONS = [['teams', 'Teams'], ['helmets', 'Helmets'], ['downs', 'Down marker'], ['field', 'Field'], ['board', 'Scoreboard & tokens'], ['moments', 'Moments'], ['checks', 'Checks'], ['review', 'Review']];
 const PIN_KEY = 'tb-bug-pin';
 const VERDICTS = [['ok', '✓ Approve'], ['fix', '✎ Needs fix'], ['reject', '✗ Reject']];
 
@@ -85,6 +86,7 @@ export default function ArtReview() {
       {sec === 'field' && <FieldSection />}
       {sec === 'board' && <BoardSection />}
       {sec === 'checks' && <ChecksSection />}
+      {sec === 'moments' && <MomentsSection />}
     </main>
     </Reviews.Provider>
   );
@@ -213,6 +215,23 @@ function BoardSection() {
 }
 
 // mechanical checks: roster vs art
+// every cinematic and effect: play it in the Moment Lab, then give it a verdict
+function MomentsSection() {
+  return (
+    <section className="glass moments-review">
+      <p>Each one opens the Moment Lab and plays it. Come back here to approve it or leave a note.</p>
+      <div className="moment-list">
+        {MOMENTS.map(([k, label]) => (
+          <div key={k} className="moment-row">
+            <a className="btn small" href={`?view=moments&m=${k}`} target="_blank" rel="noreferrer">▶ {label}</a>
+            <Verdict id={`moment:${k}`} label={label} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function ChecksSection() {
   const rows = useMemo(() => TEAMS.map((t) => {
     const unis = uniformsFor(t.id);

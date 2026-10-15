@@ -196,7 +196,15 @@ Owner's additions (do first):
     first) so play flows
   - Colour-blind safe highlights (shapes as well as colours), and install-to-home-screen on phones
 
-### B6 · Rule modes
+### B6b · Owner's play-test bugs ✅ (done inside B6)
+- Camera: when a formation is being set (offense or defense), cut to a preset wide enough to see every player.
+- Touchdown banner fires before the runner's cube crosses the goal line on screen: hold it until the walk lands.
+- Motion prompt: once a player and a square are picked, "Go in motion" becomes the bright primary button with focus
+  (Space = go), and "No motion" drops to plain.
+- (Answered, no change: motion is offense then defense, then both again, rulebook p.11; defense motion doesn't
+  depend on the offense moving.)
+
+### B6 · Rule modes ✅
 - **ALL TECHNO:** the 25 skills.
 - **PRO / ALL PRO:** adds #51 (8v8) and field goals (3d6).
 - **INFERNO:** fire tokens, ON FIRE, EN FUEGO, FIRE BOMB, BRING THE HEAT.

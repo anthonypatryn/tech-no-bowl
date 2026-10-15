@@ -227,13 +227,42 @@ def cutout(rgb, pocket_from=(0.5, 0.0)):
     n, lab, st, cen = cv2.connectedComponentsWithStats(flat)
     for k in range(1, n):
         area = st[k, cv2.CC_STAT_AREA]
-        if area >= 25 and cen[k][0] > w * pocket_from[0] and cen[k][1] > h * pocket_from[1]:
+        if area >= 4 and cen[k][0] > w * pocket_from[0] and cen[k][1] > h * pocket_from[1]:
             alpha[lab == k] = 0
-    # peel: light pixels touching transparency go too (twice), then soften
+    # small near-white slivers between facemask bars (anti-aliased page white) on the facemask side
+    light = ((rgb.min(2) >= 238) & (alpha > 0)).astype(np.uint8)
+    n, lab, st, cen = cv2.connectedComponentsWithStats(light)
+    for k in range(1, n):
+        x0, y0, bw, bh, area = st[k]
+        touches = cv2.dilate((lab == k).astype(np.uint8), np.ones((3, 3), np.uint8)) & (alpha == 0)
+        if area <= 400 and touches.any() and cen[k][0] > w * pocket_from[0] and cen[k][1] > h * pocket_from[1]:
+            alpha[lab == k] = 0
+    # peel: light pixels touching transparency go too (twice)
     for _ in range(2):
         edge = (cv2.dilate((alpha == 0).astype(np.uint8), np.ones((3, 3), np.uint8)) > 0) & (alpha > 0)
         alpha[edge & (rgb.min(2) > 225)] = 0
     alpha = cv2.erode(alpha, np.ones((2, 2), np.uint8))
+    # de-fringe: in a thin band along every edge, the colour is a mix of the art and the white page. Take the art's
+    # colour from just inside (inpainted outward) and work out how much of the pixel it really covers, so no white
+    # halo is left (on dark art; near-white art keeps its plain edge)
+    inside = cv2.erode((alpha > 0).astype(np.uint8), np.ones((7, 7), np.uint8))
+    band = (alpha > 0) & (inside == 0)
+    fg = cv2.inpaint(rgb, (inside == 0).astype(np.uint8), 6, cv2.INPAINT_TELEA).astype(np.float32)
+    c = rgb.astype(np.float32)
+    span = np.maximum(255.0 - fg, 1.0)
+    cover = np.clip(((255.0 - c) / span).max(2), 0, 1)
+    dark = (255.0 - fg.min(2)) >= 45
+    use = band & dark
+    alpha = np.where(use, (alpha.astype(np.float32) * cover), alpha).astype(np.uint8)
+    rgb = np.where(use[..., None], fg, c).clip(0, 255).astype(np.uint8)
+    alpha[alpha < 40] = 0
+    # stray specks floating off the art (a page mark above the shell): keep only the real pieces
+    n, lab, st, _ = cv2.connectedComponentsWithStats((alpha > 0).astype(np.uint8))
+    if n > 2:
+        big = st[1:, cv2.CC_STAT_AREA].max()
+        for k in range(1, n):
+            if st[k, cv2.CC_STAT_AREA] < big * 0.01:
+                alpha[lab == k] = 0
     alpha = cv2.GaussianBlur(alpha, (3, 3), 0)
     im = Image.fromarray(np.dstack([rgb, alpha]), 'RGBA')
     bbox = im.getbbox()

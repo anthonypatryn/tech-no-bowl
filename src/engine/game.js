@@ -1,4 +1,5 @@
-// Techno Bowl rules engine (TECHNO mode: 7-vs-7, no skills, no field goals).
+// Techno Bowl rules engine: TECHNO (7-vs-7), ALL TECHNO (+ the 25 skills), PRO / ALL PRO (8-vs-8 + field goals) and
+// INFERNO (ALL TECHNO + fire tokens, ON FIRE, EN FUEGO, FIRE BOMB, BRING THE HEAT, dirty hits and dogpiles).
 //
 // The engine owns the whole game and runs it as async code. Whenever a coach must decide something it calls
 // `ask(side, request)`: a computer coach answers through its agent function, a person through the UI
@@ -6,11 +7,12 @@
 // `game.state` and the open request, and animates from the log (each entry carries data: ids, squares, dice).
 // Same shape as Long Shot's engine, so online play (host-authoritative) plugs in the same way later.
 import {
-  START_LINE, adjacent, behindLine, halfOf, inOppEndZone, inOwnEndZone, key, lineAfterTackle, losRows, same, skillOf, spotCol, yardLabel,
+  ROWS, START_LINE, adjacent, behindLine, distance, halfOf, inBounds, inOppEndZone, inOwnEndZone, isForward, key, lineAfterTackle, losRows, same, skillOf,
+  spotCol, yardLabel,
 } from './board.js';
 import {
-  ballSquare, carrier, checkDefense, checkOffense, checkResult, contactMods, looseAt, moveReach, netModifier, occupant, passInfo,
-  playerList, pushOptions, scatterOptions, sqOf, threatCount,
+  SKILLS, ballSquare, carrier, checkDefense, checkOffense, checkResult, contactMods, hasSkill, looseAt, moveReach, netModifier, occupant, occupiedMap,
+  passInfo, playerList, pushOptions, scatterOptions, sqOf, threatCount,
 } from './rules.js';
 import { autoDefense, autoOffense } from './formations.js';
 
@@ -28,7 +30,14 @@ export function mulberry32(seed) {
   };
 }
 
-export const MODES = { techno: { pro: false, skills: false, fieldGoals: false } };
+export const MODES = {
+  techno: { pro: false, skills: false, fieldGoals: false, inferno: false },
+  alltechno: { pro: false, skills: true, fieldGoals: false, inferno: false },
+  pro: { pro: true, skills: false, fieldGoals: true, inferno: false },
+  allpro: { pro: true, skills: true, fieldGoals: true, inferno: false },
+  inferno: { pro: false, skills: true, fieldGoals: false, inferno: true },
+};
+const CONTACT = ['block', 'shove', 'juke', 'shake'];
 export const HALF_CUBES = 6;
 const MAX_ACTIVATIONS = 400; // per down: a safety net, never reached in a real game
 
@@ -46,7 +55,7 @@ export class Game {
     this.delay = delay;
     this.owed = 0;
     this.setup = { teams, seed, mode };
-    this.rules = MODES[mode];
+    this.rules = MODES[mode] ?? MODES.techno;
     this.random = mulberry32(seed);
     this.agents = agents;
     this.onChange = onChange ?? (() => {});
@@ -62,12 +71,17 @@ export class Game {
         if (!this.rules.pro && r.num === 51) continue;
         const pid = `${side}:${r.num}`;
         // artNum: whose cube art he wears (an alternate player can take another's slot, e.g. Reapers #4 in #44's)
-        players[pid] = { pid, side, num: r.num, artNum: r.artNum ?? r.num, name: r.name, skill: skillOf(r.num), abilities: r.abilities ?? [], col: null, row: null, down: false };
+        players[pid] = { pid, side, num: r.num, artNum: r.artNum ?? r.num, name: r.name, skill: skillOf(r.num), abilities: r.abilities ?? [], col: null, row: null, down: false,
+          onFire: false, fireSkill: null, fuego: null };
       }
     });
     this.s = {
       teams: teams.map((t, side) => ({ id: t.id, name: t.name, uniform: t.uniform, dir: side === 0 ? -1 : 1 })),
       players,
+      mode,
+      skills: this.rules.skills,
+      inferno: this.rules.inferno,
+      fire: [0, 0], // INFERNO fire tokens in each coach's play area (max 3)
       ball: { at: 'dead' },
       cards: [0, 1].map(() => ({ bench: [], stack: [], discard: [] })), // dealt at the start of every down
       score: [0, 0],
@@ -110,6 +124,7 @@ export class Game {
   name(p) { return `${this.team(p.side).name} #${p.num}`; }
   get defense() { return 1 - this.s.offense; }
   // stat(pid, 'rushYds', 5): the box score the broadcast overlays read
+  has(p, a) { return hasSkill(this.s, p, a); }
   stat(pid, key, n = 1) {
     const b = (this.s.box[pid] ??= { carries: 0, rushYds: 0, att: 0, comp: 0, passYds: 0, rec: 0, recYds: 0, tackles: 0, sacks: 0, fumbles: 0, tds: 0 });
     b[key] += n;
@@ -241,6 +256,7 @@ export class Game {
     this.log(`${['', '1st', '2nd', '3rd', '4th'][s.down]} down, ${this.team(s.offense).name} ball at the ${yardLabel(s.line, this.dir(s.offense))}.`, 'down',
       { down: s.down, line: s.line, offense: s.offense });
 
+    if (this.rules.fieldGoals && await this.maybeKick()) return;
     s.phase = 'formation';
     await this.formation(s.offense, 'offense');
     await this.formation(this.defense, 'defense');
@@ -248,6 +264,7 @@ export class Game {
     await this.callPlays();
     s.phase = 'motion';
     for (const [side, cost] of [[s.offense, 1], [this.defense, 1], [s.offense, 2], [this.defense, 2]]) await this.motion(side, cost);
+    if (s.inferno) for (const side of [s.offense, this.defense]) await this.lightUp(side);
     if (!s.overtime) {
       await this.timeouts();
       s.play.cube = s.pile.shift();
@@ -265,6 +282,84 @@ export class Game {
     s.active = null;
     s.faceUp = [null, null];
     await this.endPlay(end);
+  }
+
+  // ---------- field goals (PRO / ALL PRO, p.20-21) ----------
+  // from the hiker's square to the square just off the board between the posts, measured normally, +1 for the posts
+  fgDistance() {
+    const s = this.s;
+    const dir = this.dir(s.offense);
+    const { off } = losRows(s.line, dir);
+    return distance([s.spot, off], [6, dir < 0 ? -1 : ROWS]) + 1;
+  }
+  inOppTerritory() {
+    const s = this.s, dir = this.dir(s.offense);
+    const own = dir < 0 ? (ROWS - 2 - s.line) * 5 : (s.line - 2) * 5;
+    return own > 50;
+  }
+  // instead of running a play: 3d6 >= the distance is good for 3; a miss gives the ball over where the kick was
+  async maybeKick() {
+    const s = this.s;
+    if (!this.inOppTerritory()) return false;
+    const dist = this.fgDistance();
+    const kick = await this.askValid(s.offense, { type: 'kick', dist, down: s.down }, (v) => (typeof v === 'boolean' ? null : 'yes or no'), () => false);
+    if (!kick) return false;
+    const dir = this.dir(s.offense);
+    const { off } = losRows(s.line, dir);
+    if (!s.overtime) s.pile.shift(); // one time token, like a pass play
+    const dice = [this.d6(), this.d6(), this.d6()];
+    const total = dice[0] + dice[1] + dice[2];
+    const good = total >= dist;
+    this.log(`Field goal try, ${dist} to beat: ${dice.join(' + ')} = ${total}. ${good ? "It's GOOD!" : 'No good!'}`, 'kick',
+      { side: s.offense, dice, total, dist, good, from: [s.spot, off], dir, pid: occupant(s, s.spot, off)?.pid ?? null });
+    if (good) {
+      s.score[s.offense] += 3;
+      this.log(`FIELD GOAL ${this.team(s.offense).name}! (+3)`, 'fieldgoal', { side: s.offense, score: [...s.score] });
+      if (s.drive?.side === s.offense) this.endDrive('FIELD GOAL');
+      if (s.overtime) throw new GameOver();
+      this.startDrive(1 - s.offense);
+    } else {
+      s.offense = 1 - s.offense;
+      s.down = 1;
+      this.log(`Wide! ${this.team(s.offense).name} take over where it was kicked from.`, 'turnover', { side: s.offense, missedKick: true });
+      this.changeDrive('MISSED FG');
+    }
+    return true;
+  }
+
+  // ---------- INFERNO: fire tokens ----------
+  earn(side, n, why) {
+    const s = this.s;
+    if (!s.inferno || side == null || n <= 0) return;
+    const got = Math.min(n, 3 - s.fire[side]);
+    if (got <= 0) return;
+    s.fire[side] += got;
+    this.log(`${this.team(side).name} earn ${got} fire token${got > 1 ? 's' : ''}: ${why}.`, 'fire', { side, n: got, why, tokens: s.fire[side] });
+  }
+  spend(side, n) { if (n > 0) this.s.fire[side] = Math.max(0, this.s.fire[side] - n); }
+  fireOut(p, why) {
+    if (!p?.onFire) return;
+    p.onFire = false;
+    this.log(`${this.name(p)} cools off (${why}).`, 'fireout', { pid: p.pid, why });
+  }
+  setOnFire(p, skill = null) {
+    p.onFire = true;
+    p.fireSkill = skill ?? (p.abilities?.some((a) => a.includes('QB READ while ON FIRE')) ? 'QB READ' : null);
+    this.log(`${this.name(p)} is ON FIRE!`, 'onfire', { pid: p.pid, side: p.side, skill: p.fireSkill });
+  }
+  // before the snap: 3 tokens set a player ON FIRE (+3 on every skill check), at most 3 on fire per team
+  async lightUp(side) {
+    const s = this.s;
+    if (s.fire[side] < 3) return;
+    const roster = this.roster(side);
+    if (roster.filter((p) => p.onFire).length >= 3) return;
+    const options = roster.filter((p) => !p.onFire).map((p) => p.pid);
+    const anySkill = (pid) => !!s.players[pid]?.abilities?.some((a) => a.startsWith('INFERNO: any single skill'));
+    const check = (v) => (v == null || (v && options.includes(v.pid) && (!anySkill(v.pid) || SKILLS.includes(v.skill))) ? null : 'pick a player to set on fire');
+    const v = await this.askValid(side, { type: 'onFire', options, tokens: s.fire[side], anySkill: options.filter(anySkill) }, check, () => null);
+    if (!v) return;
+    this.spend(side, 3);
+    this.setOnFire(s.players[v.pid], anySkill(v.pid) ? v.skill : null);
   }
 
   // ---------- setup ----------
@@ -362,6 +457,7 @@ export class Game {
       if (p) receiver = p;
     }
     s.ball = { at: 'held', pid: receiver.pid };
+    s.play.snappedTo = receiver.pid;
     this.log(`Hut-hut! ${this.name(hiker)} snaps it to ${this.name(receiver)}.`, 'snap', { from: hiker.pid, to: receiver.pid });
   }
 
@@ -372,6 +468,7 @@ export class Game {
       while (s.cards[0].stack.length || s.cards[1].stack.length) {
         await this.round(s.cards[0].stack.shift(), s.cards[1].stack.shift());
       }
+      s.play.pocketReady = true; // the five called cards are done (POCKET PASSER)
       // the called play is run: now one card at a time from the bench
       for (;;) {
         const b0 = s.cards[0].bench.length, b1 = s.cards[1].bench.length;
@@ -431,11 +528,17 @@ export class Game {
     this.log(`Cards up: #${up[0]} and #${up[1]}.`, 'flip', { cards: [...up] });
     // read-and-react: the defense may swap its card for one off the bench; then (only then) the offense may too
     for (const side of [this.defense, s.offense]) {
-      if (side === s.offense && !rr[this.defense]) break;
+      let only = null;
+      if (side === s.offense && !rr[this.defense]) {
+        // QB READ: the offense may still read and react, with a QB READ player who has the ball
+        const c = carrier(s);
+        if (!c || c.side !== side || !this.has(c, 'QB READ') || !s.cards[side].bench.includes(c.num)) break;
+        only = [c.num];
+      }
       const bench = s.cards[side].bench;
       if (!bench.length) continue;
-      const v = await this.askValid(side, { type: 'readReact', card: up[side], other: up[1 - side], bench: [...bench] },
-        (x) => (x == null || bench.includes(x) ? null : 'pick a bench card or pass'), () => null);
+      const v = await this.askValid(side, { type: 'readReact', card: up[side], other: up[1 - side], bench: [...bench], only },
+        (x) => (x == null || (bench.includes(x) && (!only || only.includes(x))) ? null : 'pick a bench card or pass'), () => null);
       if (v == null) continue;
       bench.splice(bench.indexOf(v), 1);
       s.cards[side].discard.push(up[side]);
@@ -466,62 +569,116 @@ export class Game {
 
   // ---------- activations ----------
   // modes: card (from a play card), rr (read-and-react), full (a free activation from a 10+), half (a 7-9 for the
-  // other side), adjust (one half of an adjustment)
-  async runActivation(pid, mode) {
+  // other side), adjust (one half of an adjustment), dogpile (INFERNO: a dirty hit after a tackle)
+  async runActivation(pid, mode, { party = false } = {}) {
     const s = this.s;
     const p = s.players[pid];
     if (++s.play.activations > MAX_ACTIVATIONS) { this.stats.stalls++; throw new PlayEnd('stall'); }
     this.stats.activations++;
-    const ctx = { pid, mode, budget: mode === 'half' || mode === 'adjust' ? halfOf(p.skill) : p.skill, spent: 0, parity: 0, acted: false, done: false, bonuses: [], fresh: true, left: false, pressured: false };
+    // EN FUEGO lasts until the coach acts with another player
+    for (const m of this.roster(p.side)) if (m.fuego && m.pid !== pid) m.fuego = null;
+    const ctx = { pid, mode, budget: mode === 'half' || mode === 'adjust' ? halfOf(p.skill) : p.skill, spent: 0, parity: 0, acted: false, done: false, fresh: true, left: false,
+      pressured: false, used: {}, bought: 0, hurdle: false, last: null, party, couldScore: false };
     const prev = s.active;
     s.active = { pid, mode };
     this.log(`${this.name(p)} ${mode === 'half' ? 'gets a half move' : mode === 'full' ? 'gets a free activation' : mode === 'adjust' ? 'adjusts' : 'is up'}.`, 'activate', { pid, mode });
     try {
       while (!ctx.done) {
         const req = this.actRequest(p, ctx);
-        if (!req.moves.length && !req.handoffs.length && !req.blocks.length && !req.tackles.length && !req.passes.length && !req.canStand && !req.canAdjust) break;
+        const options = req.moves.length + req.handoffs.length + req.blocks.length + req.tackles.length + req.passes.length + req.jukes.length + req.shakes.length + req.dirty.length;
+        if (!options && !req.canStand && !req.canAdjust && !req.fire?.canBuy) break;
+        if (carrier(s)?.pid === p.pid && req.moves.some((m) => m.end === 'td')) ctx.couldScore = true;
         const a = await this.askValid(p.side, req, (v) => this.checkAct(req, v), () => ({ kind: 'end' }));
         await this.doAct(p, ctx, a);
-        ctx.fresh = false;
+        if (!['buy', 'hurdle', 'fuego'].includes(a.kind)) ctx.fresh = false;
       }
     } finally {
       s.active = prev;
     }
-    for (const b of ctx.bonuses) await this.bonus(b);
+    // INFERNO early celebration: he could have scored this activation and chose not to
+    if (ctx.couldScore && carrier(s)?.pid === p.pid) this.earn(p.side, 1, 'early celebration');
+    // only the last skill check of an activation hands out a free activation (p.15)
+    if (mode !== 'dogpile' && ctx.last) {
+      const { actor, res, party: bp } = ctx.last;
+      if (res.result === 'total') await this.bonus({ side: actor.side, kind: 'full', exclude: actor.pid, party: bp });
+      else if (res.result === 'partial') await this.bonus({ side: 1 - actor.side, kind: 'half' });
+      else await this.bonus({ side: 1 - actor.side, kind: 'full' });
+    }
+    return ctx;
   }
 
+  // a normal action: a full activation may move up to half (bought movement doesn't count) and then act
   canAction(p, ctx) {
     if (ctx.acted || p.down) return false;
-    if (ctx.mode === 'card' || ctx.mode === 'full') return ctx.spent <= halfOf(p.skill);
+    const spent = Math.max(0, ctx.spent - ctx.bought);
+    if (ctx.mode === 'card' || ctx.mode === 'full' || ctx.mode === 'dogpile') return spent <= halfOf(p.skill);
     if (ctx.mode === 'rr') return ctx.spent === 0;
+    return false;
+  }
+  // a skill used "as part of a move action" (once per activation, doesn't end the activation): BLITZ / RUN BLOCK
+  // (block), DIVING TACKLE (tackle), JUKE (with the ball), SHAKE (offense, without it)
+  moveSkill(p, ctx, kind) {
+    const s = this.s;
+    if (p.down || ctx.used[kind] || !['card', 'full', 'rr', 'half'].includes(ctx.mode)) return false;
+    const holder = carrier(s);
+    const off = p.side === s.offense;
+    if (kind === 'block') return (!off && this.has(p, 'BLITZ')) || (off && this.has(p, 'RUN BLOCK'));
+    if (kind === 'tackle') return this.has(p, 'DIVING TACKLE');
+    if (kind === 'juke') return this.has(p, 'JUKE') && holder?.pid === p.pid;
+    if (kind === 'shake') return off && this.has(p, 'SHAKE') && holder?.pid !== p.pid;
     return false;
   }
 
   actRequest(p, ctx) {
     const s = this.s;
     const left = ctx.budget - ctx.spent;
-    const req = { type: 'act', pid: p.pid, mode: ctx.mode, left, spent: ctx.spent, moves: [], handoffs: [], blocks: [], tackles: [], passes: [], canStand: false, canAdjust: false };
-    req.canAdjust = ctx.fresh && (ctx.mode === 'card' || ctx.mode === 'rr') && !s.play.adjustUsed[p.side] && carrier(s)?.pid !== p.pid;
-    if (p.down) { req.canStand = left >= 3; return req; }
-    req.moves = [...moveReach(s, p, left, ctx.parity, { allowOut: true }).values()].map((m) => ({ to: m.to, cost: m.cost, end: m.end }));
-    const holder = carrier(s);
-    for (const m of this.roster(p.side)) {
-      if (m.pid === p.pid || m.down || !adjacent(sqOf(m), sqOf(p))) continue;
-      if (holder && (holder.pid === p.pid || holder.pid === m.pid)) req.handoffs.push(m.pid);
+    const dog = ctx.mode === 'dogpile';
+    const req = { type: 'act', pid: p.pid, mode: ctx.mode, left, spent: ctx.spent, moves: [], handoffs: [], blocks: [], tackles: [], passes: [], shoves: [], jukes: [], shakes: [],
+      dirty: [], asMove: [], canStand: false, canAdjust: false, fire: null };
+    req.canAdjust = !dog && ctx.fresh && (ctx.mode === 'card' || ctx.mode === 'rr') && !s.play.adjustUsed[p.side] && carrier(s)?.pid !== p.pid;
+    if (s.inferno) {
+      const t = s.fire[p.side];
+      req.fire = { tokens: t, canBuy: t > 0 && !p.down, canHurdle: t > 0 && !ctx.hurdle && !p.down, canFuego: t >= 3 && ctx.fresh && !p.fuego && !dog, bought: ctx.bought };
     }
-    if (this.canAction(p, ctx)) {
-      for (const o of this.roster(1 - p.side)) {
-        if (o.down || !adjacent(sqOf(o), sqOf(p))) continue;
-        req.blocks.push(o.pid);
-        if (holder?.pid === o.pid) req.tackles.push(o.pid);
-      }
-      if (holder?.pid === p.pid) {
-        const r = p.skill * 2;
-        for (let c = p.col - r; c <= p.col + r; c++) for (let rw = p.row - r; rw <= p.row + r; rw++) {
-          if (c < 0 || c > 12 || rw < 0 || rw > 23) continue;
-          const info = passInfo(s, p, [c, rw]);
-          if (info.ok) req.passes.push({ to: [c, rw], target: info.target?.pid ?? null, dist: info.dist, bonus: info.bonus, penalty: Math.min(3, info.penalty) });
-        }
+    if (p.down) { req.canStand = left >= 3; return req; }
+    req.moves = [...moveReach(s, p, left, ctx.parity, { allowOut: !dog, hurdle: ctx.hurdle }).values()].map((m) => ({ to: m.to, cost: m.cost, end: m.end }));
+    const act = this.canAction(p, ctx);
+    if (dog) {
+      req.moves = req.moves.filter((m) => !m.end);
+      if (act) for (const o of this.roster(1 - p.side)) if (o.down && o.col != null && adjacent(sqOf(o), sqOf(p))) req.dirty.push(o.pid);
+      return req;
+    }
+    const holder = carrier(s);
+    // hand-offs: next to each other, or up to 3 away when the ball carrier can PITCH (forward only until a forward pass)
+    for (const m of this.roster(p.side)) {
+      if (m.pid === p.pid || m.down || m.col == null || !holder || (holder.pid !== p.pid && holder.pid !== m.pid)) continue;
+      if (adjacent(sqOf(m), sqOf(p))) { req.handoffs.push(m.pid); continue; }
+      const giver = holder.pid === p.pid ? p : m, taker = giver === p ? m : p;
+      if (this.has(giver, 'PITCH') && distance(sqOf(p), sqOf(m)) <= 3 && !(s.play.forwardDone && isForward(sqOf(giver), sqOf(taker), this.dir(p.side)))) req.handoffs.push(m.pid);
+    }
+    const skillBlock = this.moveSkill(p, ctx, 'block'), skillTackle = this.moveSkill(p, ctx, 'tackle');
+    if (skillBlock) req.asMove.push('block');
+    if (skillTackle) req.asMove.push('tackle');
+    const canBlock = skillBlock || (act && !ctx.used.block);
+    const canTackle = skillTackle || (act && !ctx.used.tackle);
+    const juke = this.moveSkill(p, ctx, 'juke'), shake = this.moveSkill(p, ctx, 'shake');
+    for (const o of this.roster(1 - p.side)) {
+      if (o.col == null || !adjacent(sqOf(o), sqOf(p))) continue;
+      if (o.down) { if (s.inferno && act) req.dirty.push(o.pid); continue; }
+      if (canBlock) { req.blocks.push(o.pid); if (this.has(p, 'SHOVE')) req.shoves.push(o.pid); }
+      if (canTackle && holder?.pid === o.pid) req.tackles.push(o.pid);
+      if (juke) req.jukes.push(o.pid);
+      if (shake) req.shakes.push(o.pid);
+    }
+    if (act && holder?.pid === p.pid) {
+      // INFERNO FIRE BOMB (3 tokens): 3x range instead of 2x
+      const bomb = s.inferno && s.fire[p.side] >= 3;
+      const r = p.skill * (bomb ? 3 : 2);
+      for (let c = p.col - r; c <= p.col + r; c++) for (let rw = p.row - r; rw <= p.row + r; rw++) {
+        if (c < 0 || c > 12 || rw < 0 || rw > 23) continue;
+        let info = passInfo(s, p, [c, rw]), isBomb = false;
+        if (!info.ok && bomb && info.reasons.length === 1 && info.reasons[0] === 'out of range') { info = passInfo(s, p, [c, rw], { bomb: true }); isBomb = true; }
+        if (info.ok) req.passes.push({ to: [c, rw], target: info.target?.pid ?? null, dist: info.dist, bonus: info.bonus, penalty: Math.min(3, info.penalty), why: info.why, ...(isBomb ? { bomb: true } : {}) });
       }
     }
     return req;
@@ -536,8 +693,15 @@ export class Game {
       case 'move': return req.moves.some((m) => same(m.to, v.to)) ? null : 'cannot reach that square';
       case 'handoff': return req.handoffs.includes(v.pid) ? null : 'no hand-off with that player';
       case 'block': return req.blocks.includes(v.pid) ? null : 'cannot block that player';
+      case 'shove': return req.shoves.includes(v.pid) ? null : 'cannot shove that player';
+      case 'juke': return req.jukes.includes(v.pid) ? null : 'cannot juke that player';
+      case 'shake': return req.shakes.includes(v.pid) ? null : 'cannot shake that player';
+      case 'dirty': return req.dirty.includes(v.pid) ? null : 'no dirty hit on that player';
       case 'tackle': return req.tackles.includes(v.pid) ? null : 'cannot tackle that player';
-      case 'pass': return req.passes.some((x) => same(x.to, v.to)) ? null : 'cannot pass there';
+      case 'pass': return Array.isArray(v.to) && req.passes.some((x) => same(x.to, v.to)) ? null : 'cannot pass there';
+      case 'buy': return req.fire?.canBuy && Number.isInteger(v.n) && v.n >= 1 && v.n <= req.fire.tokens ? null : 'not enough fire tokens';
+      case 'hurdle': return req.fire?.canHurdle ? null : 'no hurdle now';
+      case 'fuego': return req.fire?.canFuego && SKILLS.includes(v.skill) ? null : 'no EN FUEGO now';
       default: return 'unknown action';
     }
   }
@@ -552,45 +716,104 @@ export class Game {
         return;
       case 'adjust': ctx.done = true; await this.adjustment(p); return;
       case 'move': {
-        const m = moveReach(s, p, ctx.budget - ctx.spent, ctx.parity, { allowOut: true }).get(key(...a.to));
+        const m = moveReach(s, p, ctx.budget - ctx.spent, ctx.parity, { allowOut: ctx.mode !== 'dogpile', hurdle: ctx.hurdle }).get(key(...a.to));
         ctx.spent += m.cost; ctx.parity = m.parity;
         await this.walk(p, m.path, ctx);
         if (m.end === 'ball') await this.grab(p, ctx);
         return;
       }
       case 'handoff': await this.handoff(p, s.players[a.pid], ctx); return;
-      case 'block': ctx.acted = true; ctx.done = true; await this.block(p, s.players[a.pid], ctx); return;
-      case 'tackle': ctx.acted = true; ctx.done = true; await this.tackle(p, s.players[a.pid], ctx); return;
-      case 'pass': ctx.acted = true; ctx.done = true; await this.pass(p, a.to, ctx); return;
+      case 'block': case 'shove': case 'juke': case 'shake': case 'tackle': {
+        const group = a.kind === 'shove' ? 'block' : a.kind;
+        const asMove = this.moveSkill(p, ctx, group); // part of a move action: he can keep going afterwards
+        ctx.used[group] = true;
+        if (!asMove) { ctx.acted = true; ctx.done = true; }
+        if (a.kind === 'tackle') await this.tackle(p, s.players[a.pid], ctx, asMove);
+        else await this.block(p, s.players[a.pid], ctx, a.kind);
+        if (p.down) ctx.done = true;
+        return;
+      }
+      case 'dirty': ctx.acted = true; ctx.done = true; await this.dirtyHit(p, s.players[a.pid], ctx); return;
+      case 'pass': {
+        ctx.acted = true; ctx.done = true;
+        await this.pass(p, a.to, ctx, !passInfo(s, p, a.to).ok);
+        return;
+      }
+      case 'buy':
+        this.spend(p.side, a.n); ctx.budget += a.n; ctx.bought += a.n;
+        this.log(`${this.name(p)} burns ${a.n} fire token${a.n > 1 ? 's' : ''} for +${a.n} movement.`, 'firebuy', { pid: p.pid, n: a.n });
+        return;
+      case 'hurdle':
+        this.spend(p.side, 1); ctx.hurdle = true;
+        this.log(`${this.name(p)} can hurdle fallen players this activation.`, 'firebuy', { pid: p.pid, hurdle: true });
+        return;
+      case 'fuego':
+        this.spend(p.side, 3); p.fuego = a.skill;
+        this.log(`EN FUEGO! ${this.name(p)} gets ${a.skill}.`, 'fuego', { pid: p.pid, skill: a.skill });
+        return;
     }
   }
 
   // step along a path square by square: touchdowns, stepping out, crossing the line, defensive pressure
   async walk(p, path, ctx) {
-    const from = sqOf(p);
-    for (const q of path) {
+    const s = this.s;
+    const start = sqOf(p);
+    let from = start, seg = 0;
+    if (p.pid === s.play.snappedTo) s.play.pocketMoved = true; // POCKET PASSER: he has moved
+    for (let i = 0; i < path.length; i++) {
+      const q = path[i];
       const prev = sqOf(p);
       if (q[0] < 0 || q[0] > 12 || q[1] < 0 || q[1] > 23) {
-        this.log(`${this.name(p)} steps out of bounds.`, 'move', { pid: p.pid, from, to: prev, path });
+        this.log(`${this.name(p)} steps out of bounds.`, 'move', { pid: p.pid, from, to: prev, path: path.slice(seg) });
+        this.fireOut(p, 'ran out of bounds');
         this.endWithBall(p, 'out');
       }
       p.col = q[0]; p.row = q[1];
+      // OPTION: a defender closing on the ball carrier halts while the offense decides whether to pitch
+      const opt = this.optionCarrier(p, prev, ctx);
+      if (opt) {
+        this.log(`${this.name(p)} moves.`, 'move', { pid: p.pid, from, to: sqOf(p), path: path.slice(seg, i + 1) });
+        seg = i + 1; from = sqOf(p);
+        await this.option(opt);
+      }
       try {
         this.pressure(p, prev, ctx);
       } catch (e) {
         // a sack mid-run ends the play here: log the steps taken so far (the board and replays need them)
-        const done = path.slice(0, path.indexOf(q) + 1);
-        this.log(`${this.name(p)} moves.`, 'move', { pid: p.pid, from, to: sqOf(p), path: done });
+        if (seg <= i) this.log(`${this.name(p)} moves.`, 'move', { pid: p.pid, from, to: sqOf(p), path: path.slice(seg, i + 1) });
         throw e;
       }
     }
-    if (this.s.ball.at === 'held' && this.s.ball.pid === p.pid) {
-      if (!this.s.play.carried?.includes(p.pid)) { this.stat(p.pid, 'carries'); (this.s.play.carried ??= []).push(p.pid); }
-      this.stat(p.pid, 'rushYds', (p.row - from[1]) * this.dir(p.side) * 5);
+    if (s.ball.at === 'held' && s.ball.pid === p.pid) {
+      if (!s.play.carried?.includes(p.pid)) { this.stat(p.pid, 'carries'); (s.play.carried ??= []).push(p.pid); }
+      this.stat(p.pid, 'rushYds', (p.row - start[1]) * this.dir(p.side) * 5);
     }
-    this.log(`${this.name(p)} moves.`, 'move', { pid: p.pid, from, to: sqOf(p), path });
+    if (seg < path.length) this.log(`${this.name(p)} moves.`, 'move', { pid: p.pid, from, to: sqOf(p), path: path.slice(seg) });
     this.ballMoved();
     this.checkTouchdown(p);
+  }
+
+  // the OPTION ball carrier this defender's step has just closed on (once per activation), or null
+  optionCarrier(p, prev, ctx) {
+    const c = carrier(this.s);
+    if (!ctx || ctx.optioned || !c || c.down || c.side === p.side || !this.has(c, 'OPTION') || !this.has(c, 'PITCH')) return null;
+    if (!adjacent(sqOf(p), sqOf(c)) || adjacent(prev, sqOf(c))) return null;
+    ctx.optioned = true;
+    return c;
+  }
+  async option(c) {
+    const s = this.s;
+    const targets = this.roster(c.side).filter((m) => m.pid !== c.pid && !m.down && m.col != null && distance(sqOf(m), sqOf(c)) <= 3
+      && !(s.play.forwardDone && isForward(sqOf(c), sqOf(m), this.dir(c.side)))).map((m) => m.pid);
+    if (!targets.length) return;
+    const v = await this.askValid(c.side, { type: 'option', pid: c.pid, targets }, (x) => (x == null || targets.includes(x) ? null : 'pick a teammate or keep it'), () => null);
+    if (v == null) return;
+    if (!this.sportCheck(c, `${this.name(c)} runs the option`)) {
+      this.fireOut(c, 'fumbled');
+      await this.scatter(sqOf(c), false, 'option');
+      return;
+    }
+    await this.handoff(c, s.players[v], { done: false });
   }
 
   // a defender moving into the ball carrier's threat zone behind the line: two random bench cards, or a sack
@@ -606,6 +829,8 @@ export class Game {
     const bench = s.cards[c.side].bench;
     if (bench.length < 2) {
       this.stat(p.pid, 'sacks');
+      this.earn(p.side, 1, 'a sack');
+      this.fireOut(c, 'sacked');
       this.log(`Pressure! ${this.name(c)} has nowhere to go: SACKED.`, 'sack', { pid: c.pid, by: p.pid });
       this.endWithBall(c, 'tackle');
     }
@@ -631,8 +856,8 @@ export class Game {
 
   async bonus(b) {
     const options = this.roster(b.side).filter((p) => p.pid !== b.exclude).map((p) => p.pid);
-    const v = await this.askValid(b.side, { type: 'bonus', kind: b.kind, options }, (x) => (x == null || options.includes(x) ? null : 'pick one of your players or pass'), () => null);
-    if (v != null) await this.runActivation(v, b.kind);
+    const v = await this.askValid(b.side, { type: 'bonus', kind: b.kind, options, party: !!b.party }, (x) => (x == null || options.includes(x) ? null : 'pick one of your players or pass'), () => null);
+    if (v != null) await this.runActivation(v, b.kind, { party: b.party });
   }
 
   async adjustment(p) {
@@ -648,32 +873,82 @@ export class Game {
   }
 
   // ---------- checks ----------
-  async skillCheck(actor, { bonus, penalty, label, data = {} }) {
+  // A skill check. target: who it's aimed at (DODGE); receiver: a pass target (CATCH); playmaker: 'passive' adds the
+  // SPIN MOVE / STIFF ARM die (a match cancels that skill die). In INFERNO the boost prompt also takes fire tokens,
+  // showboating and BRING THE HEAT, then the other coach may spend tokens against it.
+  async skillCheck(actor, { bonus, penalty, label, data = {}, target = null, action = null, receiver = null, playmaker = null }) {
     const s = this.s;
     this.stats.checks++;
-    const bench = s.cards[actor.side].bench;
-    const cards = bench.filter((n) => n === actor.num).length;
-    const room = Math.max(0, 3 - bonus);
-    let boost = 0;
-    if (cards && room) {
-      const max = Math.min(cards, room);
-      boost = await this.askValid(actor.side, { type: 'boost', pid: actor.pid, max, bonus, penalty, label },
-        (v) => (Number.isInteger(v) && v >= 0 && v <= max ? null : `0 to ${max}`), () => 0);
-      for (let i = 0; i < boost; i++) { bench.splice(bench.indexOf(actor.num), 1); s.cards[actor.side].discard.push(actor.num); }
+    if (target && ['block', 'shove', 'tackle'].includes(action) && this.has(target, 'DODGE')) {
+      const tb = s.cards[target.side].bench;
+      const max = Math.min(tb.filter((n) => n === target.num).length, Math.max(0, 3 - penalty));
+      if (max) {
+        const n = await this.askValid(target.side, { type: 'dodge', pid: target.pid, by: actor.pid, max, label }, (v) => (Number.isInteger(v) && v >= 0 && v <= max ? null : `0 to ${max}`), () => 0);
+        for (let i = 0; i < n; i++) { tb.splice(tb.indexOf(target.num), 1); s.cards[target.side].discard.push(target.num); }
+        if (n) { penalty += n; this.log(`${this.name(target)} DODGES: -${n}.`, 'dodge', { pid: target.pid, n }); }
+      }
     }
-    const net = netModifier(bonus + boost, penalty);
-    const res = checkResult(this.d6(), this.d6(), net);
+    const bench = s.cards[actor.side].bench;
+    const own = bench.filter((n) => n === actor.num).length;
+    const catchCards = receiver && receiver.num !== actor.num && this.has(receiver, 'CATCH') ? bench.filter((n) => n === receiver.num).length : 0;
+    const room = Math.max(0, 3 - bonus);
+    const max = Math.min(own + catchCards, room);
+    const tokens = s.inferno ? s.fire[actor.side] : 0;
+    const showMax = s.inferno ? Math.max(0, 3 - penalty) : 0;
+    let a = { boost: 0, fire: 0, showboat: 0, heat: false };
+    if (max || tokens || showMax) {
+      const fire = s.inferno ? { tokens, room, showboat: showMax, heat: tokens >= 3 && CONTACT.includes(action) } : null;
+      const req = { type: 'boost', pid: actor.pid, max, bonus, penalty, label, fire, catchFrom: catchCards ? receiver.pid : null };
+      const v = await this.askValid(actor.side, req, (x) => this.checkBoost(req, x), () => 0);
+      a = { ...a, ...(typeof v === 'number' ? { boost: v } : v) };
+      for (let i = 0; i < a.boost; i++) {
+        const n = bench.includes(actor.num) ? actor.num : receiver.num;
+        bench.splice(bench.indexOf(n), 1); s.cards[actor.side].discard.push(n);
+      }
+      this.spend(actor.side, a.fire + (a.heat ? 3 : 0));
+    }
+    let against = 0;
+    const penRoom = Math.max(0, 3 - penalty - a.showboat);
+    if (s.inferno && s.fire[1 - actor.side] && penRoom) {
+      const mx = Math.min(s.fire[1 - actor.side], penRoom);
+      against = await this.askValid(1 - actor.side, { type: 'fireDefend', pid: actor.pid, max: mx, label }, (v) => (Number.isInteger(v) && v >= 0 && v <= mx ? null : `0 to ${mx}`), () => 0);
+      this.spend(1 - actor.side, against);
+    }
+    const net = netModifier(bonus + a.boost + a.fire, penalty + a.showboat + against);
+    const dice = [this.d6(), this.d6()];
+    let pm = null, matches = 0, counted = dice;
+    if (playmaker || a.heat) {
+      pm = this.d6();
+      matches = dice.filter((d) => d === pm).length;
+      if (playmaker === 'passive') counted = dice.map((d) => (d === pm ? 0 : d));
+    }
+    const res = { ...checkResult(counted[0], counted[1], net), dice, crit: dice[0] === dice[1], pm, matches, heat: a.heat, action };
     const words = { total: 'TOTAL SUCCESS', partial: 'success', fail: 'FAILURE' }[res.result];
-    this.log(`${label}: ${res.dice[0]}+${res.dice[1]}${net ? ` ${net > 0 ? '+' : ''}${net}` : ''} = ${res.total}, ${res.crit ? 'CRITICAL ' : ''}${words}.`, 'check',
-      { pid: actor.pid, label, ...res, boost, bonus, penalty, ...data });
+    const pmText = pm ? ` (playmaker die ${pm}${matches ? `: ${matches === 2 ? 'DOUBLE ' : ''}MATCH` : ''})` : '';
+    this.log(`${label}: ${dice[0]}+${dice[1]}${net ? ` ${net > 0 ? '+' : ''}${net}` : ''} = ${res.total}, ${res.crit ? 'CRITICAL ' : ''}${words}.${pmText}`, 'check',
+      { pid: actor.pid, label, ...res, boost: a.boost, fire: a.fire, showboat: a.showboat, against, bonus, penalty, ...data });
+    if (a.showboat && res.success) this.earn(actor.side, a.showboat, 'showboating');
+    if (!res.success) this.fireOut(actor, 'failed a check');
     return res;
   }
+  checkBoost(req, x) {
+    const v = typeof x === 'number' ? { boost: x } : x;
+    if (!v || typeof v !== 'object') return 'how many cards?';
+    const { boost = 0, fire = 0, showboat = 0, heat = false } = v;
+    if (!Number.isInteger(boost) || boost < 0 || boost > req.max) return `0 to ${req.max} cards`;
+    const f = req.fire;
+    if (!f) return fire || showboat || heat ? 'no fire tokens in this mode' : null;
+    if (!Number.isInteger(fire) || fire < 0 || boost + fire > f.room) return 'that goes past +3';
+    if (fire + (heat ? 3 : 0) > f.tokens) return 'not enough fire tokens';
+    if (!Number.isInteger(showboat) || showboat < 0 || showboat > f.showboat) return 'that goes past -3';
+    if (heat && !f.heat) return 'no BRING THE HEAT on this check';
+    return null;
+  }
 
-  // what a check result hands out once the activation is over
+  // what the check means for the activation: a failure ends it; the last check decides the free activation
   afterCheck(ctx, actor, res) {
-    if (res.result === 'total') ctx.bonuses.push({ side: actor.side, kind: 'full', exclude: actor.pid });
-    else if (res.result === 'partial') ctx.bonuses.push({ side: 1 - actor.side, kind: 'half' });
-    else { ctx.bonuses.push({ side: 1 - actor.side, kind: 'full' }); ctx.done = true; }
+    ctx.last = { actor, res, party: res.result === 'total' && (res.action === 'block' || res.action === 'shove') && this.has(actor, 'BLOCK PARTY') };
+    if (!res.success) ctx.done = true;
   }
 
   sportCheck(p, label) {
@@ -684,23 +959,76 @@ export class Game {
   }
 
   // ---------- actions ----------
-  async block(actor, target, ctx) {
+  // a block, a SHOVE, a JUKE or a SHAKE: all resolve like a block (juke / shake: the faster player gets the bonus)
+  async block(actor, target, ctx, kind = 'block') {
     const s = this.s;
-    const m = contactMods(s, actor, target);
-    const res = await this.skillCheck(actor, { bonus: m.bonus, penalty: m.penalty, label: `${this.name(actor)} blocks ${this.name(target)}`, data: { action: 'block', target: target.pid } });
+    const m = contactMods(s, actor, target, kind);
+    const party = ctx.party && (kind === 'block' || kind === 'shove') ? 2 : 0; // BLOCK PARTY
+    const verb = { block: 'blocks', shove: 'shoves', juke: 'jukes', shake: 'shakes' }[kind];
+    const res = await this.skillCheck(actor, { bonus: m.bonus + party, penalty: m.penalty, target, action: kind, label: `${this.name(actor)} ${verb} ${this.name(target)}`,
+      data: { action: kind, target: target.pid, tat: sqOf(target), party: !!party, asMove: !!ctx.used && !ctx.acted } });
     if (res.success) {
-      await this.push(actor.side, actor, target, res.crit);
+      if (kind === 'shove') await this.shove(actor.side, actor, target, res.crit);
+      else await this.push(actor.side, actor, target, res.crit);
+      // BRING THE HEAT: a playmaker match on a success flattens the target; a double match lights the actor up
+      if (res.heat && res.matches) {
+        this.log(`BRING THE HEAT! ${this.name(target)} gets flattened.`, 'heat', { pid: actor.pid, target: target.pid, double: res.matches === 2 });
+        if (!target.down) await this.knockDown(target, actor.side);
+        if (res.matches === 2) {
+          const can = !actor.onFire && this.roster(actor.side).filter((p) => p.onFire).length < 3;
+          const pick = can ? await this.askValid(actor.side, { type: 'heatCrit', pid: actor.pid }, (v) => (v === 'fire' || v === 'tokens' ? null : 'fire or tokens'), () => 'fire') : 'tokens';
+          if (pick === 'fire') this.setOnFire(actor); else this.earn(actor.side, 3, 'BRING THE HEAT');
+        }
+      }
     } else {
       // the target may turn it round on the initiator (p.6). On a critical failure the initiator "may be pushed back AND
       // is knocked down": the push is the target's choice, the knockdown isn't.
-      const reverse = await this.askValid(target.side, { type: 'reverse', pid: target.pid, against: actor.pid, crit: res.crit }, (v) => (typeof v === 'boolean' ? null : 'yes or no'), () => true);
-      if (reverse) await this.push(target.side, target, actor, res.crit);
-      else if (res.crit) {
+      const reverse = await this.askValid(target.side, { type: 'reverse', pid: target.pid, against: actor.pid, crit: res.crit, kind }, (v) => (typeof v === 'boolean' ? null : 'yes or no'), () => true);
+      if (reverse) {
+        if (kind === 'shove') await this.shove(target.side, target, actor, res.crit);
+        else await this.push(target.side, target, actor, res.crit);
+      } else if (res.crit) {
         this.log(`${this.name(actor)} goes down in a heap!`, 'knockdown', { pid: actor.pid });
-        await this.knockDown(actor);
+        await this.knockDown(actor, target.side);
       }
     }
     this.afterCheck(ctx, actor, res);
+  }
+
+  // SHOVE: straight back 2 squares. Stopped short: knocked down where he ends up. Then an optional follow-up of the
+  // same length (it ignores threat).
+  async shove(chooser, by, victim, knock) {
+    const s = this.s;
+    const d = [Math.sign(victim.col - by.col), Math.sign(victim.row - by.row)];
+    const from = sqOf(victim);
+    const occ = occupiedMap(s, victim.pid);
+    const path = [];
+    let at = from;
+    for (let i = 0; i < 2; i++) {
+      const q = [at[0] + d[0], at[1] + d[1]];
+      if (!inBounds(...q) || occ.has(key(...q))) break;
+      path.push(q); at = q;
+    }
+    const short = path.length < 2;
+    victim.col = at[0]; victim.row = at[1];
+    this.log(`${this.name(victim)} is SHOVED back ${path.length}${short || knock ? ' and knocked flat' : ''}!`, 'push', { pid: victim.pid, from, to: at, path, by: by.pid, shove: true });
+    if (path.length) {
+      if (looseAt(s, ...at)) await this.scatter(at, s.ball.at === 'air', 'the ball bounces off him');
+      this.ballMoved();
+      this.checkTouchdown(victim);
+      const steps = path.length === 2 ? [from, path[0]] : [from];
+      const follow = await this.askValid(chooser, { type: 'followUp', pid: by.pid, to: steps.at(-1), steps: steps.length }, (v) => (typeof v === 'boolean' ? null : 'yes or no'), () => true);
+      if (follow) {
+        const prev = sqOf(by);
+        const to = steps.at(-1);
+        by.col = to[0]; by.row = to[1];
+        this.log(`${this.name(by)} follows up.`, 'move', { pid: by.pid, from: prev, to, path: steps, followUp: true });
+        this.pressure(by, prev, { left: false, pressured: false });
+        this.ballMoved();
+        this.checkTouchdown(by);
+      }
+    }
+    if (short || knock) await this.knockDown(victim, by.side);
   }
 
   // `by` pushes `victim` one square away (chooser picks the square), with an optional follow-up into the gap.
@@ -711,7 +1039,7 @@ export class Game {
     const from = sqOf(victim);
     if (!opts.length) {
       this.log(`${this.name(victim)} has nowhere to go and is knocked down!`, 'knockdown', { pid: victim.pid });
-      await this.knockDown(victim);
+      await this.knockDown(victim, by.side);
       return;
     }
     const to = opts.length === 1 ? opts[0] : await this.askValid(chooser, { type: 'push', pid: victim.pid, options: opts }, (v) => (opts.some((q) => same(q, v)) ? null : 'pick a push square'), () => opts[0]);
@@ -729,47 +1057,107 @@ export class Game {
       this.ballMoved();
       this.checkTouchdown(by);
     }
-    if (knock) await this.knockDown(victim);
+    if (knock) await this.knockDown(victim, by.side);
   }
 
-  // knocked down by anything but a tackle: a ball carrier fumbles
-  async knockDown(p) {
+  // knocked down by anything but a tackle: a ball carrier fumbles. bySide: who did it (INFERNO tokens)
+  async knockDown(p, bySide = null) {
     const s = this.s;
     p.down = true;
+    this.fireOut(p, 'knocked down');
+    const foe = bySide != null && bySide !== p.side;
+    if (foe) this.earn(bySide, 1, 'a knockdown');
     if (carrier(s)?.pid === p.pid) {
       this.stat(p.pid, 'fumbles');
       this.log(`${this.name(p)} FUMBLES!`, 'fumble', { pid: p.pid });
+      if (foe) this.earn(bySide, 1, 'forced a fumble');
       await this.scatter(sqOf(p), false, 'fumble');
     }
   }
 
-  async tackle(actor, target, ctx) {
+  // diving = a DIVING TACKLE (part of a move): miss it and he's on the turf
+  async tackle(actor, target, ctx, diving = false) {
     const s = this.s;
-    const m = contactMods(s, actor, target);
-    const res = await this.skillCheck(actor, { bonus: m.bonus, penalty: m.penalty, label: `${this.name(actor)} tackles ${this.name(target)}`, data: { action: 'tackle', target: target.pid } });
+    const m = contactMods(s, actor, target, 'tackle');
+    const spin = this.has(target, 'SPIN MOVE'), stiff = this.has(target, 'STIFF ARM');
+    const res = await this.skillCheck(actor, { bonus: m.bonus, penalty: m.penalty, target, action: 'tackle', playmaker: spin || stiff ? 'passive' : null,
+      label: `${this.name(actor)} ${diving ? 'dives at' : 'tackles'} ${this.name(target)}`, data: { action: 'tackle', target: target.pid, tat: sqOf(target), diving } });
     if (res.success) {
       target.down = true;
+      if (behindLine(target.row, s.play.line, this.dir(target.side))) { this.earn(actor.side, 1, 'a tackle behind the line'); this.fireOut(target, 'tackled behind the line'); }
       if (!res.crit) {
         this.stat(actor.pid, 'tackles');
         this.log(`${this.name(target)} is brought down.`, 'tackle', { pid: target.pid, by: actor.pid, at: sqOf(target) });
+        if (s.inferno && res.result === 'total') await this.dogpile(actor);
         this.endWithBall(target, 'tackle');
       }
       this.log(`BOOM! ${this.name(target)} is hit so hard the ball comes loose!`, 'fumble', { pid: target.pid, by: actor.pid, crit: true });
+      this.earn(actor.side, 1, 'forced a fumble');
+      this.fireOut(target, 'fumbled');
       await this.scatter(sqOf(target), false, 'fumble');
-    } else if (res.crit) {
-      actor.down = true;
-      this.log(`${this.name(actor)} whiffs and hits the turf.`, 'knockdown', { pid: actor.pid });
+    } else {
+      if (res.matches && stiff && !actor.down) {
+        this.log(`STIFF ARM! ${this.name(target)} plants ${this.name(actor)} in the turf.`, 'stiffarm', { pid: target.pid, by: actor.pid });
+        await this.knockDown(actor, target.side);
+      }
+      if (res.matches && spin) {
+        if (res.matches === 2 && !actor.down) {
+          this.log(`${this.name(actor)} grabs nothing but air and goes down.`, 'knockdown', { pid: actor.pid });
+          await this.knockDown(actor, target.side);
+        }
+        const swap = await this.askValid(target.side, { type: 'spin', pid: target.pid, with: actor.pid }, (v) => (typeof v === 'boolean' ? null : 'yes or no'), () => true);
+        if (swap) {
+          const a = sqOf(actor), b = sqOf(target);
+          actor.col = b[0]; actor.row = b[1]; target.col = a[0]; target.row = a[1];
+          this.log(`SPIN MOVE! ${this.name(target)} spins past ${this.name(actor)}.`, 'spin', { pid: target.pid, with: actor.pid, from: b, to: a });
+          this.ballMoved();
+          this.checkTouchdown(target);
+        }
+      }
+      if (!actor.down && (res.crit || diving)) {
+        actor.down = true;
+        this.fireOut(actor, 'hit the turf');
+        this.log(`${this.name(actor)} whiffs and hits the turf.`, 'knockdown', { pid: actor.pid });
+      }
     }
     this.afterCheck(ctx, actor, res);
   }
 
-  async pass(passer, to, ctx) {
+  // INFERNO dirty hit: an action on a downed opponent, +1, worth fire tokens (3 on a critical)
+  async dirtyHit(actor, target, ctx) {
+    const m = contactMods(this.s, actor, target, 'dirty');
+    const res = await this.skillCheck(actor, { bonus: m.bonus, penalty: m.penalty, target, action: 'dirty', label: `${this.name(actor)} puts a dirty hit on ${this.name(target)}`,
+      data: { action: 'dirty', target: target.pid, tat: sqOf(target) } });
+    if (res.success) this.earn(actor.side, res.crit ? 3 : 1, res.crit ? 'a critical dirty hit' : 'a dirty hit');
+    this.afterCheck(ctx, actor, res);
+  }
+  // INFERNO dogpile: a tackle's total success can be spent on a dirty hit even though the play is over, and a dirty hit
+  // that's a total success earns another (p.20)
+  async dogpile(tackler) {
+    let exclude = tackler.pid;
+    for (let n = 0; n < 7; n++) {
+      if (!this.roster(1 - tackler.side).some((o) => o.down && o.col != null)) return;
+      const options = this.roster(tackler.side).filter((p) => p.pid !== exclude && !p.down && p.col != null).map((p) => p.pid);
+      const v = await this.askValid(tackler.side, { type: 'bonus', kind: 'dogpile', options }, (x) => (x == null || options.includes(x) ? null : 'pick a player or pass'), () => null);
+      if (v == null) return;
+      this.log(`DOGPILE! ${this.name(this.s.players[v])} piles on.`, 'dogpile', { pid: v });
+      const ctx = await this.runActivation(v, 'dogpile');
+      if (ctx.last?.res.result !== 'total') return;
+      exclude = v;
+    }
+  }
+
+  async pass(passer, to, ctx, bomb = false) {
     const s = this.s;
-    const info = passInfo(s, passer, to);
+    const info = passInfo(s, passer, to, { bomb });
+    if (bomb) { this.spend(passer.side, 3); this.log(`FIRE BOMB! ${this.name(passer)} lets it fly.`, 'firebomb', { pid: passer.pid, to }); }
+    if (info.why.includes('+2 pocket passer')) s.play.pocketUsed = true;
     s.play.passThrown = true;
+    s.play.lastPasser = passer.pid;
     this.stat(passer.pid, 'att');
     if (info.forward) s.play.forwardDone = true;
-    const res = await this.skillCheck(passer, { bonus: info.bonus, penalty: Math.min(3, info.penalty), label: `${this.name(passer)} throws ${info.dist}`, data: { action: 'pass', from: sqOf(passer), to, target: info.target?.pid ?? null, dist: info.dist } });
+    const res = await this.skillCheck(passer, { bonus: info.bonus, penalty: Math.min(3, info.penalty), action: 'pass', receiver: info.target, label: `${this.name(passer)} throws ${info.dist}`,
+      data: { action: 'pass', from: sqOf(passer), to, target: info.target?.pid ?? null, dist: info.dist, bomb, why: info.why } });
     if (res.success) {
       if (info.target) {
         const yds = (to[1] - passer.row) * this.dir(passer.side) * 5;
@@ -785,23 +1173,40 @@ export class Game {
     } else {
       s.ball = { at: 'air', col: to[0], row: to[1] };
       this.log('Off target!', 'offtarget', { from: passer.pid, to });
-      await this.scatter(to, true, 'pass');
+      // INTERCEPTOR: a defender covering the target gets the ball put on him instead of a scatter (sport check to hold it)
+      const pick = this.roster(1 - passer.side).filter((p) => !p.down && p.col != null && this.has(p, 'INTERCEPTOR')
+        && (adjacent(sqOf(p), to) || (this.has(p, 'ZONE DEFENDER') && distance(sqOf(p), to) <= 3))).sort((a, b) => b.skill - a.skill)[0];
+      if (pick) {
+        this.log(`${this.name(pick)} jumps the route!`, 'intercept', { pid: pick.pid, to: sqOf(pick) });
+        s.ball = { at: 'air', col: pick.col, row: pick.row };
+        if (this.sportCheck(pick, `${this.name(pick)} goes for the interception`)) {
+          this.earn(pick.side, 1, 'an interception');
+          this.fireOut(passer, 'threw an interception');
+          this.gain(pick);
+        } else await this.scatter(sqOf(pick), true, 'tipped');
+      } else await this.scatter(to, true, 'pass');
     }
     this.afterCheck(ctx, passer, res);
   }
 
+  // a hand-off, or a PITCH (up to 3 squares): a forward pitch counts as a forward pass
   async handoff(p, mate, ctx) {
     const s = this.s;
     const giver = carrier(s).pid === p.pid ? p : mate;
     const taker = giver === p ? mate : p;
+    const pitch = !adjacent(sqOf(giver), sqOf(taker));
+    const forward = pitch && isForward(sqOf(giver), sqOf(taker), this.dir(giver.side));
+    if (forward) { s.play.passThrown = true; s.play.forwardDone = true; }
     const pressured = threatCount(s, sqOf(giver), 1 - p.side) || threatCount(s, sqOf(taker), 1 - p.side);
-    if (pressured && !this.sportCheck(giver, `Hand-off ${this.name(giver)} to ${this.name(taker)} under pressure`)) {
+    if (pressured && !this.sportCheck(giver, `${pitch ? 'Pitch' : 'Hand-off'} ${this.name(giver)} to ${this.name(taker)} under pressure`)) {
       ctx.done = true;
-      await this.scatter(sqOf(giver), false, 'botched hand-off');
+      this.fireOut(giver, 'fumbled');
+      if (forward) { s.ball = { at: 'air', col: taker.col, row: taker.row }; await this.scatter(sqOf(taker), true, 'botched pitch'); }
+      else await this.scatter(sqOf(giver), false, pitch ? 'botched pitch' : 'botched hand-off');
       return;
     }
     s.ball = { at: 'held', pid: taker.pid };
-    this.log(`${this.name(giver)} hands off to ${this.name(taker)}.`, 'handoff', { from: giver.pid, to: taker.pid });
+    this.log(`${this.name(giver)} ${pitch ? 'pitches it' : 'hands off'} to ${this.name(taker)}.`, 'handoff', { from: giver.pid, to: taker.pid, pitch });
     this.ballMoved();
     this.checkTouchdown(taker);
   }
@@ -811,6 +1216,7 @@ export class Game {
     const s = this.s;
     const air = s.ball.at === 'air';
     if (this.sportCheck(p, `${this.name(p)} goes for the ${air ? 'ball in the air' : 'loose ball'}`)) {
+      this.earn(p.side, 1, 'grabbed the loose ball');
       this.gain(p);
     } else {
       ctx.done = true;
@@ -861,7 +1267,12 @@ export class Game {
       at = pick.to;
       const occ = occupant(s, ...at);
       if (!occ) { s.ball = { at: air ? 'air' : 'ground', col: at[0], row: at[1] }; this.ballMoved(); return; }
-      if (!occ.down && this.sportCheck(occ, `It comes right to ${this.name(occ)}`)) { this.gain(occ); return; }
+      if (!occ.down && this.sportCheck(occ, `It comes right to ${this.name(occ)}`)) {
+        this.earn(occ.side, 1, 'grabbed the loose ball');
+        if (air && occ.side !== s.offense && s.play.lastPasser) this.fireOut(s.players[s.play.lastPasser], 'threw an interception');
+        this.gain(occ);
+        return;
+      }
       cause = 'deflected';
     }
     // a ball that keeps bouncing off people settles on the nearest open square
@@ -891,6 +1302,7 @@ export class Game {
     }
     if (reason === 'safety') {
       s.score[info.side] += 2;
+      this.earn(info.side, 1, 'a safety');
       this.log(`SAFETY! ${this.team(info.side).name} score 2 and get the ball.`, 'safety', { side: info.side, score: [...s.score] });
       if (s.drive) s.drive.result = 'SAFETY';
       if (s.overtime) throw new GameOver();

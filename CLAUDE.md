@@ -26,8 +26,14 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
   (`src/game/season.js`), odds on hover, explicit action buttons, resume (`tb-resume`) + Undo (replays the answer
   trail minus one), coach Suggest (All-Pro AI on a copied RNG), quick play, Esc pause menu, play log, big roll
   number, dice that steer round players, down cube showing the current down on every side, PWA manifest.
-- **Next is B6:** rule modes (abilities with in-the-moment ability buttons, PRO / field goals, INFERNO); colour-blind
-  shapes still to do.
+- **B6 done:** every rule mode. ALL TECHNO (all 25 skills), PRO / ALL PRO (8-vs-8, field goals 3d6), INFERNO (fire
+  tokens, ON FIRE, EN FUEGO, FIRE BOMB, BRING THE HEAT, showboating, dirty hits, dogpiles). Ability buttons appear only
+  when usable (gold ring + lit chip), skill callouts and effects, cubes lunge into blocks / tackles, flames on ON FIRE
+  players, goal posts + kick shot, Moment Lab + Art Review "Moments" tab for every cinematic. Also the owner's B6b
+  fixes: wide camera while setting up, the touchdown waits for the runner, "Go in motion" becomes the primary button,
+  turn marker (green diamond) over the active player, alternates show their own number on the cube top, helmet
+  de-fringe. 58 tests.
+- **Next:** colour-blind shapes, B7 online.
 
 ## Look (8-bit everywhere)
 - Type: Press Start 2P (`--pixel`) for titles, buttons, chips, labels; Pixelify Sans (`--body`) for running text.
@@ -146,7 +152,12 @@ key prefix differs) and `BUG_PIN`. Without them the live site answers that bug r
 - Teams don't switch ends at half time (side 0 always attacks row 0).
 - Dead ball: if a whole cycle of cards passes with no movement, contact or ball handling, the play is blown dead with
   the carrier down where he stands. This stops endless downs against a coach who keeps passing.
-- Not implemented yet: play clocks (off by default anyway), PRO/ALL PRO/INFERNO, skills, field goals.
+- Skills: a Playmaker-negated die counts as 0. A failed OPTION sport check fumbles (scatter). A failed INTERCEPTOR sport
+  check scatters from him (in the air). ZONE DEFENDER counts as threatening for INTERCEPTOR. Pocket Passer: only the
+  first pass after the 5 called cards, by the player who took the snap and hasn't moved himself.
+- INFERNO: ON FIRE ends on any fumble (rulebook over QRS). Hurdle = 1 token for the rest of that activation. The dogpile's
+  free activation may move (half, then the dirty hit). EN FUEGO ends when that coach activates another player.
+- Field goals: distance in squares from the hiker's square to the square past the posts, +1 (the p.20 example = 12).
 
 ## Art pipeline
 - Every uniform sheet is 8 cube nets. The middle square is the top (number on team colour). The 4 arms are the

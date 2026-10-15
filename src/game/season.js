@@ -19,10 +19,10 @@ function simGame(a, b) {
   return [sa, sb];
 }
 
-export function newSeason({ team, uni, picks, level, weeks }) {
+export function newSeason({ team, uni, picks, level, weeks, mode = 'techno' }) {
   const opps = shuffle(TEAMS.map((t) => t.id).filter((id) => id !== team)).slice(0, weeks);
   const table = Object.fromEntries(TEAMS.map((t) => [t.id, { w: 0, l: 0, t: 0, pf: 0, pa: 0 }]));
-  return store({ team, uni, picks: picks ?? {}, level, weeks, week: 0, schedule: opps.map((opp) => ({ opp, us: null, them: null })), table, phase: 'regular', bracket: null, champion: null, seed: Date.now() });
+  return store({ team, uni, picks: picks ?? {}, level, weeks, mode, week: 0, schedule: opps.map((opp) => ({ opp, us: null, them: null })), table, phase: 'regular', bracket: null, champion: null, seed: Date.now() });
 }
 
 function record(table, a, b, sa, sb) {

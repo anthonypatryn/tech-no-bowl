@@ -14,11 +14,20 @@ const SPEED = 6.5; // squares per second when walking
 
 // ---------- players ----------
 // p: { pid, side, num, col, row, down }. path: the squares of the move that brought him here (if any)
-function Mover({ p, uniform, row, path, positions, ring, onPick, onHover }) {
+// lunge: { id, to:[c,r] } = he throws himself at that square (a block, tackle, juke...): out and back, with a hop
+function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge, active, colors }) {
   const g = useRef();
   const pos = useRef(null);
   const queue = useRef([]);
   const hop = useRef(0);
+  const lg = useRef({ id: null, t: 1, d: new THREE.Vector3() });
+  useEffect(() => {
+    if (!lunge || lunge.id === lg.current.id || settings().calm) return;
+    const [x, , z] = sq(lunge.to[0], lunge.to[1]);
+    const d = new THREE.Vector3(x, 0, z).sub(pos.current ?? new THREE.Vector3(x, 0, z)).setY(0);
+    if (d.lengthSq() > 0) d.normalize();
+    lg.current = { id: lunge.id, t: 0, d };
+  }, [lunge?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const at = `${p.col},${p.row}`;
   useLayoutEffect(() => {
     const goal = new THREE.Vector3(...sq(p.col, p.row));
@@ -38,19 +47,153 @@ function Mover({ p, uniform, row, path, positions, ring, onPick, onHover }) {
       const step = SPEED * dt;
       if (d <= step) { pos.current.copy(next); q.shift(); hop.current = 0; } else { pos.current.lerp(next, step / d); hop.current += dt * SPEED; }
     }
-    g.current.position.set(pos.current.x, q.length ? Math.abs(Math.sin(hop.current * Math.PI)) * 0.12 : 0, pos.current.z);
+    let ox = 0, oz = 0, oy = 0;
+    const L = lg.current;
+    if (L.t < 1) {
+      L.t = Math.min(1, L.t + dt / 0.55);
+      // wind up a touch, burst in hard, settle back
+      const k = L.t < 0.18 ? -0.25 * Math.sin((L.t / 0.18) * Math.PI / 2) : Math.sin(((L.t - 0.18) / 0.82) * Math.PI) * (1 - 0.15 * L.t);
+      ox = L.d.x * k * 0.62; oz = L.d.z * k * 0.62; oy = Math.max(0, k) * 0.22;
+    }
+    g.current.position.set(pos.current.x + ox, (q.length ? Math.abs(Math.sin(hop.current * Math.PI)) * 0.12 : 0) + oy, pos.current.z + oz);
     positions.current[p.pid] = g.current.position;
   });
   return (
     <group ref={g} onPointerOver={onHover ? (e) => { e.stopPropagation(); onHover(p.pid); } : undefined} onPointerOut={onHover ? () => onHover(null) : undefined}>
-      <PlayerCube uniform={uniform} row={row} facing={Math.PI / 2} down={p.down}
+      <PlayerCube uniform={uniform} row={row} facing={Math.PI / 2} down={p.down} label={p.artNum != null && p.artNum !== p.num ? p.num : null} labelColors={colors}
         onClick={onPick ? (e) => { e.stopPropagation(); onPick(p.pid); } : undefined} />
+      {active && <TurnMarker />}
       {ring && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
           <ringGeometry args={[0.5, 0.6, 32]} />
           <meshBasicMaterial color={ring} transparent opacity={0.95} toneMapped={false} />
         </mesh>
       )}
+      {p.onFire && <Flames />}
+    </group>
+  );
+}
+
+// ---------- whose turn: a glowing diamond bobbing over his head (like the Sims' plumbob) ----------
+function TurnMarker() {
+  const ref = useRef();
+  useFrame(() => {
+    if (!ref.current) return;
+    const t = performance.now() / 1000;
+    ref.current.position.y = 1.45 + Math.sin(t * 3) * 0.08;
+    ref.current.rotation.y = t * 1.8;
+  });
+  return (
+    <group ref={ref}>
+      <mesh scale={[0.16, 0.3, 0.16]} raycast={() => null}>
+        <octahedronGeometry args={[1, 0]} />
+        <meshStandardMaterial color="#39ff6a" emissive="#1fd14c" emissiveIntensity={1.4} roughness={0.25} flatShading toneMapped={false} />
+      </mesh>
+      <pointLight color="#39ff6a" intensity={1.6} distance={2.2} decay={2} />
+    </group>
+  );
+}
+
+// ---------- ON FIRE: 8-bit flames licking up off the cube ----------
+const FIRE = ['#ff2a00', '#ff6a00', '#ffb000', '#ffe14a'];
+export function Flames({ n = 22, size = 1, height = 1.25 }) {
+  const ref = useRef();
+  const tmp = useMemo(() => new THREE.Object3D(), []);
+  const col = useMemo(() => new THREE.Color(), []);
+  const parts = useMemo(() => Array.from({ length: n }, (_, i) => ({ a: Math.random() * Math.PI * 2, r: 0.2 + Math.random() * 0.25, t: i / n, sp: 0.7 + Math.random() * 0.6, s: 0.08 + Math.random() * 0.07 })), [n]);
+  useLayoutEffect(() => {
+    parts.forEach((_, i) => ref.current?.setColorAt(i, col.set(FIRE[i % FIRE.length])));
+    if (ref.current?.instanceColor) ref.current.instanceColor.needsUpdate = true;
+  }, [parts, col]);
+  const light = useRef();
+  useFrame((_, dt) => {
+    if (!ref.current) return;
+    parts.forEach((q, i) => {
+      q.t = (q.t + dt * q.sp) % 1;
+      const k = q.t;
+      tmp.position.set(Math.cos(q.a + k * 2) * q.r * (1 - k * 0.6) * size, (0.15 + k * height) * size, Math.sin(q.a + k * 2) * q.r * (1 - k * 0.6) * size);
+      tmp.scale.setScalar(q.s * (1 - k) * size * 1.6);
+      tmp.rotation.set(0, q.a, 0);
+      tmp.updateMatrix();
+      ref.current.setMatrixAt(i, tmp.matrix);
+    });
+    ref.current.instanceMatrix.needsUpdate = true;
+    if (light.current) light.current.intensity = 2.2 + Math.sin(performance.now() / 70) * 0.6;
+  });
+  return (
+    <group>
+      <instancedMesh ref={ref} args={[null, null, n]} raycast={() => null}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshBasicMaterial toneMapped={false} transparent opacity={0.92} />
+      </instancedMesh>
+      <pointLight ref={light} color="#ff7a1a" intensity={2.4} distance={2.6 * size} decay={2} position={[0, 0.9 * size, 0]} />
+    </group>
+  );
+}
+
+// ---------- a spin / juke / interception: a ring of streaks whipping round ----------
+function Swirl({ at, color = '#ffffff' }) {
+  const ref = useRef();
+  const t = useRef(0);
+  useFrame((_, dt) => {
+    if (!ref.current) return;
+    t.current += dt;
+    ref.current.rotation.y += dt * 9;
+    const k = Math.min(1, t.current / 1.2);
+    ref.current.scale.setScalar(0.6 + k * 0.9);
+    ref.current.children.forEach((m) => { m.material.opacity = Math.max(0, 0.9 - k); });
+  });
+  return (
+    <group position={at}>
+      <group ref={ref}>
+        {Array.from({ length: 10 }, (_, i) => {
+          const a = (i / 10) * Math.PI * 2;
+          return (
+            <mesh key={i} position={[Math.cos(a) * 0.75, 0.25 + (i % 3) * 0.22, Math.sin(a) * 0.75]} rotation={[0, -a, 0]} raycast={() => null}>
+              <boxGeometry args={[0.05, 0.05, 0.45]} />
+              <meshBasicMaterial color={color} transparent opacity={0.9} toneMapped={false} />
+            </mesh>
+          );
+        })}
+      </group>
+    </group>
+  );
+}
+
+// ---------- goal posts (PRO / ALL PRO): one set past each end line ----------
+function GoalPosts() {
+  const y = '#f2d21b';
+  return [-1, 1].map((d) => (
+    <group key={d} position={[0, 0, d * (ROWS / 2 + 0.35)]}>
+      <mesh position={[0, 0.55, 0]}><cylinderGeometry args={[0.06, 0.06, 1.1, 10]} /><meshStandardMaterial color={y} /></mesh>
+      <mesh position={[0, 1.1, 0]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.05, 0.05, 1.9, 10]} /><meshStandardMaterial color={y} /></mesh>
+      {[-0.95, 0.95].map((x) => <mesh key={x} position={[x, 2.1, 0]}><cylinderGeometry args={[0.045, 0.045, 2, 10]} /><meshStandardMaterial color={y} /></mesh>)}
+    </group>
+  ));
+}
+
+// ---------- a field goal: the ball end over end from the kick spot at the posts ----------
+function KickBall({ shot }) {
+  const g = useRef();
+  const tum = useRef();
+  const a = useMemo(() => new THREE.Vector3(...sq(...shot.from)).setY(0.15), [shot]);
+  const side = useMemo(() => (shot.good ? 0 : (shot.id % 2 ? 1 : -1) * (1.4 + (shot.id % 3) * 0.3)), [shot]);
+  const b = useMemo(() => new THREE.Vector3(side, shot.good ? 2.8 : 2.2, shot.dir * (ROWS / 2 + 1.2)), [shot, side]);
+  useFrame(() => {
+    if (!g.current) return;
+    const u = Math.min(1, ((performance.now() - shot.t0) / 1000 - 0.5) / 1.9);
+    g.current.visible = u >= 0;
+    const k = Math.max(0, u);
+    g.current.position.lerpVectors(a, b, k);
+    g.current.position.y = a.y + (b.y - a.y) * k + Math.sin(k * Math.PI) * 3.2;
+    if (tum.current) tum.current.rotation.x += 0.35;
+    shot.ball = g.current.position;
+  });
+  return (
+    <group ref={g} visible={false}>
+      <group ref={tum}>
+        <mesh castShadow scale={[0.17, 0.17, 0.27]}><sphereGeometry args={[1, 18, 12]} /><meshStandardMaterial color="#7a3f1c" roughness={0.55} /></mesh>
+      </group>
     </group>
   );
 }
@@ -377,10 +520,30 @@ function shotCam(shot, positions) {
     const ang = 0.4 + p * Math.PI * 1.1;
     return { pos: c.clone().add(new THREE.Vector3(Math.cos(ang) * 4.2, 1.8 + p * 1.5, Math.sin(ang) * 4.2)), target: c.clone().setY(0.6), rate: 4 };
   }
+  if (shot.kind === 'onfire') {
+    // tight, low, circling: the flames catch
+    const c = new THREE.Vector3(...sq(...shot.at));
+    const ang = -0.6 + p * Math.PI * 0.9;
+    return { pos: c.clone().add(new THREE.Vector3(Math.cos(ang) * 2.4, 0.9 + p * 0.8, Math.sin(ang) * 2.4)), target: c.clone().setY(0.7), rate: 5 };
+  }
+  if (shot.kind === 'skill') {
+    // snap to a 3/4 angle and push in a little
+    const c = new THREE.Vector3(...sq(...shot.at));
+    const push = 1 - Math.min(1, now / shot.dur) * 0.25;
+    return { pos: c.clone().add(new THREE.Vector3(2.6 * push, 1.4 * push, 1.6 * push)), target: c.clone().setY(0.5), rate: 9 };
+  }
+  if (shot.kind === 'kick') {
+    // low behind the kicker, looking down the field at the posts, then riding up after the ball
+    const a = new THREE.Vector3(...sq(...shot.from));
+    const posts = new THREE.Vector3(0, 2, shot.dir * (ROWS / 2 + 0.4));
+    const ball = shot.ball ? shot.ball.clone() : a.clone();
+    if (now < 1.2) return { pos: a.clone().add(new THREE.Vector3(0.8, 0.8, -shot.dir * 3)), target: posts, rate: 6 };
+    return { pos: ball.clone().add(new THREE.Vector3(1.6, 1.2, -shot.dir * 3.2)), target: posts.clone().lerp(ball, 0.3), rate: 4 };
+  }
   return null;
 }
 
-function Rig({ view, focus, dir, shot, positions, intro }) {
+function Rig({ view, focus, dir, shot, positions, intro, setup }) {
   const { camera, size, controls } = useThree();
   const target = useRef(new THREE.Vector3(0, 0, 6));
   const f = useRef(new THREE.Vector3(0, 0, 6));
@@ -399,7 +562,8 @@ function Rig({ view, focus, dir, shot, positions, intro }) {
     const goal = focus();
     const kf = 1 - Math.exp(-dt * 1.6);
     if (goal) f.current.lerp(new THREE.Vector3(Math.max(-3, Math.min(3, goal.x * 0.4)), 0, goal.z), kf);
-    const s = VIEW[view](f.current, dir);
+    // setting a formation: pull back wide enough to see everyone on the field round the ball
+    const s = setup && view !== 'free' && view !== 'overhead' ? { pos: [f.current.x + 17, 14, f.current.z + 0.5], target: [f.current.x - 0.5, 0, f.current.z] } : VIEW[view](f.current, dir);
     // tall screens (phones held upright): pull the lens back so the play still fits across
     const aspect = size.width / size.height;
     if (aspect < 1.2) {
@@ -417,14 +581,21 @@ function Rig({ view, focus, dir, shot, positions, intro }) {
 
 // ---------- the scene ----------
 // edit: { side, spots:[{num,col,row}] } shows a formation being placed instead of that side's real positions
-export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outlines = [], rings = {}, onPlayer, edit, focusSq, shot, intro, onFree }) {
+export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outlines = [], rings = {}, onPlayer, edit, focusSq, shot, intro, onFree, setup }) {
   const s = game.state;
   const positions = useRef({});
   const unis = useMemo(() => s.teams.map((t) => uniformOf(t.id, t.uniform)), [s.teams]);
   const rows = useMemo(() => [0, 1].map((side) => artRows(s, side)), [s.teams]); // eslint-disable-line react-hooks/exhaustive-deps
+  const tcolors = useMemo(() => s.teams.map((t) => { const [a, b] = teamColors(t.id, t.uniform); return [a, b ?? '#ffffff']; }), [s.teams]);
   // the last move of each player, so his cube walks the same path
   const paths = {};
   for (const e of s.log) if (e.kind === 'move' && e.path) paths[e.pid] = e.path;
+  // the newest contact: that player lunges at his target
+  const lunges = {};
+  for (let i = s.log.length - 1; i >= Math.max(0, s.log.length - 8); i--) {
+    const e = s.log[i];
+    if (e.kind === 'check' && e.tat && e.pid) { lunges[e.pid] = { id: e.id, to: e.tat }; break; }
+  }
   const players = Object.values(s.players).map((p) => {
     if (edit && p.side === edit.side) {
       const sp = edit.spots.find((x) => x.num === p.num);
@@ -470,11 +641,19 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
       {intro && <RunOut teams={[0, 1].map((side) => Object.values(s.players).filter((p) => p.side === side))} unis={unis} rows={rows} t0={intro.t0} startAt={intro.startAt} />}
       {!intro && players.map((p) => (
         <Mover key={p.pid} p={p} uniform={unis[p.side]} row={rows[p.side][p.num]} path={paths[p.pid]} positions={positions}
-          ring={rings[p.pid]} onPick={onPlayer} onHover={onHoverPlayer} />
+          ring={rings[p.pid]} onPick={onPlayer} onHover={onHoverPlayer} lunge={lunges[p.pid]} active={s.active?.pid === p.pid && s.phase === 'play'} colors={tcolors[p.side]} />
       ))}
       <Ball ball={s.ball} positions={positions} slowmo={!settings().calm} snapFrom={s.log.findLast?.((e) => e.kind === 'snap')?.from} />
       {shot?.kind === 'hit' && <Burst key={shot.id} at={sq(...shot.at, 0)} colors={['#c9c9c9', '#7a5a3a', '#3f6b2a', '#ffffff']} count={shot.big ? 46 : 26} />}
       {shot?.kind === 'sack' && <Dust key={shot.id} at={sq(...shot.at, 0)} />}
+      {(s.mode === 'pro' || s.mode === 'allpro') && <GoalPosts />}
+      {shot?.kind === 'kick' && <KickBall key={shot.id} shot={shot} />}
+      {shot?.kind === 'kick' && shot.good && <Burst key={`k${shot.id}`} confetti at={[0, 2.4, shot.dir * (ROWS / 2 + 0.4)]} colors={['#f2d21b', '#ffffff', '#ffb000']} count={70} />}
+      {shot?.kind === 'onfire' && <group key={shot.id} position={sq(...shot.at, 0)}><Flames n={60} size={1.8} height={1.6} /><Burst at={[0, 0, 0]} colors={FIRE} count={40} /></group>}
+      {shot?.kind === 'skill' && shot.fx === 'fire' && <group key={shot.id} position={sq(...shot.at, 0)}><Flames n={40} size={1.4} /><Burst at={[0, 0, 0]} colors={FIRE} count={36} /></group>}
+      {shot?.kind === 'skill' && shot.fx === 'swirl' && <Swirl key={shot.id} at={sq(...shot.at, 0)} color="#ffe14a" />}
+      {shot?.kind === 'skill' && shot.fx === 'spark' && <Burst key={shot.id} at={sq(...shot.at, 0)} colors={['#ffffff', '#ffe14a', '#c9c9c9']} count={34} />}
+      {shot?.kind === 'skill' && shot.fx === 'dust' && <Dust key={shot.id} at={sq(...shot.at, 0)} />}
       {shot?.kind === 'td' && <Burst key={shot.id} confetti at={sq(...shot.at, 0)} colors={teamColors(s.teams[shot.side].id, s.teams[shot.side].uniform).concat(['#f5e04a', '#ffffff'])} count={120} />}
       <DiceRolls log={s.log} players={s.players} offense={s.offense} home={[s.spot, s.line]}
         teamColors={s.teams.map((t) => teamColors(t.id, t.uniform))} />
@@ -482,7 +661,7 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
       {outlines.map((o, i) => <Outline key={i} squares={o.squares} color={o.color} />)}
       <OrbitControls makeDefault enableDamping dampingFactor={0.12} enabled={!shot && !intro} maxPolarAngle={Math.PI / 2.1} minDistance={2.5} maxDistance={45}
         onStart={() => { drag.current = { x: null, y: null }; }} onEnd={() => { drag.current = null; }} />
-      <Rig view={view} focus={focus} dir={s.teams[s.offense].dir} shot={shot} positions={positions} intro={intro} />
+      <Rig view={view} focus={focus} dir={s.teams[s.offense].dir} shot={shot} positions={positions} intro={intro} setup={setup} />
     </>
   );
 }

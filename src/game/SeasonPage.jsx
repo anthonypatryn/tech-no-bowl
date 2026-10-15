@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button, Chips, Panel, Row } from './ui';
 import { TEAMS, teamById, uniformsFor, teamColors, helmetUrl } from '../data/art';
 import { LEVELS } from '../engine/ai.js';
+import { MODES, MODE_INFO } from './TeamPicker';
 import { altSlots } from '../data/abilities';
 import { loadSeason, newSeason, endSeason, nextGame, standings, oppUniform } from './season';
 import { useConfirm } from './ui';
@@ -23,7 +24,7 @@ export default function SeasonPage({ onPlay }) {
   const [c0] = teamColors(season.team, season.uni);
   const play = () => onPlay({
     you: { team: season.team, uni: season.uni, picks: season.picks }, cpu: { team: next.opp, uni: oppUniform(season, next.opp), picks: {} },
-    level: season.level, mode: 'techno', seed: Date.now(), season: { round: next.round, label: next.label },
+    level: season.level, mode: season.mode ?? 'techno', seed: Date.now(), season: { round: next.round, label: next.label },
   });
   return (
     <main className="page season">
@@ -101,6 +102,7 @@ function Setup({ onStart }) {
   const [uni, setUni] = useState('home');
   const [level, setLevel] = useState('starter');
   const [weeks, setWeeks] = useState(7);
+  const [mode, setMode] = useState('techno');
   const t = teamById(team);
   return (
     <Panel className="season-setup">
@@ -114,8 +116,9 @@ function Setup({ onStart }) {
       <Row label="Team"><b className="led">{t.name.toUpperCase()}</b>{altSlots(t).length > 0 && <span className="hint"> (alternate players: pick them on the team screen in a normal game)</span>}</Row>
       <Row label="Uniform"><Chips small value={uni} onChange={setUni} options={uniformsFor(team).map((u) => [u.id, u.label])} /></Row>
       <Row label="Computer"><Chips small value={level} onChange={setLevel} options={LEVELS} /></Row>
+      <Row label="Rules"><Chips small value={mode} onChange={setMode} options={MODES} /><span className="hint"> {MODE_INFO[mode]}</span></Row>
       <Row label="Length"><Chips small value={weeks} onChange={setWeeks} options={[[4, '4 games'], [7, '7 games'], [10, '10 games']]} /></Row>
-      <div className="btns"><Button kind="primary" size="big" onClick={() => onStart({ team, uni, level, weeks })}>Start the season</Button></div>
+      <div className="btns"><Button kind="primary" size="big" onClick={() => onStart({ team, uni, level, weeks, mode })}>Start the season</Button></div>
     </Panel>
   );
 }

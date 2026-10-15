@@ -302,6 +302,11 @@ button.card:hover { border-color: var(--led); }
 .die i.on { background: #c21d24; }
 .banner-big { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; animation: bannerIn .35s ease-out; }
 .banner-big .led { font-size: clamp(36px, 9vw, 110px); padding: 10px 30px; background: rgba(0, 0, 0, .55); border-radius: 12px; }
+.callout { position: absolute; left: 0; right: 0; top: 30%; display: grid; place-items: center; pointer-events: none; z-index: 7; }
+.callout span { font-family: var(--pixel); font-size: clamp(22px, 5vw, 60px); color: #ffe14a; padding: 10px 24px; background: rgba(0, 0, 0, .6); border: 3px solid #ffb000;
+  text-shadow: 3px 3px 0 #8a5c00; transform: skewX(-8deg); animation: callout-in 1.9s ease-out both; }
+.callout.hot span { color: #fff3c4; border-color: #ff5a1f; text-shadow: 3px 3px 0 #b3260b, 0 0 18px #ff7a1a; background: linear-gradient(180deg, rgba(120, 20, 0, .75), rgba(0, 0, 0, .7)); }
+@keyframes callout-in { 0% { transform: skewX(-8deg) scale(2.4); opacity: 0; } 12% { transform: skewX(-8deg) scale(1); opacity: 1; } 80% { opacity: 1; } 100% { transform: skewX(-8deg) scale(1.05) translateY(-10px); opacity: 0; } }
 .banner-big.turnover .led, .banner-big.sack .led { color: #ff5a4a; text-shadow: 0 0 10px rgba(255, 90, 74, .6); }
 @keyframes bannerIn { from { transform: scale(1.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .rules-drawer { position: absolute; top: 70px; right: 12px; bottom: 12px; width: min(440px, 92vw); display: flex; flex-direction: column; z-index: 30; font-size: .9em; }
@@ -626,6 +631,28 @@ button.card:hover { border-color: var(--led); }
 .btn.act-tackle { background: #c62828; border-color: #ff8a80; color: #fff; box-shadow: 0 4px 0 #6d1010; }
 .btn.act-block { background: #e07b1a; border-color: #ffc27a; color: #1a0d00; box-shadow: 0 4px 0 #7a3e05; }
 .btn.act-hand { background: #1aa6c4; border-color: #8be9ff; color: #001a20; box-shadow: 0 4px 0 #0b5566; }
+.btn.act-skill { background: #ffb000; border-color: #ffe08a; color: #1f1400; box-shadow: 0 4px 0 #8a5c00; }
+.btn.act-dirty { background: #7b3fc4; border-color: #c9a2ff; color: #fff; box-shadow: 0 4px 0 #3d1a6b; }
+/* B6: abilities and INFERNO */
+.skill-chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 var(--s2); }
+.skill-chip { font-family: var(--pixel); font-size: 7px; padding: 4px 6px; border: var(--px) solid var(--line); color: var(--muted); border-radius: 2px; }
+.skill-chip.live { color: #1f1400; background: #ffb000; border-color: #ffe08a; box-shadow: 0 0 10px rgba(255, 176, 0, .6); animation: skill-glow 1.2s ease-in-out infinite alternate; }
+@keyframes skill-glow { from { box-shadow: 0 0 4px rgba(255, 176, 0, .4); } to { box-shadow: 0 0 14px rgba(255, 176, 0, .9); } }
+.fire-row, .boost-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: var(--s2); }
+.chipbtn.fire { border-color: #ff7a1a; color: #ffb36b; }
+.chipbtn.on, .chipbtn.fire.on { background: var(--led); color: #15130a; border-color: var(--led); }
+.chipbtn:disabled { opacity: .35; }
+.fuego-list { max-height: 120px; overflow-y: auto; }
+.fire-hud { position: absolute; top: 56px; left: 50%; transform: translateX(-50%); display: flex; gap: var(--s4); padding: 6px 12px; z-index: 6; }
+.fire-side { display: flex; align-items: center; gap: 6px; }
+.fire-side small { font-family: var(--pixel); font-size: 7px; color: var(--muted); }
+.flames i { font-style: normal; filter: grayscale(1) opacity(.25); }
+.flames i.on { filter: none; }
+.fire-side .lit b { color: #ff7a1a; font-family: var(--pixel); font-size: 8px; margin-left: 2px; }
+.btn.pulse:not(:disabled) { animation: pulse-go 1s ease-in-out infinite alternate; }
+@keyframes pulse-go { from { box-shadow: 0 0 0 0 rgba(47, 208, 107, .7), 0 4px 0 #136b33; } to { box-shadow: 0 0 0 6px rgba(47, 208, 107, 0), 0 4px 0 #136b33; } }
+.mode-info { margin: 2px 0 0; }
+.game.cine .fire-hud { opacity: 0; }
 .btn .odds { font-size: 8px; opacity: .85; }
 
 .coach-q { position: absolute; top: var(--s2); right: 52px; padding: 4px 8px; }
@@ -638,3 +665,5 @@ button.card:hover { border-color: var(--led); }
 .resume-x { position: absolute; top: var(--s2); right: var(--s3); font-family: var(--pixel); font-size: 8px; color: var(--muted); cursor: pointer; }
 
 html.calm *, html.calm *::before { transition: none !important; animation: none !important; }
+.moment-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--s3); }
+.moment-row { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s2); border: var(--px) solid var(--line); }

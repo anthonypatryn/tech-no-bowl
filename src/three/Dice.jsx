@@ -75,7 +75,7 @@ function Die({ value, body = '#f4f0e6', pip = '#c21d24', at, from, delay = 0, si
   );
 }
 
-const ROLL_KINDS = ['check', 'sport', 'scatter', 'dice'];
+const ROLL_KINDS = ['check', 'sport', 'scatter', 'dice', 'kick'];
 const CLEAR = 0.78; // how close a die may come to a player cube's centre
 
 // distance from point p to segment a-b, on the turf (x, z)
@@ -112,7 +112,7 @@ export function DiceRolls({ log, players, teamColors, offense, home }) {
   const [roll, setRoll] = useState(null);
   useEffect(() => {
     if (!last) return;
-    const p = last.pid ? players[last.pid] : null;
+    const p = last.pid && players[last.pid]?.col != null ? players[last.pid] : null;
     const spot = last.kind === 'scatter' ? last.from : p ? [p.col, p.row] : home; // who-goes-first: at the ball
     const [x, , z] = spot ? sq(spot[0], spot[1]) : [0, 0, 0];
     const colors = last.kind === 'scatter' || last.kind === 'dice'

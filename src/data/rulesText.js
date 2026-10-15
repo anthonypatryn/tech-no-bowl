@@ -68,6 +68,29 @@ export const RULES = [
     'Each coach has 2 timeouts: a timeout adds one more play when the half is about to run out.',
     'Tied at the end: overtime, first score wins.',
   ] },
+  { id: 'modes', title: 'Rule modes', page: 15, items: [
+    'TECHNO: 7-vs-7, no abilities. ALL TECHNO: the same with every special ability on.',
+    'PRO: 8-vs-8 (#51 plays) with field goals. ALL PRO: PRO plus the abilities. INFERNO: ALL TECHNO plus fire tokens.',
+  ] },
+  { id: 'skills', title: 'Special abilities', page: 15, items: [
+    'Players with single-digit numbers, numbers ending in 0, or doubles (33, 44...) have abilities. Tap one on the team screen to read it.',
+    'Abilities "as part of a move" (BLITZ, RUN BLOCK, DIVING TACKLE, JUKE, SHAKE) can each be used once per activation and he keeps moving afterwards.',
+    'Only the last skill check of an activation decides the free activation (10+), the half move for them (7-9) or their free activation (6-).',
+    'SPIN MOVE and STIFF ARM add a playmaker die to tackles on him: a match cancels that skill die.',
+    'In a game, the ability buttons only appear when he can use them right now; his ability chips light up and his ring turns gold.',
+  ] },
+  { id: 'fieldgoals', title: 'Field goals', page: 20, items: [
+    'PRO / ALL PRO only. Past the 50, instead of running a play you may kick.',
+    'Distance = squares from the hiker\'s spot to just past the posts, +1. Roll 3 dice: that or more is good for 3, and the other team starts on its 20.',
+    'Miss: the other team takes over where the kick was.',
+  ] },
+  { id: 'inferno', title: 'INFERNO', page: 19, items: [
+    'Each coach holds up to 3 fire tokens. Earn one for: a tackle behind the line, a safety, grabbing a loose ball or interception, forcing a fumble, knocking a player down, an early celebration, or a dirty hit (3 on a critical).',
+    'Showboating: add up to -3 to your own check; if it still works, take that many tokens.',
+    'Spend: ON FIRE (3, before the snap): +3 on all his checks until he is tackled behind the line, knocked down, fumbles, runs out, fails a check or throws a pick.',
+    'Also: +1 / -1 on any check per token, +1 movement per token, hurdle fallen players (1), EN FUEGO any skill (3), FIRE BOMB 3x throw range (3), BRING THE HEAT (3).',
+    'Dirty hit: an action on a downed player, +1. Dogpile: a tackle\'s total success can be spent on a dirty hit after the whistle.',
+  ] },
 ];
 
 // which section explains a prompt
@@ -75,4 +98,5 @@ export const HELP_FOR = {
   formation: 'formations', call: 'plays', pick: 'plays', readReact: 'plays', first: 'plays', motion: 'motion', act: 'moving',
   boost: 'checks', bonus: 'checks', reverse: 'actions', push: 'actions', followUp: 'actions', adjustPartner: 'plays',
   scatter: 'ball', timeout: 'clock', toss: 'goal',
+  kick: 'fieldgoals', dodge: 'skills', spin: 'skills', option: 'skills', onFire: 'inferno', fireDefend: 'inferno', heatCrit: 'inferno',
 };

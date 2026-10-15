@@ -1,7 +1,7 @@
 // Pure rules: everything here reads a state and answers a question, nothing changes it.
 // state.players: { [pid]: { pid, side, num, skill, col, row, down } }   (down = knocked down)
 // state.ball:    { at: 'held', pid } | { at: 'ground' | 'air', col, row } | { at: 'dead' }
-import { COLS, DIRS, adjacent, distance, halfOf, inBounds, inOppEndZone, isForward, key, losRows, neighbours, same, skillOf, stepExtra } from './board.js';
+import { COLS, DIRS, adjacent, behindLine, distance, halfOf, inBounds, inOppEndZone, isForward, key, losRows, neighbours, same, skillOf, stepExtra } from './board.js';
 
 export const sqOf = (p) => [p.col, p.row];
 export const playerList = (s) => Object.values(s.players);
@@ -24,6 +24,20 @@ export function threateners(s, sq, side, except = []) {
 }
 export const threatCount = (s, sq, side, except) => threateners(s, sq, side, except).length;
 
+// ---------- special abilities (ALL TECHNO / ALL PRO / INFERNO) ----------
+// s.skills turns them on. A player has a skill printed on his card, from EN FUEGO (p.fuego), or from his INFERNO-only
+// card text while ON FIRE (p.fireSkill).
+export function hasSkill(s, p, a) {
+  if (!s.skills || !p) return false;
+  return !!(p.abilities?.includes(a) || p.fuego === a || (p.onFire && p.fireSkill === a));
+}
+export const tackleBonus = (s, p) => (hasSkill(s, p, 'TACKLE +3') ? 3 : hasSkill(s, p, 'TACKLE +1') ? 1 : 0);
+// every skill EN FUEGO can grant
+export const SKILLS = ['BLITZ', 'BLOCK +1', 'BLOCK PARTY', 'CATCH', 'DIVING TACKLE', 'DODGE', 'INTERCEPTOR', 'JUKE', 'LOCKDOWN', 'MAN DEFENDER', 'OPTION',
+  'PITCH', 'POCKET PASSER', 'QB READ', 'ROUTE PASSER', 'RUN BLOCK', 'SCREEN PASSER', 'SHAKE', 'SHOVE', 'SIDELINER', 'SPIN MOVE', 'SQUEEZE PLAY', 'STIFF ARM',
+  'TACKLE +1', 'TEAM PLAYER', 'ZONE DEFENDER'];
+const onSideline = (q) => q[0] === 0 || q[0] === COLS - 1;
+
 // ---------- skill checks ----------
 // Rule of 3: bonuses stop at +3, penalties stop at -3, then net them
 export function netModifier(bonuses, penalties) {
@@ -40,23 +54,36 @@ export function strengthMods(actorSkill, targetSkill) {
   return d > 0 ? { bonus: Math.min(3, d), penalty: 0 } : { bonus: 0, penalty: Math.min(3, -d) };
 }
 // teamwork: +1 per actor's teammate threatening the target, -1 per target's teammate threatening the actor
+// (a TEAM PLAYER counts double)
 export function teamwork(s, actor, target) {
-  const help = threatCount(s, sqOf(target), actor.side, [actor.pid, target.pid]);
-  const hurt = threatCount(s, sqOf(actor), target.side, [actor.pid, target.pid]);
+  const weigh = (list) => list.reduce((n, p) => n + (hasSkill(s, p, 'TEAM PLAYER') ? 2 : 1), 0);
+  const help = weigh(threateners(s, sqOf(target), actor.side, [actor.pid, target.pid]));
+  const hurt = weigh(threateners(s, sqOf(actor), target.side, [actor.pid, target.pid]));
   return { bonus: help, penalty: hurt };
 }
-// everything about a block or tackle check except bench boosts
-export function contactMods(s, actor, target) {
-  const st = strengthMods(actor.skill, target.skill);
+// everything about a contact check except bench boosts and fire tokens.
+// action: block | shove | tackle | juke | shake (the faster player gets the rating bonus) | dirty (a dirty hit, +1)
+export function contactMods(s, actor, target, action = 'block') {
+  const speed = action === 'juke' || action === 'shake';
+  const st = speed ? strengthMods(target.skill, actor.skill) : strengthMods(actor.skill, target.skill);
   const tw = teamwork(s, actor, target);
-  return { bonus: st.bonus + tw.bonus, penalty: st.penalty + tw.penalty, parts: { skill: st.bonus - st.penalty, teamwork: tw.bonus - tw.penalty } };
+  let ability = 0;
+  if ((action === 'block' || action === 'shove') && hasSkill(s, actor, 'BLOCK +1')) ability += 1;
+  if (action === 'tackle') ability += tackleBonus(s, actor);
+  if (action === 'dirty') ability += 1; // automatic against a downed player
+  if (actor.onFire) ability += 3;
+  return { bonus: st.bonus + tw.bonus + ability, penalty: st.penalty + tw.penalty, parts: { skill: st.bonus - st.penalty, teamwork: tw.bonus - tw.penalty, ability } };
 }
 
 // ---------- movement ----------
-// cost of LEAVING a square: 1 free, 2 per threatening opponent, 3 per threatening opponent with the ball
-export function leaveCost(s, sq, mover, carrying) {
-  const t = threatCount(s, sq, 1 - mover.side, [mover.pid]);
-  return t === 0 ? 1 : t * (carrying ? 3 : 2);
+// cost of LEAVING a square: 1 free, 2 per threatening opponent, 3 per threatening opponent with the ball.
+// LOCKDOWN: his threat costs 3 even without the ball. SIDELINER (on offense, sideline square to sideline square):
+// threat ignored without the ball, 2 each with it, and lockdown has no effect.
+export function leaveCost(s, sq, mover, carrying, to) {
+  const ts = threateners(s, sq, 1 - mover.side, [mover.pid]);
+  if (!ts.length) return 1;
+  if (to && s.offense === mover.side && onSideline(sq) && onSideline(to) && hasSkill(s, mover, 'SIDELINER')) return carrying ? ts.length * 2 : 1;
+  return ts.reduce((n, t) => n + (carrying || hasSkill(s, t, 'LOCKDOWN') ? 3 : 2), 0);
 }
 
 // Every square the mover can reach with `budget` movement this step.
@@ -65,7 +92,9 @@ export function leaveCost(s, sq, mover, carrying) {
 // - a loose ball's square, a touchdown square and stepping out of bounds end the move there
 // - opts.stopRows: rows that end the move when entered (pre-snap motion onto the line of scrimmage)
 // - opts.allowOut: a ball carrier may step out of bounds (ends the play)
+// - opts.hurdle: may pass through knocked-down players' squares (INFERNO hurdle), never stop on one
 export function moveReach(s, mover, budget, parity = 0, opts = {}) {
+  const squeeze = hasSkill(s, mover, 'SQUEEZE PLAY');
   const carrying = s.ball.at === 'held' && s.ball.pid === mover.pid;
   const occ = occupiedMap(s, mover.pid);
   const dir = s.teams?.[mover.side]?.dir;
@@ -79,27 +108,28 @@ export function moveReach(s, mover, budget, parity = 0, opts = {}) {
     const n = open.shift();
     if (n.end) continue;
     const here = n.to;
-    const leave = leaveCost(s, here, mover, carrying);
     for (const [dc, dr] of DIRS) {
       const to = [here[0] + dc, here[1] + dr];
-      const cost = n.cost + leave + stepExtra(dc, dr, n.parity);
+      const cost = n.cost + leaveCost(s, here, mover, carrying, to) + stepExtra(dc, dr, n.parity);
       if (cost > budget) continue;
       const np = dc && dr ? 1 - n.parity : n.parity;
-      let end = null;
+      let end = null, through = false;
       if (!inBounds(...to)) {
         if (!(opts.allowOut && carrying)) continue;
         end = 'out';
       } else {
-        if (occ.has(key(...to))) continue;
-        if (dc && dr && occ.has(key(here[0] + dc, here[1])) && occ.has(key(here[0], here[1] + dr))) continue; // squeeze
-        if (looseAt(s, ...to)) end = 'ball';
+        const o = occ.get(key(...to));
+        if (o) { if (!(opts.hurdle && o.down)) continue; through = true; }
+        if (!squeeze && dc && dr && occ.has(key(here[0] + dc, here[1])) && occ.has(key(here[0], here[1] + dr))) continue; // no squeezing past
+        if (through) end = null;
+        else if (looseAt(s, ...to)) end = 'ball';
         else if (carrying && dir != null && inOppEndZone(dir, to[1])) end = 'td';
         else if (opts.stopRows?.includes(to[1])) end = 'stop';
       }
       const k = `${key(...to)}|${np}`;
       const old = best.get(k);
       if (old && old.cost <= cost) continue;
-      const node = { to, cost, parity: np, prev: n, end };
+      const node = { to, cost, parity: np, prev: n, end, through };
       best.set(k, node);
       open.push(node);
     }
@@ -107,7 +137,7 @@ export function moveReach(s, mover, budget, parity = 0, opts = {}) {
   // collapse parities: cheapest per square (prefer even parity on ties: the next diagonal is then free)
   const out = new Map();
   for (const node of best.values()) {
-    if (node === startNode) continue;
+    if (node === startNode || node.through) continue;
     const k = key(...node.to);
     const o = out.get(k);
     if (!o || node.cost < o.cost || (node.cost === o.cost && node.parity < o.parity)) out.set(k, node);
@@ -170,11 +200,13 @@ export function scatterOptions(s, origin, n, isPass) {
   return res.length ? res : [{ to: origin, out: false }];
 }
 
-// a pass from `passer` to square `to`: range, modifiers and whether it's allowed right now
-export function passInfo(s, passer, to) {
+// a pass from `passer` to square `to`: range, modifiers and whether it's allowed right now.
+// bomb = INFERNO's FIRE BOMB (3x range). Coverage: opponents threatening the target or the passer, plus ZONE
+// DEFENDERs within 3 of the target, -3 more if a MAN DEFENDER covers the receiver (all capped at 3 by the caller).
+export function passInfo(s, passer, to, { bomb = false } = {}) {
   const from = sqOf(passer);
   const dist = distance(from, to);
-  const max = passer.skill * 2;
+  const max = passer.skill * (bomb ? 3 : 2);
   const dir = s.teams[passer.side].dir;
   const target = occupant(s, ...to);
   const reasons = [];
@@ -183,9 +215,19 @@ export function passInfo(s, passer, to) {
   if (dist > max) reasons.push('out of range');
   if (target && (target.side !== passer.side || target.down)) reasons.push('not a standing teammate');
   if (s.play?.forwardDone && isForward(from, to, dir)) reasons.push('only lateral or backward passes now');
-  const bonus = dist <= passer.skill ? 1 : 0;
-  const penalty = threatCount(s, to, 1 - passer.side, target ? [target.pid] : []) + threatCount(s, from, 1 - passer.side);
-  return { ok: !reasons.length, reasons, dist, max, target, bonus, penalty, forward: isForward(from, to, dir) };
+  const why = [];
+  let bonus = 0;
+  if (dist <= passer.skill) { bonus += 1; why.push('+1 short'); }
+  if (!target && hasSkill(s, passer, 'ROUTE PASSER')) { bonus += 1; why.push('+1 route passer'); }
+  if (s.play && behindLine(to[1], s.play.line, dir) && hasSkill(s, passer, 'SCREEN PASSER')) { bonus += 1; why.push('+1 screen passer'); }
+  if (s.play?.pocketReady && !s.play.pocketUsed && !s.play.pocketMoved && s.play.snappedTo === passer.pid && hasSkill(s, passer, 'POCKET PASSER')) { bonus += 2; why.push('+2 pocket passer'); }
+  if (passer.onFire) { bonus += 3; why.push('+3 ON FIRE'); }
+  const opp = 1 - passer.side;
+  const cover = new Set(threateners(s, to, opp, target ? [target.pid] : []).map((p) => p.pid));
+  for (const p of playerList(s)) if (p.side === opp && !p.down && p.col != null && hasSkill(s, p, 'ZONE DEFENDER') && distance(sqOf(p), to) <= 3) cover.add(p.pid);
+  let penalty = cover.size + threatCount(s, from, opp);
+  if (target && threateners(s, to, opp).some((p) => p.side !== s.offense && hasSkill(s, p, 'MAN DEFENDER'))) { penalty += 3; why.push('-3 man coverage'); }
+  return { ok: !reasons.length, reasons, dist, max, target, bonus, penalty, why, forward: isForward(from, to, dir) };
 }
 
 // ---------- formations ----------

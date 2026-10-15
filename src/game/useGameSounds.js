@@ -40,6 +40,26 @@ function thump(kind) {
   } catch { /* no audio */ }
 }
 
+// a whoosh of fire (ON FIRE, BRING THE HEAT, FIRE BOMB) and a kick's thud: filtered noise
+function whoosh(kind = 'fire') {
+  const vol = settings().muted ? 0 : settings().mix?.fx ?? 1;
+  if (!vol) return;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    const ctx = (rattle.ctx ??= new AC());
+    const t = ctx.currentTime, len = kind === 'kick' ? 0.12 : 1.1;
+    const b = ctx.createBuffer(1, Math.floor(ctx.sampleRate * len), ctx.sampleRate), d = b.getChannelData(0);
+    for (let k = 0; k < d.length; k++) d[k] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    src.buffer = b; f.type = kind === 'kick' ? 'lowpass' : 'bandpass';
+    f.frequency.setValueAtTime(kind === 'kick' ? 260 : 300, t);
+    if (kind !== 'kick') f.frequency.exponentialRampToValueAtTime(2400, t + 0.5);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime((kind === 'kick' ? 0.8 : 0.35) * vol, t + 0.04);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    src.connect(f).connect(g).connect(ctx.destination); src.start(t);
+  } catch { /* no audio */ }
+}
+
 export function useGameSounds(game, { theme = true } = {}) {
   const seen = useRef(0);
   useEffect(() => {
@@ -67,7 +87,7 @@ function cue(e) {
     case 'final': play('whistleFinal'); crowd(2, 4); break;
     case 'check':
       rattle();
-      if (e.action === 'block' || e.action === 'tackle') setTimeout(() => play('grunt', { vol: 0.9 }), 650);
+      if (['block', 'shove', 'juke', 'shake', 'tackle', 'dirty'].includes(e.action)) setTimeout(() => play('grunt', { vol: 0.9 }), 650);
       if (e.action === 'tackle' && e.success) setTimeout(() => { play('hit'); crowd(1.6, 1.2); }, 700);
       if (e.action === 'pass') crowd(1.3, 1.2);
       break;
@@ -80,6 +100,12 @@ function cue(e) {
     case 'turnover': crowd(2, 2); break;
     case 'td': crowd(2.6, 4.5); break;
     case 'safety': crowd(2.2, 3); break;
+    case 'onfire': case 'heat': case 'firebomb': case 'fuego': whoosh(); crowd(2, 2); break;
+    case 'stiffarm': play('hit'); thump('hit'); crowd(1.8, 1.4); break;
+    case 'spin': case 'dodge': case 'intercept': crowd(1.8, 1.4); break;
+    case 'dogpile': play('grunt'); setTimeout(() => play('hit'), 200); crowd(2, 2); break;
+    case 'kick': whoosh('kick'); rattle(); crowd(1.4, 2); break;
+    case 'fieldgoal': crowd(2.4, 3); break;
     default:
   }
 }

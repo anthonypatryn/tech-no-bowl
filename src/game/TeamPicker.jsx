@@ -7,7 +7,14 @@ import { TEAMS, teamById, uniformsFor, uniformOf, teamColors, artUrl, helmetUrl,
 import { abilityText, altSlots, lineup } from '../data/abilities';
 import { LEVELS } from '../engine/ai.js';
 
-export const MODES = [['techno', 'Techno'], ['alltechno', 'All Techno', true], ['pro', 'Pro', true], ['allpro', 'All Pro', true], ['inferno', 'Inferno!', true]];
+export const MODES = [['techno', 'Techno'], ['alltechno', 'All Techno'], ['pro', 'Pro'], ['allpro', 'All Pro'], ['inferno', 'Inferno!']];
+export const MODE_INFO = {
+  techno: '7-vs-7, no special abilities. Learn the game here.',
+  alltechno: '7-vs-7 with every special ability on.',
+  pro: '8-vs-8 (#51 suits up) and field goals, no abilities.',
+  allpro: '8-vs-8, field goals and every special ability.',
+  inferno: 'All Techno plus fire tokens: ON FIRE, EN FUEGO, FIRE BOMB, BRING THE HEAT, dirty hits.',
+};
 
 const idx = (id) => TEAMS.findIndex((t) => t.id === id);
 const lum = (hex) => { const n = parseInt(hex.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255; };
@@ -55,6 +62,7 @@ export default function TeamPicker({ onStart }) {
       <div className="ts-center glass">
         <div className="opt"><span>Computer</span><Chips small value={level} onChange={setLevel} options={LEVELS} /></div>
         <div className="opt"><span>Rules</span><Chips small value={mode} onChange={setMode} options={MODES} /></div>
+        <p className="hint mode-info">{MODE_INFO[mode]}</p>
         {clash && <p className="warn">Same team, same uniform: change one side's uniform.</p>}
         <button className="btn primary big" disabled={clash} onClick={() => onStart({ you, cpu, level, mode })}>Take the field <kbd className="kh">Enter</kbd></button>
         <p className="hint">← → flips through teams. Rookie makes mistakes, Starter plays the odds, All-Pro manages cards, the clock and coverage.</p>

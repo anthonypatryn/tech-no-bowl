@@ -42,7 +42,7 @@ test('check results: 10+ total, 7-9 partial, 6- fail, doubles critical, Rule of 
 test('block example p.6: #42 on #43 = 0 skill, +1 teamwork from #51', () => {
   const s = state([[0, 42, 5, 10], [0, 51, 7, 9], [1, 43, 6, 9]]);
   const m = contactMods(s, s.players['0:42'], s.players['1:43']);
-  assert.deepEqual(m.parts, { skill: 0, teamwork: 1 });
+  assert.deepEqual(m.parts, { skill: 0, teamwork: 1, ability: 0 });
 });
 
 test('block example p.6: #43 on #51 = +1 skill, -1 teamwork from #42 => 0', () => {
@@ -401,4 +401,173 @@ test('playbook: every built-in offense and defense is legal everywhere on the fi
     }
   }
   assert.equal(bad.length, 0, bad.slice(0, 5).join(' | '));
+});
+
+// ---------- B6: skills (rulebook pp.15-18), field goals (pp.20-21), INFERNO (pp.19-20) ----------
+function skillGame(players, ball, dice = [], abilities = {}, mode = 'alltechno') {
+  const roster = (side) => players.filter((p) => p[0] === side).map(([, num]) => ({ num, abilities: abilities[`${side}:${num}`] ?? [] }));
+  const g = new Game({ teams: [{ id: 'a', name: 'A', roster: roster(0) }, { id: 'b', name: 'B', roster: roster(1) }], seed: 1, mode, agents: [() => null, () => null] });
+  for (const [side, num, col, row, down] of players) Object.assign(g.s.players[`${side}:${num}`], { col, row, down: !!down });
+  g.s.ball = ball ? { at: 'held', pid: ball } : { at: 'dead' };
+  g.s.offense = 0; g.s.line = 18;
+  g.s.play = { startOffense: 0, line: 18, forwardDone: false, crossed: false, passThrown: false, adjustUsed: [false, false], activations: 0 };
+  g.s.cards = [{ bench: [], stack: [], discard: [] }, { bench: [], stack: [], discard: [] }];
+  const q = [...dice];
+  g.d6 = () => (q.length ? q.shift() : 3);
+  return g;
+}
+const withSkills = (players, ball, ab) => { const s = state(players, ball, { skills: true, offense: 0, play: { line: 18, forwardDone: false } }); for (const [pid, a] of Object.entries(ab)) s.players[pid].abilities = a; return s; };
+
+test('p.16-18: BLOCK +1, TACKLE +3 and TEAM PLAYER change the numbers (and only in a skills mode)', () => {
+  const s = withSkills([[0, 42, 6, 10], [0, 44, 7, 9], [1, 43, 6, 9]], '1:43', { '0:42': ['BLOCK +1', 'TACKLE +3'], '0:44': ['TEAM PLAYER'] });
+  const b = contactMods(s, s.players['0:42'], s.players['1:43'], 'block');
+  assert.equal(b.parts.ability, 1);
+  assert.equal(b.parts.teamwork, 2); // #44 is a team player: +2
+  assert.equal(contactMods(s, s.players['0:42'], s.players['1:43'], 'tackle').parts.ability, 3);
+  s.skills = false;
+  assert.equal(contactMods(s, s.players['0:42'], s.players['1:43'], 'block').parts.ability, 0);
+});
+
+test('p.17: JUKE / SHAKE: the higher-rated player gets the rating bonus', () => {
+  const s = withSkills([[0, 7, 6, 10], [1, 43, 6, 9]], '0:7', {});
+  assert.equal(contactMods(s, s.players['0:7'], s.players['1:43'], 'juke').parts.skill, 3);
+  assert.equal(contactMods(s, s.players['0:7'], s.players['1:43'], 'block').parts.skill, -3);
+});
+
+test('p.17: LOCKDOWN makes leaving his zone cost 3 without the ball; SIDELINER ignores threat along the sideline', () => {
+  const s = withSkills([[0, 6, 0, 18], [1, 45, 1, 17]], null, { '1:45': ['LOCKDOWN'], '0:6': ['SIDELINER'] });
+  assert.equal(leaveCost(s, [0, 18], s.players['0:6'], false, [1, 19]), 3);
+  assert.equal(leaveCost(s, [0, 18], s.players['0:6'], false, [0, 17]), 1); // sideline to sideline: no threat at all
+  assert.equal(leaveCost(s, [0, 18], s.players['0:6'], true, [0, 17]), 2);  // with the ball: 2 per threat, lockdown ignored
+});
+
+test('p.18: SQUEEZE PLAY slips through a diagonal with players on both sides', () => {
+  const s = withSkills([[0, 6, 6, 10], [1, 45, 7, 10], [1, 46, 6, 9]], null, {});
+  assert.equal(moveReach(s, s.players['0:6'], 6).has('7,9'), false);
+  s.players['0:6'].abilities = ['SQUEEZE PLAY'];
+  assert.equal(moveReach(s, s.players['0:6'], 6).has('7,9'), true);
+});
+
+test('p.17-18: ROUTE / SCREEN / ZONE DEFENDER / MAN DEFENDER on a pass', () => {
+  const s = withSkills([[0, 7, 6, 20], [0, 33, 6, 14], [1, 45, 9, 12], [1, 46, 7, 13]], '0:7', { '0:7': ['ROUTE PASSER', 'SCREEN PASSER'], '1:45': ['ZONE DEFENDER'], '1:46': ['MAN DEFENDER'] });
+  const open = passInfo(s, s.players['0:7'], [10, 15]); // open grass, 3 from the zone defender
+  assert.ok(open.why.includes('+1 route passer'));
+  assert.equal(open.penalty, 1);
+  const man = passInfo(s, s.players['0:7'], [6, 14]); // #46 covers #33
+  assert.ok(man.penalty >= 3);
+  const screen = passInfo(s, s.players['0:7'], [4, 19]);
+  assert.ok(screen.why.includes('+1 screen passer'));
+});
+
+test('p.16: BLITZ blocks as part of a move and keeps going', async () => {
+  const g = skillGame([[1, 45, 6, 9], [0, 42, 6, 10]], null, [5, 4], { '1:45': ['BLITZ'] });
+  let acts = 0;
+  g.agents[1] = scripted({ act: () => { acts++; return acts === 1 ? { kind: 'block', pid: '0:42' } : { kind: 'end' }; }, push: (req) => req.options[0], followUp: () => true, bonus: () => null });
+  g.agents[0] = scripted({ bonus: () => null });
+  await g.runActivation('1:45', 'card');
+  assert.equal(acts, 2); // asked again after the block
+});
+
+test('p.18: SHOVE drives the target straight back 2 squares', async () => {
+  const g = skillGame([[1, 45, 6, 9], [0, 42, 6, 10]], null, [5, 4], { '1:45': ['SHOVE'] });
+  g.agents[1] = scripted({ act: (req) => (req.shoves.length ? { kind: 'shove', pid: req.shoves[0] } : { kind: 'end' }), followUp: () => false, bonus: () => null });
+  g.agents[0] = scripted({ bonus: () => null });
+  await g.runActivation('1:45', 'card');
+  assert.deepEqual([g.s.players['0:42'].col, g.s.players['0:42'].row], [6, 12]);
+  assert.equal(g.s.players['0:42'].down, false);
+});
+
+test('p.18: STIFF ARM: a playmaker match cancels a die, and a missed tackle flattens the tackler', async () => {
+  // tackle dice 4,2 + playmaker 4: the 4 is cancelled -> 2 + 0 = fail
+  const g = skillGame([[0, 6, 6, 12], [1, 65, 6, 11]], '0:6', [4, 2, 4], { '0:6': ['STIFF ARM'] });
+  g.agents[1] = scripted({ act: (req) => (req.tackles.length ? { kind: 'tackle', pid: req.tackles[0] } : { kind: 'end' }) });
+  g.agents[0] = scripted({ bonus: () => null });
+  await g.runActivation('1:65', 'card');
+  assert.equal(g.s.players['1:65'].down, true);
+  assert.equal(g.s.players['0:6'].down, false);
+});
+
+test('p.18: SPIN MOVE: on a matched miss he can swap squares with the tackler', async () => {
+  const g = skillGame([[0, 6, 6, 12], [1, 65, 6, 11]], '0:6', [4, 2, 4], { '0:6': ['SPIN MOVE'] });
+  g.agents[1] = scripted({ act: (req) => (req.tackles.length ? { kind: 'tackle', pid: req.tackles[0] } : { kind: 'end' }) });
+  g.agents[0] = scripted({ spin: () => true, bonus: () => null });
+  await g.runActivation('1:65', 'card');
+  assert.deepEqual([g.s.players['0:6'].col, g.s.players['0:6'].row], [6, 11]);
+});
+
+test('p.17: PITCH hands off from up to 3 squares away', async () => {
+  const g = skillGame([[0, 7, 6, 18], [0, 33, 9, 18], [1, 45, 0, 5]], '0:7', [], { '0:7': ['PITCH'] });
+  g.agents[0] = scripted({ act: (req) => (g.s.ball.pid === '0:7' && req.handoffs.includes('0:33') ? { kind: 'handoff', pid: '0:33' } : { kind: 'end' }) });
+  await g.runActivation('0:7', 'card');
+  assert.equal(g.s.ball.pid, '0:33');
+});
+
+test('p.17: INTERCEPTOR: a missed throw near him lands on him (sport check to hold on)', async () => {
+  // pass dice 1,1 (fail), then the interception sport check 2,5
+  const g = skillGame([[0, 7, 6, 20], [0, 33, 6, 14], [1, 45, 7, 13]], '0:7', [1, 1, 2, 5], { '1:45': ['INTERCEPTOR'] });
+  g.agents[0] = scripted({ act: () => ({ kind: 'pass', to: [6, 14] }), bonus: () => null });
+  g.agents[1] = scripted({ bonus: () => null });
+  await g.runActivation('0:7', 'card');
+  assert.equal(g.s.ball.pid, '1:45');
+  assert.equal(g.s.offense, 1);
+});
+
+test('p.17: DODGE spends his cards for -1 each on a tackle at him', async () => {
+  const g = skillGame([[0, 6, 6, 12], [1, 45, 6, 11]], '0:6', [2, 3], { '0:6': ['DODGE'] });
+  g.s.cards[0].bench = [6, 6];
+  let check = null;
+  g.onChange = (st) => { const l = st.log.at(-1); if (l?.kind === 'check') check = l; };
+  g.agents[1] = scripted({ act: (req) => (req.tackles.length ? { kind: 'tackle', pid: req.tackles[0] } : { kind: 'end' }) });
+  g.agents[0] = scripted({ dodge: (req) => req.max, bonus: () => null });
+  await g.runActivation('1:45', 'card');
+  assert.equal(check.penalty, 2);
+});
+
+test('p.17: QB READ lets the offense read and react only with him, when he has the ball', async () => {
+  const g = skillGame([[0, 7, 6, 18], [0, 33, 5, 17], [1, 45, 6, 10], [1, 46, 2, 10]], '0:7', [], { '0:7': ['QB READ'] });
+  g.s.cards[0].bench = [7, 33];
+  g.s.cards[1].bench = [46];
+  let asked = null;
+  g.agents[1] = scripted({ readReact: () => null, first: () => 'me', act: () => ({ kind: 'end' }) });
+  g.agents[0] = scripted({ readReact: (req) => { asked = req; return null; }, first: () => 'me', act: () => ({ kind: 'end' }) });
+  await g.round(33, 45);
+  assert.deepEqual(asked.only, [7]);
+});
+
+test('PRO: 8-vs-8 (#51 plays) and the field goal distance (p.20 example: kick from the 45-yard square = 12)', () => {
+  const g = skillGame([[0, 51, 6, 10], [1, 45, 6, 9]], null, [], {}, 'pro');
+  assert.ok(g.s.players['0:51']);
+  g.s.line = 10; g.s.spot = 6;
+  assert.equal(g.fgDistance(), 12);
+  const t = new Game({ teams: [{ id: 'a', name: 'A', roster: [{ num: 51 }, { num: 6 }] }, { id: 'b', name: 'B', roster: [{ num: 45 }] }], mode: 'techno' });
+  assert.equal(t.s.players['0:51'], undefined);
+});
+
+test('PRO: a field goal is 3d6 against the distance: good = 3 points, other team on its 20', async () => {
+  const g = skillGame([[0, 51, 6, 10], [1, 45, 6, 9]], null, [6, 5, 4], {}, 'pro');
+  g.s.line = 10; g.s.spot = 6; g.s.pile = ['y', 'y']; g.s.down = 4;
+  g.agents[0] = scripted({ kick: () => true });
+  assert.equal(await g.maybeKick(), true);
+  assert.equal(g.s.score[0], 3);
+  assert.equal(g.s.offense, 1);
+});
+
+test('INFERNO: tokens cap at 3; ON FIRE gives +3 on checks and ends on a failed check', async () => {
+  const g = skillGame([[0, 42, 6, 10], [1, 45, 6, 9]], null, [1, 2], {}, 'inferno');
+  g.earn(0, 2, 'test'); g.earn(0, 2, 'test');
+  assert.equal(g.s.fire[0], 3);
+  const p = g.s.players['0:42'];
+  g.setOnFire(p);
+  assert.equal(contactMods(g.s, p, g.s.players['1:45'], 'block').parts.ability, 3);
+  g.agents[0] = scripted({ act: (req) => (req.blocks.length ? { kind: 'block', pid: req.blocks[0] } : { kind: 'end' }), boost: () => 0 });
+  g.agents[1] = scripted({ reverse: () => false, bonus: () => null, fireDefend: () => 0 });
+  await g.runActivation('0:42', 'card');
+  assert.equal(p.onFire, false); // 1+2 -3 +3 = 3: failed
+});
+
+test('INFERNO: a dirty hit on a downed player earns a token (3 on a critical)', async () => {
+  const g = skillGame([[0, 42, 6, 10], [1, 45, 6, 9, true]], null, [5, 5], {}, 'inferno');
+  g.agents[0] = scripted({ act: (req) => (req.dirty.length ? { kind: 'dirty', pid: req.dirty[0] } : { kind: 'end' }), boost: () => 0, bonus: () => null });
+  await g.runActivation('0:42', 'card');
+  assert.equal(g.s.fire[0], 3);
 });

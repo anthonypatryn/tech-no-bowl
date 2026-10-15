@@ -26,7 +26,7 @@ function decide(game, side, req, slip) {
     }
     case 'timeout': return Math.abs(s.score[0] - s.score[1]) <= 8;
     case 'pick': return any(req.bench);
-    case 'readReact': return r() < 0.1 && side !== s.offense ? any(req.bench) : null;
+    case 'readReact': return r() < 0.1 ? any(req.only ?? req.bench) : null;
     case 'first': return r() < 0.7 ? 'me' : 'them';
     case 'bonus': return bestPlayer(game, side, req.options);
     case 'adjustPartner': return { pid: any(req.options), first: 'self' };
@@ -36,6 +36,13 @@ function decide(game, side, req, slip) {
     case 'followUp': return r() < 0.7;
     case 'scatter': return scatterPick(game, side, req);
     case 'act': return act(game, side, req, slip);
+    case 'dodge': return Math.min(1, req.max);
+    case 'spin': return true;
+    case 'heatCrit': return 'fire';
+    case 'kick': return req.down === 4 ? req.dist <= 13 : req.dist <= 8 && r() < 0.3;
+    case 'fireDefend': return r() < 0.3 ? 1 : 0;
+    case 'onFire': return { pid: any(req.options), skill: 'JUKE' };
+    case 'option': return r() < 0.6 ? any(req.targets) : null;
     default: return null;
   }
 }
@@ -84,6 +91,14 @@ function act(game, side, req, slip) {
     return opts[Math.floor(r() * opts.length)];
   }
   if (req.tackles.length) return { kind: 'tackle', pid: req.tackles[0] };
+  // the skills, now and then, so the simulator exercises them
+  if (req.fire?.canFuego && r() < 0.05) return { kind: 'fuego', skill: 'JUKE' };
+  if (req.dirty.length && r() < 0.3) return { kind: 'dirty', pid: req.dirty[0] };
+  if (req.jukes.length && r() < 0.3) return { kind: 'juke', pid: req.jukes[0] };
+  if (req.shakes.length && r() < 0.3) return { kind: 'shake', pid: req.shakes[0] };
+  if (req.shoves.length && r() < 0.5) return { kind: 'shove', pid: req.shoves[0] };
+  if (req.fire?.canBuy && req.fire.bought === 0 && r() < 0.05) return { kind: 'buy', n: 1 };
+  if (req.fire?.canHurdle && r() < 0.03) return { kind: 'hurdle' };
   const moves = req.moves.filter((m) => m.end !== 'out');
   const here = sqOf(me);
 
@@ -170,7 +185,9 @@ export function makePassive() {
     switch (req.type) {
       case 'act': return { kind: 'end' };
       case 'motion': case 'readReact': case 'bonus': return null;
-      case 'boost': return 0;
+      case 'boost': case 'dodge': case 'fireDefend': return 0;
+      case 'option': case 'onFire': return null;
+      case 'kick': case 'spin': return false;
       case 'timeout': return false;
       default: return bot(game, side, req);
     }
