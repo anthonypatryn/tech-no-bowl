@@ -1,6 +1,6 @@
 // ?view=moments — Moment Lab: fire each cinematic and roll on demand on a real board, for tuning the shots,
 // the dice and the sound without waiting for them to happen in a game.
-import { useEffect, useMemo, useReducer, useState } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { Stage } from '../three/Stage';
 import { Board, VIEWS } from '../three/Board';
 import { Chips } from './ui';
@@ -25,9 +25,12 @@ function Callout({ s }) {
 }
 import { useGameSounds } from './useGameSounds';
 
-function setupGame(bump) {
+const pickPair = () => {
   const pick = () => TEAMS[Math.floor(Math.random() * TEAMS.length)];
   const a = pick(); let b = pick(); while (b.id === a.id) b = pick();
+  return [a, b];
+};
+function setupGame(bump, [a, b]) {
   // ALL PRO so the goal posts are up; INFERNO's flames show on anyone marked on fire
   const g = new Game({ teams: [teamSetup({ team: a.id, uni: 'home' }), teamSetup({ team: b.id, uni: 'home' })], seed: Date.now(), mode: 'allpro', agents: [() => null, () => null] }, { onChange: bump });
   const s = g.state;
@@ -55,7 +58,14 @@ export const MOMENTS = [
 export default function Lab() {
   const [, bump] = useReducer((x) => x + 1, 0);
   const [seed, reseed] = useReducer((x) => x + 1, 0);
-  const game = useMemo(() => setupGame(bump), [seed]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [pair, setPair] = useState(pickPair);
+  // every moment plays on a fresh field (the last one's knockdowns, flames and swaps don't carry over)
+  const game = useMemo(() => setupGame(bump, pair), [seed, pair]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [pending, setPending] = useState(() => { const m = new URLSearchParams(location.search).get('m'); return m ? { k: m, n: 0 } : null; });
+  const [last, setLast] = useState(null);
+  const [busy, setBusy] = useState(false); // the panel gets out of the way while a moment plays
+  const fire = (k) => { setPending({ k, n: Date.now() }); setLast(k); reseed(); setBusy(true); };
+  useEffect(() => { if (!busy) return undefined; const t = setTimeout(() => setBusy(false), 5200); return () => clearTimeout(t); }, [busy, last, pending]);
   const [view, setView] = useState('broadcast');
   const s = game.state;
   const shot = useShot(s.log, s.players);
@@ -149,24 +159,27 @@ export default function Lab() {
     fgmiss: () => { const d = [1, 3, 2]; game.log('Field goal (Lab).', 'kick', { side: 0, dice: d, total: 6, dist: 14, good: false, from: [6, 12], dir: -1 }); },
     scatter: () => { const c = holder(); game.log('Scatter (Lab).', 'scatter', { dice: [1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)], from: [c.col, c.row], to: [c.col, c.row] }); },
   };
-  // ?view=moments&m=key fires that moment once the board is up (links from the Art Review)
+  // the moment asked for (a button, or ?view=moments&m=key from the Art Review) fires once its fresh field is up and
+  // the camera has settled
+  const latest = useRef(moments);
+  latest.current = moments;
   useEffect(() => {
-    const m = new URLSearchParams(location.search).get('m');
-    if (!m || !moments[m]) return;
-    const t = setTimeout(moments[m], 900);
+    if (!pending || !latest.current[pending.k]) return undefined;
+    const t = setTimeout(() => { latest.current[pending.k](); setPending(null); }, pending.n ? 900 : 1600);
     return () => clearTimeout(t);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [game, pending]);
   return (
     <div className="game">
       <Stage className="game-stage">
         <Board game={game} view={view} onFree={() => setView('free')} tiles={[]} shot={shot} />
       </Stage>
       <Callout s={s} />
-      <div className={`lab-bar glass ${shot ? 'hide' : ''}`}>
+      <div className={`lab-bar glass ${shot || busy ? 'hide' : ''}`}>
         <h3>Moment Lab</h3>
         <div className="btns">
-          {MOMENTS.map(([k, label], i) => <button key={k} className={`btn ${i === 0 ? 'primary' : ''}`} onClick={moments[k]}>{label}</button>)}
-          <button className="btn" onClick={reseed}>New teams / reset</button>
+          {MOMENTS.map(([k, label]) => <button key={k} className={`btn ${k === last ? 'primary' : ''}`} onClick={() => fire(k)}>{label}</button>)}
+          <button className="btn" disabled={!last} onClick={() => fire(last)}>↻ Replay</button>
+          <button className="btn" onClick={() => { setPair(pickPair()); reseed(); }}>New teams</button>
           <a className="btn" href="/">Home</a>
         </div>
         <Chips small value={view} onChange={setView} options={VIEWS} />

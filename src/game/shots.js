@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { settings } from './prefs';
 
 export const LONG_THROW = 8;
-const DUR = { throw: 3.0, hit: 1.5, sack: 2.2, td: 3.4, onfire: 2.6, skill: 1.7, kick: 3.4 };
+const DUR = { throw: 3.0, hit: 2.0, sack: 2.4, td: 3.4, onfire: 3.2, skill: 2.4, kick: 3.6 };
 const WALK = 6.5; // squares per second, as the board walks them
 // log kind -> [callout, effect]
 export const SKILL_FX = {
@@ -52,6 +52,11 @@ export function delayFor(log, i) {
   return 0;
 }
 
+// each kind plays in full the first time; after that a shorter cut (a long throw keeps its length: the ball's flight
+// is timed to it). Any shot can be skipped: skipShot() (the Skip button, Enter, a click on the field).
+const seen = new Map();
+export const skipShot = () => window.dispatchEvent(new Event('tb-skip-shot'));
+
 // the shot running now (or null). The newest cinematic log entry wins.
 export function useShot(log, players) {
   const last = useMemo(() => {
@@ -63,11 +68,18 @@ export function useShot(log, players) {
     if (!last || settings().calm) return;
     let t2;
     const t1 = setTimeout(() => {
-      const s = { ...last, t0: performance.now(), dur: DUR[last.kind] };
+      const n = seen.get(last.kind) ?? 0;
+      seen.set(last.kind, n + 1);
+      const s = { ...last, t0: performance.now(), dur: DUR[last.kind] * (n && last.kind !== 'throw' ? 0.6 : 1) };
       setShot(s);
       t2 = setTimeout(() => setShot((x) => (x?.id === s.id ? null : x)), s.dur * 1000);
     }, last.wait * 1000);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [last?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const skip = () => setShot(null);
+    window.addEventListener('tb-skip-shot', skip);
+    return () => window.removeEventListener('tb-skip-shot', skip);
+  }, []);
   return shot;
 }

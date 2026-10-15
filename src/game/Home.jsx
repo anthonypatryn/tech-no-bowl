@@ -42,8 +42,8 @@ export default function Home({ go, onResume }) {
           <button className="menu-card glass" onClick={() => go('season')}>
             <b>Season</b><span>A schedule, standings and the playoffs</span>
           </button>
-          <button className="menu-card glass" disabled title="Arrives in a later batch">
-            <b>Play Online</b><span>Coming soon</span>
+          <button className="menu-card glass" onClick={() => go('online')}>
+            <b>Play Online</b><span>Host a room or join a friend's with a code</span>
           </button>
           <button className="menu-card glass" onClick={() => go('tutorial')}>
             <b>Tutorial</b><span>A guided first game with the coach's tips</span>

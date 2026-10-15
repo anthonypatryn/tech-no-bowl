@@ -1,7 +1,7 @@
 // Texture cache for the cube atlases. One image per uniform; each face is a clone of it with its own
 // offset/repeat (clones share the image, so the GPU uploads it once).
 import * as THREE from 'three';
-import { artUrl, DOWNS } from '../data/art';
+import { artUrl } from '../data/art';
 
 const loader = new THREE.TextureLoader();
 const images = new Map();   // file -> Texture (base)
@@ -74,9 +74,29 @@ export function playerMaterials(uniform, row) {
 }
 
 // the down marker: atlas row 6 is the cube with 1 / 2 / 3 / 4 round its sides (front, right, back, left)
-// one set per down: that down's number on all four sides
-export function downMaterials(row = 6) {
-  const mat = (col) => new THREE.MeshStandardMaterial({ map: tileTexture(DOWNS.file, row, col, 5), roughness: 0.7 });
-  const [top, ...nums] = [0, 1, 2, 3, 4].map(mat);
-  return nums.map((n) => [n, n, top, top, n, n]);
+// one set per down: that down's number, plain white on solid orange, on all four sides (drawn here rather than cut
+// from the printed sheet, whose digits carry a dark outline)
+const DOWN_ORANGE = '#e8611c';
+function downFace(n) {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const draw = () => {
+    g.fillStyle = DOWN_ORANGE; g.fillRect(0, 0, 128, 128);
+    if (n) {
+      g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.font = '84px "Press Start 2P", monospace';
+      g.fillText(String(n), 68, 72);
+    }
+  };
+  draw();
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace; t.magFilter = THREE.NearestFilter;
+  // the pixel font may still be loading: draw again once it's in
+  document.fonts?.load('84px "Press Start 2P"').then(() => { draw(); t.needsUpdate = true; }).catch(() => {});
+  return t;
+}
+export function downMaterials() {
+  const mat = (n) => new THREE.MeshStandardMaterial({ map: downFace(n), roughness: 0.7 });
+  const top = mat(0);
+  return [1, 2, 3, 4].map((d) => { const m = mat(d); return [m, m, top, top, m, m]; });
 }

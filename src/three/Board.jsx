@@ -50,7 +50,7 @@ function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge,
     let ox = 0, oz = 0, oy = 0;
     const L = lg.current;
     if (L.t < 1) {
-      L.t = Math.min(1, L.t + dt / 0.55);
+      L.t = Math.min(1, L.t + dt / 0.7);
       // wind up a touch, burst in hard, settle back
       const k = L.t < 0.18 ? -0.25 * Math.sin((L.t / 0.18) * Math.PI / 2) : Math.sin(((L.t - 0.18) / 0.82) * Math.PI) * (1 - 0.15 * L.t);
       ox = L.d.x * k * 0.62; oz = L.d.z * k * 0.62; oy = Math.max(0, k) * 0.22;
@@ -512,7 +512,7 @@ function shotCam(shot, positions) {
     const c = new THREE.Vector3(...sq(...shot.at));
     const shake = Math.max(0, 1 - now / 0.6) * (shot.big ? 0.22 : 0.12);
     const j = () => (Math.random() - 0.5) * shake;
-    return { pos: c.clone().add(new THREE.Vector3(2.4 + j(), 1.5 + j(), 1.3 + j())), target: c.clone().setY(0.4), rate: 12 };
+    return { pos: c.clone().add(new THREE.Vector3(3.2 + j(), 2 + j(), 1.8 + j())), target: c.clone().setY(0.4), rate: 8 };
   }
   if (shot.kind === 'sack') {
     // low and slow: the camera creeps in at turf level while the dust settles
@@ -535,7 +535,7 @@ function shotCam(shot, positions) {
     // snap to a 3/4 angle and push in a little
     const c = new THREE.Vector3(...sq(...shot.at));
     const push = 1 - Math.min(1, now / shot.dur) * 0.25;
-    return { pos: c.clone().add(new THREE.Vector3(2.6 * push, 1.4 * push, 1.6 * push)), target: c.clone().setY(0.5), rate: 9 };
+    return { pos: c.clone().add(new THREE.Vector3(3.6 * push, 2.1 * push, 2.2 * push)), target: c.clone().setY(0.5), rate: 6 };
   }
   if (shot.kind === 'kick') {
     // low behind the kicker, looking down the field at the posts, then riding up after the ball

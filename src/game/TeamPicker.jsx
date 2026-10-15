@@ -127,7 +127,7 @@ function Half({ who, label, tag, sel, set, step, random, openGrid, onInfo, onLin
   );
 }
 
-function TeamGrid({ current, onPick, onClose }) {
+export function TeamGrid({ current, onPick, onClose }) {
   useEscape(onClose);
   return (
     <div className="modal" onClick={onClose}>
@@ -165,7 +165,7 @@ function AbilityCard({ p, onClose }) {
   );
 }
 
-function LineupPicker({ sel, set, onClose }) {
+export function LineupPicker({ sel, set, onClose }) {
   useEscape(onClose);
   const team = teamById(sel.team);
   const slots = altSlots(team);

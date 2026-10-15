@@ -112,6 +112,24 @@ export function applySaved(saved, role, { line, dir, col }) {
   const used = new Set();
   return saved.spots.map((p) => { const q = place([col + p.dc, base + step * p.d], used); return q ? { num: p.num, col: q[0], row: q[1] } : null; }).filter(Boolean);
 }
+// "same as last down": the formation (relative to the ball) and play call each team used last, on this device
+const LAST = 'tb-last';
+const readLast = () => { try { return JSON.parse(localStorage.getItem(LAST) || '{}'); } catch { return {}; } };
+export function rememberLast(teamId, role, spots, { line, dir, col }) {
+  const { off, def, back } = losRows(line, dir);
+  const base = role === 'offense' ? off : def;
+  const step = role === 'offense' ? back : -back;
+  const all = readLast();
+  (all[teamId] ??= {})[role] = { spots: spots.map((p) => ({ num: p.num, dc: p.col - col, d: (p.row - base) * step })) };
+  try { localStorage.setItem(LAST, JSON.stringify(all)); } catch { /* not kept */ }
+}
+export function rememberCall(teamId, call) {
+  const all = readLast();
+  (all[teamId] ??= {}).call = call;
+  try { localStorage.setItem(LAST, JSON.stringify(all)); } catch { /* not kept */ }
+}
+export const lastFor = (teamId, key) => readLast()[teamId]?.[key] ?? null;
+
 export function deleteSaved(teamId, role, name) {
   const all = read();
   if (all[teamId]?.[role]) all[teamId][role] = all[teamId][role].filter((x) => x.name !== name);

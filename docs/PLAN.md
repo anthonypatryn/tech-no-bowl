@@ -210,7 +210,7 @@ Owner's additions (do first):
 - **INFERNO:** fire tokens, ON FIRE, EN FUEGO, FIRE BOMB, BRING THE HEAT.
 - Alternate lineups (Ankhs, Chefs, Reapers).
 
-### B7 · Online
+### B7 · Online ✅
 - PeerJS host-authoritative rooms with 5-letter codes and a TURN relay, using the Long Shot `room.js` pattern.
 - `sanitize()` hides the bench and play stack. Both coaches lock in simultaneous play calls before reveal.
 - Shared timers, so the play clock becomes real. Reconnect, spectate.

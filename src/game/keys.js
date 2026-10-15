@@ -10,6 +10,8 @@ export const KEY_ACTIONS = [
   ['bug', 'Report a bug', 'b'],
   ['fullscreen', 'Full screen', 'f'],
   ['back', 'Back / cancel / leave', 'Escape'],
+  ['turbo', 'Fast-forward on / off', 'g'],
+  ['skip', 'Skip a cinematic', 'Enter'],
 ];
 export const DEFAULT_KEYS = Object.fromEntries(KEY_ACTIONS.map(([a, , k]) => [a, k]));
 

@@ -93,8 +93,9 @@ function plan(x, z, n, cubes) {
   });
   const score = (dice) => Math.min(...dice.flatMap((d) => cubes.map((c) => segDist(c, d.from, d.at))), 9);
   let best = null;
-  for (const dx of [1.1, 1.6, 2.2, 0.6, 2.9]) {
-    for (const dz of [0, 0.5, -0.5, 1, -1, 1.6, -1.6, 2.3, -2.3]) {
+  // beside the play (along the field), not between it and the broadcast camera on the +x side
+  for (const dx of [0.2, -0.5, 0.8, -1.1, 1.4]) {
+    for (const dz of [1.9, -1.9, 2.5, -2.5, 3.1, -3.1, 1.4, -1.4, 3.8, -3.8]) {
       const dice = lay(x + dx, z + dz);
       const s = score(dice);
       if (s >= CLEAR) return dice;

@@ -17,6 +17,7 @@ import { TEXT_ZOOM, useSettings } from './game/prefs';
 const ArtReview = lazy(() => import('./game/ArtReview.jsx'));
 const BugList = lazy(() => import('./game/BugList.jsx'));
 const Lab = lazy(() => import('./game/Lab.jsx'));
+const OnlinePage = lazy(() => import('./game/OnlinePage.jsx'));
 const SoundEditor = lazy(() => import('./game/SoundEditor.jsx'));
 import BugReport from './game/BugReport.jsx';
 import { RulesPage } from './game/RulesDrawer.jsx';
@@ -59,6 +60,7 @@ export default function App() {
       {(view === 'teams' || (view === 'game' && !match)) && <TeamPicker onStart={(m) => { setMatch({ ...m, seed: Date.now() }); go('game'); }} />}
       {view === 'settings' && <Settings />}
       {view === 'rules' && <RulesPage go={go} />}
+      {view === 'online' && <Suspense fallback={<div className="loading">Loading…</div>}><OnlinePage go={go} /></Suspense>}
       {view === 'season' && <SeasonPage onPlay={(m) => { setMatch(m); go('game'); }} />}
       {view === 'art' && <Suspense fallback={<div className="loading">Loading the art…</div>}><ArtReview /></Suspense>}
     </div>
@@ -71,7 +73,7 @@ function TopBar({ view, go }) {
   return (
     <header className="topbar">
       <a className="brand" href="/" onClick={(e) => { e.preventDefault(); go('home'); }}><span className="led">TECHNO BOWL</span></a>
-      <nav>{link('home', 'Home')}{link('teams', 'Play')}{link('season', 'Season')}{link('rules', 'Rules')}{link('art', 'Art Review')}{link('settings', 'Settings')}
+      <nav>{link('home', 'Home')}{link('teams', 'Play')}{link('season', 'Season')}{link('online', 'Online')}{link('rules', 'Rules')}{link('art', 'Art Review')}{link('settings', 'Settings')}
         <a href="#bug" onClick={(e) => { e.preventDefault(); setBug(true); }}>Report a bug</a></nav>
       {bug && <BugReport onClose={() => setBug(false)} />}
     </header>

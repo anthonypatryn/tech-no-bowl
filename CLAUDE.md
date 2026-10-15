@@ -35,7 +35,19 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
   de-fringe. 58 tests.
 - **After B6:** team select Random button, Lineup under the ability players, team-coloured turn marker, colour-blind mode
   (Settings: Okabe-Ito colours + smaller squares for move-only / risky).
-- **Next:** B7 online.
+- **B7 done:** online (`?view=online`, `src/net/room.js`, Long Shot pattern): PeerJS rooms with 5-letter codes and
+  invite links, host-authoritative (the host's browser runs the Game, `sanitize` hides the other bench / play call /
+  questions), lobby team picks + rules + clocks, friend reconnect, host resume (`tb-online-resume`, same code),
+  spectators, computer covers a dropped friend (`Game.setAgent`), quick reactions. `/api/turn` relay needs
+  `CF_TURN_KEY_ID` + `CF_TURN_API_TOKEN` on Vercel (same as Long Shot); without them direct links only.
+  The game screen coaches either side: `GameView` `me` prop / module `ME`; the friend's screen runs on a `RemoteGame`.
+- **Play faster (owner OK'd all 10):** one-click move+tackle/block, auto-finish after a move (Settings), ⏩ fast-forward
+  (G), Coach's call, Same as last (formation and call), shorter repeat cinematics + Skip (Enter), click a log roll for
+  its breakdown, danger preview (red rings: who can reach the carrier's square), phone tap-to-confirm + foldable
+  prompt, end-of-game highlights + copy result. Redraws fall back to a timer when no animation frame comes.
+- **Art fixes:** helmet edges un-mixed from the page white (no erosion; Chefs white facemask closes its gaps),
+  plain white-on-orange down cube drawn in code, Moment Lab plays each moment on a fresh field (Replay button).
+- **Next:** owner play-test.
 
 ## Look (8-bit everywhere)
 - Type: Press Start 2P (`--pixel`) for titles, buttons, chips, labels; Pixelify Sans (`--body`) for running text.

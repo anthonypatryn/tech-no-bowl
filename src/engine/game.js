@@ -157,6 +157,13 @@ export class Game {
     }));
   }
   answer(value, reqId) { if (reqId == null || reqId === this.s.request?.id) this.pending?.(value); }
+  // online: the computer coaches a side (the friend dropped) or hands it back (agent = null). A question already
+  // waiting on that side is answered straight away.
+  setAgent(side, agent) {
+    this.agents[side] = agent;
+    const r = this.s.request;
+    if (agent && r?.side === side && this.pending) Promise.resolve(agent(this, side, r)).then((v) => { if (this.s.request?.id === r.id) this.pending?.(v); });
+  }
 
   // ask until the answer passes `check` (returns an error string or null). A computer coach gets one retry and then the
   // fallback, so a bot bug shows up in the stats instead of freezing the game.

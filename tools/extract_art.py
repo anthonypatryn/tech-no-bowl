@@ -209,53 +209,54 @@ def do_board():
     return {'punch': {'cols': 10, 'rows': 8, 'files': [f'punch/pb{n}{s}.webp' for n in range(1, 5) for s in 'fb']}}
 
 
-def cutout(rgb, pocket_from=(0.5, 0.0)):
+def cutout(rgb, pocket_from=(0.5, 0.0), close=0):
     """Helmet-style cutout on a white page: RGBA with
-    - the background (pure white connected to the border) removed
-    - page white showing through the facemask removed (enclosed pure-white pockets on the facemask side)
-    - the near-white fringe peeled off the edges, then a soft edge"""
+    - the background (white connected to the border) removed
+    - page white showing through the facemask removed (enclosed near-white pockets on the facemask side)
+    - the edge un-mixed from the page: along every edge, near-white pixels are part art, part paper. Each one gets the
+      alpha that explains its whiteness, and its colour with the white taken out, so no halo is left and nothing is
+      eroded away (chrome facemasks keep their bars)."""
     h, w = rgb.shape[:2]
-    pure = (rgb.min(2) > 251).astype(np.uint8)
+    lo = rgb.min(2)
+    pure = (lo > 248).astype(np.uint8)
     bg = pure.copy()
     mask = np.zeros((h + 2, w + 2), np.uint8)
     for y, x in [(0, 0), (0, w - 1), (h - 1, 0), (h - 1, w - 1)]:
         if pure[y, x]:
             cv2.floodFill(bg, mask, (x, y), 2)
-    alpha = np.where(bg == 2, 0, 255).astype(np.uint8)
-    # enclosed pockets: page white (very flat, >= 253) on the facemask side (right of the shell)
-    flat = ((rgb.min(2) >= 253) & (alpha > 0)).astype(np.uint8)
+    alpha = np.where(bg == 2, 0, 255).astype(np.float32)
+    # enclosed pockets of page white on the facemask side
+    flat = ((lo >= 248) & (alpha > 0)).astype(np.uint8)
     n, lab, st, cen = cv2.connectedComponentsWithStats(flat)
+    near_bg = cv2.dilate((alpha == 0).astype(np.uint8), np.ones((5, 5), np.uint8)) > 0
     for k in range(1, n):
         area = st[k, cv2.CC_STAT_AREA]
-        if area >= 4 and cen[k][0] > w * pocket_from[0] and cen[k][1] > h * pocket_from[1]:
+        if not (cen[k][0] > w * pocket_from[0] and cen[k][1] > h * pocket_from[1]):
+            continue
+        # a real hole between bars: big enough, or a sliver right next to the background. (A highlight streak on a
+        # chrome bar is neither, and stays.)
+        if area >= 40 or (area >= 3 and (near_bg & (lab == k)).any()):
             alpha[lab == k] = 0
-    # small near-white slivers between facemask bars (anti-aliased page white) on the facemask side
-    light = ((rgb.min(2) >= 238) & (alpha > 0)).astype(np.uint8)
-    n, lab, st, cen = cv2.connectedComponentsWithStats(light)
-    for k in range(1, n):
-        x0, y0, bw, bh, area = st[k]
-        touches = cv2.dilate((lab == k).astype(np.uint8), np.ones((3, 3), np.uint8)) & (alpha == 0)
-        if area <= 400 and touches.any() and cen[k][0] > w * pocket_from[0] and cen[k][1] > h * pocket_from[1]:
-            alpha[lab == k] = 0
-    # peel: light pixels touching transparency go too (twice)
-    for _ in range(2):
-        edge = (cv2.dilate((alpha == 0).astype(np.uint8), np.ones((3, 3), np.uint8)) > 0) & (alpha > 0)
-        alpha[edge & (rgb.min(2) > 225)] = 0
-    alpha = cv2.erode(alpha, np.ones((2, 2), np.uint8))
-    # de-fringe: in a thin band along every edge, the colour is a mix of the art and the white page. Take the art's
-    # colour from just inside (inpainted outward) and work out how much of the pixel it really covers, so no white
-    # halo is left (on dark art; near-white art keeps its plain edge)
-    inside = cv2.erode((alpha > 0).astype(np.uint8), np.ones((7, 7), np.uint8))
-    band = (alpha > 0) & (inside == 0)
-    fg = cv2.inpaint(rgb, (inside == 0).astype(np.uint8), 6, cv2.INPAINT_TELEA).astype(np.float32)
+    # the edge band: within 4 px of the background (or a pocket)
+    gone = (alpha == 0).astype(np.uint8)
+    band = (cv2.dilate(gone, np.ones((9, 9), np.uint8)) > 0) & (alpha > 0)
     c = rgb.astype(np.float32)
-    span = np.maximum(255.0 - fg, 1.0)
-    cover = np.clip(((255.0 - c) / span).max(2), 0, 1)
-    dark = (255.0 - fg.min(2)) >= 45
-    use = band & dark
-    alpha = np.where(use, (alpha.astype(np.float32) * cover), alpha).astype(np.uint8)
-    rgb = np.where(use[..., None], fg, c).clip(0, 255).astype(np.uint8)
-    alpha[alpha < 40] = 0
+    # how much art is in the pixel: 200 or darker = all of it, paper white = none
+    a = np.clip((255.0 - lo.astype(np.float32)) / 55.0, 0, 1)
+    soft = band & (lo >= 200)
+    alpha = np.where(soft, alpha * a, alpha)
+    unmixed = 255.0 - (255.0 - c) / np.maximum(a, 0.05)[..., None]
+    c = np.where(soft[..., None], np.clip(unmixed, 0, 255), c)
+    alpha[alpha < 24] = 0
+    alpha = alpha.astype(np.uint8)
+    # white bars on a white page (the Chefs' facemask): the flood eats thin strips of the bars' highlights. Close those
+    # gaps back up (real holes between bars are much wider than the kernel) and paint them the bar's white.
+    if close:
+        solid = (alpha > 0).astype(np.uint8)
+        shut = cv2.morphologyEx(solid, cv2.MORPH_CLOSE, np.ones((close, close), np.uint8))
+        fill = (shut > 0) & (solid == 0)
+        alpha[fill] = 255
+        c[fill] = np.maximum(c[fill], 236)
     # stray specks floating off the art (a page mark above the shell): keep only the real pieces
     n, lab, st, _ = cv2.connectedComponentsWithStats((alpha > 0).astype(np.uint8))
     if n > 2:
@@ -263,8 +264,7 @@ def cutout(rgb, pocket_from=(0.5, 0.0)):
         for k in range(1, n):
             if st[k, cv2.CC_STAT_AREA] < big * 0.01:
                 alpha[lab == k] = 0
-    alpha = cv2.GaussianBlur(alpha, (3, 3), 0)
-    im = Image.fromarray(np.dstack([rgb, alpha]), 'RGBA')
+    im = Image.fromarray(np.dstack([c.astype(np.uint8), alpha]), 'RGBA')
     bbox = im.getbbox()
     return im.crop(bbox) if bbox else im
 
@@ -282,6 +282,10 @@ def do_logo():
     im.save(os.path.join(OUT, 'techno-logo.webp'), 'WEBP', quality=90, method=6)
     print('logo', im.size)
     return 'techno-logo.webp'
+
+
+# helmets whose facemask is white on the white page: close the gaps the background flood leaves in the bars
+WHITE_MASKS = {'chefs': 21}
 
 
 def do_helmets():
@@ -302,7 +306,7 @@ def do_helmets():
         for x in half[1:]: r |= fitz.Rect(x['bbox'])
         pix = page.get_pixmap(clip=r + (-2, -2, 2, -4), dpi=320, colorspace=fitz.csRGB)  # bottom trimmed: the title bar starts right below
         rgb = np.frombuffer(pix.samples, np.uint8).reshape(pix.h, pix.w, pix.n)[:, :, :3].copy()
-        im = cutout(rgb)
+        im = cutout(rgb, close=WHITE_MASKS.get(t['id'], 0))
         im.thumbnail((640, 640), Image.LANCZOS)
         name = f"helmets/{t['id']}.webp"
         im.save(os.path.join(OUT, name), 'WEBP', quality=88, method=6)
