@@ -562,15 +562,18 @@ const group = (nums) => { const m = new Map(); for (const n of nums) m.set(n, (m
 
 // ---------- scoreboard, log, moments ----------
 function LogFeed({ s, canUndo, onUndo }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(false); // the whole log, scrollable
+  const [hidden, setHidden] = useState(() => { try { return localStorage.getItem('tb-log-hidden') === '1'; } catch { return false; } });
+  const hide = (h) => { setHidden(h); setOpen(false); try { localStorage.setItem('tb-log-hidden', h ? '1' : '0'); } catch { /* not kept */ } };
   const all = s.log.filter((e) => !['activate', 'formation', 'call'].includes(e.kind));
-  const items = all.slice(open ? -60 : -7);
+  const items = hidden ? [] : all.slice(open ? -60 : -7);
   const list = useRef();
   useEffect(() => { if (open && list.current) list.current.scrollTop = list.current.scrollHeight; }, [open, all.length]);
   return (
     <div className={`logfeed ${open ? 'open' : ''}`}>
       <div className="log-head">
-        <button className="btn small" onClick={() => setOpen((x) => !x)}>{open ? 'Hide log' : 'Play log'}</button>
+        {!hidden && <button className="btn small" onClick={() => setOpen((x) => !x)}>{open ? 'Less' : 'Full log'}</button>}
+        <button className="btn small" onClick={() => hide(!hidden)}>{hidden ? 'Show log' : 'Hide log'}</button>
         <button className="btn small" disabled={!canUndo} onClick={onUndo} title="Take back your last move (only before any dice are rolled)">Undo move</button>
       </div>
       <div className="log-list" ref={list}>
