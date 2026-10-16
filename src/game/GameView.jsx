@@ -32,10 +32,11 @@ import BugReport from './BugReport.jsx';
 import CoachTips from './CoachTips';
 import { HELP_FOR } from '../data/rulesText';
 import { useGameSounds } from './useGameSounds';
-import { useShot, calloutFor, delayFor, skipShot } from './shots';
+import { useShot, calloutFor, delayFor, skipShot, movesCamera } from './shots';
 import { ScoreBug, Chyrons, StatCard, Wipe } from './Broadcast';
 import OpeningShow, { SHOW } from './OpeningShow';
 import { lastPlay, useReplay } from './replay';
+import { telestrate, bigPlay } from '../three/Telestrator';
 import CoinToss from './CoinToss';
 import { recordResult } from './records';
 import { loadSeason, reportResult } from './season';
@@ -115,6 +116,8 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
     else { setReel(null); setReplay(null); }
   };
   const rs = useReplay(s, replay, nextReplay);
+  // big plays get the telestrator: lines, arrows and circles drawn on the field as the replay runs
+  const tele = useMemo(() => (replay && bigPlay(replay) ? telestrate(replay) : null), [replay?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // highlights: [{ play, label }]
   const watchAll = (hl) => {
     if (!hl.length) return;
@@ -183,6 +186,8 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
   };
   // quick play: the small prompts answer themselves
   const prefsNow = useSettings();
+  // the shot only takes the camera (and letterboxes the screen) when Settings and the chosen view allow it
+  const camShot = movesCamera(shot, rs ? (view === 'follow' ? 'broadcast' : view) : view, prefsNow.camMoves) ? shot : null;
   useEffect(() => {
     if (!prefsNow.quick || !req) return;
     const auto = { boost: 0, first: 'me', followUp: true, readReact: null, motion: null }[req.type];
@@ -252,14 +257,16 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
   const myRows = useMemo(() => artRows(s, ME), [s.teams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---------- what the board shows for the open question ----------
+  const byNum = (pids) => [...pids].sort((a, b) => P(a).num - P(b).num); // the order number keys follow
   const board = useMemo(() => {
     const cb = !!prefsNow.cb;
     const COLORS = cb ? CB_COLORS : BASE_COLORS, RING = cb ? CB_RING : BASE_RING;
     const tiles = [], rings = {}, reach = {};
+    const keyed = [], tags = {}; // number keys: keyed[n - 1]() picks choice n; tags = pid -> n shown over his cube
     const carrierPid = s.ball.at === 'held' ? s.ball.pid : null;
     let onTile = null, onPlayer = null;
     if (s.active) rings[s.active.pid] = RING.active;
-    if (!req) return { tiles, rings, onTile, onPlayer, outlines: [] };
+    if (!req) return { tiles, rings, onTile, onPlayer, outlines: [], keyed, tags };
     switch (req.type) {
       case 'formation': {
         if (!edit) break;
@@ -326,29 +333,33 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
       }
       case 'bonus': case 'adjustPartner': {
         for (const pid of req.options) rings[pid] = RING.option;
-        onPlayer = (pid) => { if (req.options.includes(pid)) answer(req.type === 'bonus' ? pid : { pid, first: 'self' }); };
+        const pick = (pid) => answer(req.type === 'bonus' ? pid : { pid, first: 'self' });
+        onPlayer = (pid) => { if (req.options.includes(pid)) pick(pid); };
+        byNum(req.options).forEach((pid, i) => { tags[pid] = i + 1; keyed.push(() => pick(pid)); });
         break;
       }
       case 'option': {
         rings[req.pid] = RING.skill;
         for (const pid of req.targets) rings[pid] = RING.handoff;
         onPlayer = (pid) => { if (req.targets.includes(pid)) answer(pid); };
+        byNum(req.targets).forEach((pid, i) => { tags[pid] = i + 1; keyed.push(() => answer(pid)); });
         break;
       }
       case 'onFire': {
         for (const pid of req.options) rings[pid] = RING.fire;
         onPlayer = (pid) => { if (req.options.includes(pid) && !req.anySkill.includes(pid)) answer({ pid }); };
+        byNum(req.options.filter((pid) => !req.anySkill.includes(pid))).forEach((pid, i) => { tags[pid] = i + 1; keyed.push(() => answer({ pid })); });
         break;
       }
       case 'spin': case 'heatCrit': case 'dodge': rings[req.pid] = RING.skill; break;
       case 'push': {
-        for (const q of req.options) tiles.push({ sq: q, color: COLORS.push });
+        req.options.forEach((q, i) => { tiles.push({ sq: q, color: COLORS.push, label: i + 1 }); keyed.push(() => answer(q)); });
         onTile = (t) => answer(t.sq);
         break;
       }
       case 'followUp': tiles.push({ sq: req.to, color: COLORS.ball }); onTile = () => answer(true); break;
       case 'scatter': {
-        for (const o of req.options) if (!o.out) tiles.push({ sq: o.to, color: COLORS.scatter, scatter: o });
+        req.options.filter((o) => !o.out).forEach((o, i) => { tiles.push({ sq: o.to, color: COLORS.scatter, scatter: o, label: i + 1 }); keyed.push(() => answer(o)); });
         onTile = (t) => answer(t.scatter);
         break;
       }
@@ -371,7 +382,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
       onTile = (t) => { if (tap && tap[0] === t.sq[0] && tap[1] === t.sq[1]) commit(t); else setTap(t.sq); };
       if (tap) { const real = tiles.find((t) => t.sq[0] === tap[0] && t.sq[1] === tap[1]); tiles.push({ ...real, sq: tap, color: '#ffd700' }); }
     }
-    return { tiles, rings, onTile, onPlayer, outlines, reach };
+    return { tiles, rings, onTile, onPlayer, outlines, reach, keyed, tags };
   }, [req, s.active, edit, sel, mode, motion, suggest, prefsNow.cb, tap, spot]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---------- danger preview: hovering a square with the ball, who could reach him there and still tackle ----------
@@ -460,9 +471,10 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
       else if (isKey(e, 'bug')) setBug(true);
       else if (isKey(e, 'fullscreen')) toggleFullscreen();
       else if (isKey(e, 'turbo')) toggleTurbo();
-      else if (isKey(e, 'skip') && (shot || rs)) { e.preventDefault(); if (rs) setReplay(null); else skipShot(); }
+      else if (isKey(e, 'skip') && (camShot || rs)) { e.preventDefault(); if (rs) setReplay(null); else skipShot(); }
+      else if (/^[1-9]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey && board.keyed?.[Number(e.key) - 1] && !camShot && !rs) { e.preventDefault(); board.keyed[Number(e.key) - 1](); }
       // not during a cinematic or a replay: the prompt is hidden then, and a press would answer something unseen
-      else if (isKey(e, 'primary') && primary.current && !shot && !rs) { e.preventDefault(); primary.current(); }
+      else if (isKey(e, 'primary') && primary.current && !camShot && !rs) { e.preventDefault(); primary.current(); }
       else if (isKey(e, 'back')) { if (mode === 'pass') setMode('move'); else if (sel) setSel(null); else setPaused((x) => !x); }
     };
     window.addEventListener('keydown', key);
@@ -477,13 +489,23 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
     ro.observe(el); ro.observe(root);
     return () => ro.disconnect();
   }, []);
+  // --lift-h: what the camera lifts the picture by. Only measured when a new question comes up (or the window
+  // resizes), never while you hover: the hover breakdown grows the prompt, and a moving picture made clicks miss
+  useEffect(() => {
+    const root = rootRef.current, el = bottomRef.current;
+    if (!root || !el) return undefined;
+    const measure = () => root.style.setProperty('--lift-h', `${Math.max(0, root.clientHeight - el.offsetTop)}px`);
+    const t = setTimeout(measure, 350);
+    window.addEventListener('resize', measure);
+    return () => { clearTimeout(t); window.removeEventListener('resize', measure); };
+  }, [req?.id, req?.type]); // eslint-disable-line react-hooks/exhaustive-deps
   const leave = async () => { if (s.phase === 'over' || await confirmIt({ title: 'Leave this game?', body: 'It stays saved: Resume it from Home.', yes: 'Leave', danger: true })) onExit(); };
 
   return (
     <InfoCtx.Provider value={{ hover: (pid) => setHover(pid ? { pid } : null), open: setCardOf }}>
-    <div ref={rootRef} className={`game ${shot || intro || rs ? 'cine' : ''} ${intro ? 'intro' : ''} ${rs ? 'replaying' : ''}`}>
+    <div ref={rootRef} className={`game ${camShot || intro || rs ? 'cine' : ''} ${intro ? 'intro' : ''} ${rs ? 'replaying' : ''}`}>
       <Stage className="game-stage">
-        <Board game={rs ? { state: rs } : game} view={rs ? 'broadcast' : view} setup={!rs && ['formation', 'call', 'motion'].includes(s.phase)} onFree={() => setView('free')} shot={shot} intro={intro} tiles={rs ? [] : board.tiles} rings={rs ? {} : rings} onTile={rs ? null : board.onTile} onHover={setHover} onHoverPlayer={(pid) => setHover(pid ? { pid } : null)} outlines={rs ? [] : board.outlines} onPlayer={rs ? null : pickPlayer} pickable={pickable}
+        <Board game={rs ? { state: rs } : game} view={rs ? (view === 'follow' ? 'broadcast' : view) : view} setup={!rs && ['formation', 'call', 'motion'].includes(s.phase)} onFree={() => setView('free')} shot={shot} camShot={!!camShot} intro={intro} tiles={rs ? [] : board.tiles} rings={rs ? {} : rings} onTile={rs ? null : board.onTile} onHover={setHover} onHoverPlayer={(pid) => setHover(pid ? { pid } : null)} outlines={rs ? [] : board.outlines} onPlayer={rs ? null : pickPlayer} pickable={pickable} tags={rs ? {} : board.tags} tele={rs && tele ? { marks: tele, shown: rs.log.length } : null}
           edit={edit && req?.type === 'formation' ? { side: ME, spots: edit } : null}
           focusSq={spot != null && P(spot)?.col != null ? [P(spot).col, P(spot).row] : null} />
       </Stage>
@@ -497,7 +519,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
       <LogFeed s={s} canUndo={undoable} onUndo={undo} online={online} onOpen={setDetail} />
       <Moment s={s} />
       {hover?.pid != null && !shot && <PlayerTag s={s} p={P(hover.pid)} />}
-      {shot && !intro && <Button size="small" className="skip-shot" onClick={skipShot}>Skip &gt; <Kbd a="skip" /></Button>}
+      {camShot && !intro && <Button size="small" className="skip-shot" onClick={skipShot}>Skip &gt; <Kbd a="skip" /></Button>}
       {detail && <RollDetail e={detail} onClose={() => setDetail(null)} />}
       <div className="game-bottom" ref={bottomRef}>
         <Cards s={s} rows={myRows} opp={oppName} />
@@ -555,6 +577,8 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
               <Button onClick={() => { setPaused(false); setRules(true); }}>How to play</Button>
               <Button onClick={() => setSettings({ muted: !settings().muted })}>Sound: {prefsNow.muted ? 'OFF (turn on)' : 'ON (turn off)'}</Button>
               <Chips small value={prefsNow.speed} onChange={(speed) => setSettings({ speed })} options={[['slow', 'Slow'], ['normal', 'Normal'], ['fast', 'Fast']]} />
+              <span className="pause-label">Cinematic camera</span>
+              <Chips small value={prefsNow.camMoves ?? 'big'} onChange={(camMoves) => setSettings({ camMoves })} options={[['big', 'Big plays'], ['all', 'Every moment'], ['off', 'Never']]} />
               <Button onClick={() => setSettings({ quick: !prefsNow.quick })}>Quick play: {prefsNow.quick ? 'on' : 'off'}</Button>
               <Button onClick={() => { setPaused(false); setBug(true); }}>Report a bug <Kbd a="bug" /></Button>
               <span className="pause-fs"><FullscreenButton /></span>
@@ -620,7 +644,7 @@ function Prompt(props) {
       // a free activation is never thrown away by a stray key press: no main-button shortcut here, pick a player
       primary.current = null;
       return (<><h3>{req.kind === 'dogpile' ? 'DOGPILE! Pick a player to put a dirty hit on a downed opponent.' : req.kind === 'full' ? `Total success! Free activation: pick one of your players.${req.party ? ' BLOCK PARTY: +2 if he blocks.' : ''}` : 'They only partly made it: half move for one of your players.'}</h3>
-        <div className="act-btns">{req.options.map((pid) => <Button key={pid} kind="primary" size="small" onClick={() => answer(pid)}>#{P(pid).num}{P(pid).down ? ' (down)' : ''}</Button>)}</div>
+        <div className="act-btns">{[...req.options].sort((a, b) => P(a).num - P(b).num).map((pid, i) => <Button key={pid} kind="primary" size="small" onClick={() => answer(pid)}>#{P(pid).num}{P(pid).down ? ' (down)' : ''} <Kbd k={i + 1} /></Button>)}</div>
         <div className="btns"><Button onClick={() => answer(null)}>No thanks</Button></div></>);
     }
     case 'adjustPartner':
@@ -660,7 +684,7 @@ function Prompt(props) {
     case 'onFire': return <OnFirePrompt key={req.id} {...props} />;
     case 'reverse': return yesNo(req.crit ? `Critical failure! ${name(req.against)} goes down. Push him back too?` : `The block failed! Reverse it on ${name(req.against)}?`, req.crit ? 'Push him' : 'Reverse it', req.crit ? 'Just knock him down' : 'Leave it');
     case 'followUp': return yesNo(`Follow up${req.steps === 2 ? ' 2 squares' : ' into the gap'} with ${name(req.pid)}?`, 'Follow up', 'Stay');
-    case 'push': return <h3>Pick where {name(req.pid)} gets pushed (orange squares)</h3>;
+    case 'push': return <h3>Pick where {name(req.pid)} gets pushed: click an orange square, or press its number</h3>;
     case 'scatter': {
       const out = req.options.find((o) => o.out);
       return (<><h3>Your die was higher: pick where the ball goes (purple squares)</h3>

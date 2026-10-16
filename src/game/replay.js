@@ -28,7 +28,9 @@ export function lastPlay(s) {
   const events = log.slice(snap, end + 1).filter((e) => KEEP.includes(e.kind) || ENDS.includes(e.kind));
   // the down it was played on (the live game has moved on to the next one by the time a replay starts)
   const down = log.slice(0, snap).findLast((e) => e.kind === 'down');
-  return { id: log[end].id, spots, motions, events, down: down ? { down: down.down, line: down.line, offense: down.offense } : null, big: events.some((e) => e.kind === 'td' || e.kind === 'turnover' || (e.kind === 'catch' && e.yds >= 25)) };
+  // free activations chained on this play (a long chain is a big play)
+  const chain = log.slice(snap, end + 1).filter((e) => e.kind === 'activate' && e.mode === 'full').length;
+  return { id: log[end].id, spots, motions, events, chain, down: down ? { down: down.down, line: down.line, offense: down.offense } : null, big: events.some((e) => e.kind === 'td' || e.kind === 'turnover' || (e.kind === 'catch' && e.yds >= 25)) };
 }
 
 export function startState(s, play) {
@@ -73,7 +75,8 @@ function far(st, e) {
 }
 
 // how long each replayed moment holds (slow motion)
-const HOLD = { move: (e) => 260 + 230 * (e.path?.length ?? 1), push: 650, check: 1500, sport: 900, scatter: 1100, catch: 900, inflight: 1300, tackle: 1600, sack: 1700, knockdown: 900, fumble: 800, td: 2600, snap: 700 };
+// a replay plays like TV: the moves, hits, throws and skills flow on, with no dice or choices to stop for
+const HOLD = { move: (e) => 200 + 175 * (e.path?.length ?? 1), push: 450, check: (e) => (e.action === 'pass' ? 350 : 550), sport: 250, scatter: 800, catch: 550, inflight: 1300, tackle: 1200, sack: 1400, knockdown: 700, fumble: 600, td: 2400, snap: 550 };
 
 // play a replay: returns the board state to show (null when it's over)
 export function useReplay(s, play, onDone) {
@@ -92,7 +95,7 @@ export function useReplay(s, play, onDone) {
     const next = () => {
       if (i >= play.events.length) { timer.current = setTimeout(() => { setSt(null); onDone(); }, 900); return; }
       const e = play.events[i++];
-      cur = apply(cur, { ...e, id: ++rid });
+      cur = apply(cur, { ...e, id: ++rid, dice: undefined, replay: true }); // no dice on screen in a replay
       setSt(cur);
       // play.speed < 1 runs it quicker (the touchdown replay), but a walk always gets the time it needs on screen
       const h = HOLD[e.kind];
@@ -101,7 +104,7 @@ export function useReplay(s, play, onDone) {
       if (far(cur, e)) ms = Math.min(ms, e.kind === 'move' ? 150 + 165 * (e.path?.length ?? 1) : 280);
       timer.current = setTimeout(next, e.kind === 'move' ? Math.max(ms, 150 + 165 * (e.path?.length ?? 1)) : ms);
     };
-    timer.current = setTimeout(next, 900);
+    timer.current = setTimeout(next, 700);
     return () => clearTimeout(timer.current);
   }, [play?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   return st;

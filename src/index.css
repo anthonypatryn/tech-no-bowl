@@ -941,3 +941,10 @@ html.calm *, html.calm *::before { transition: none !important; animation: none 
 .cards.min .cards-sum { display: inline; color: var(--muted); font-size: var(--small); }
 .cards.min .cards-sum em { display: none; }
 @media (max-width: 760px), (max-height: 520px) and (orientation: landscape) { .cards-min { display: none; } }
+
+/* number-key markers on the field (push squares, scatter squares, players to pick) */
+.field-key { display: grid; place-items: center; width: 26px; height: 26px; font: 400 var(--t3) var(--pixel); color: var(--ink); background: var(--led); border: var(--px) solid #fff3a0; border-radius: var(--r1); box-shadow: 0 3px 0 var(--led-edge); }
+@media (hover: none) { .field-key { width: 30px; height: 30px; } }
+.pause-label { font: 400 var(--t1) var(--pixel); color: var(--muted); text-transform: uppercase; margin-top: var(--s1); }
+/* replays: only the play, none of the live game's pop-ups */
+.game.replaying .dice-toast, .game.replaying .callout, .game.replaying .banner-big { display: none; }

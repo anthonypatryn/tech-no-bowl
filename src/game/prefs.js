@@ -12,7 +12,7 @@ const SOUND_V = 2;
 // browser out of memory. PERF_V moves touch devices that saved the old default onto it once.
 export const TOUCH = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches;
 const PERF_V = 1;
-const DEFAULTS = { text: 'normal', calm: !!reduceMotion, fieldHi: !TOUCH, clocks: false, speed: 'normal', quick: false, cb: false, autoEnd: true, keys: {}, muted: false, musicMenus: true, menuSounds: true, musicBreaks: true, musicGame: false, musicShuffle: true, mix: { fx: 1, crowd: 0.75, music: 0.75 }, soundV: SOUND_V, perfV: PERF_V };
+const DEFAULTS = { text: 'normal', calm: !!reduceMotion, fieldHi: !TOUCH, camMoves: 'big', clocks: false, speed: 'normal', quick: false, cb: false, autoEnd: true, keys: {}, muted: false, musicMenus: true, menuSounds: true, musicBreaks: true, musicGame: false, musicShuffle: true, mix: { fx: 1, crowd: 0.75, music: 0.75 }, soundV: SOUND_V, perfV: PERF_V };
 
 let cur = DEFAULTS;
 try {

@@ -2,13 +2,14 @@
 // the line of scrimmage, the down cube, clickable square highlights and the camera.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import { Html, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { Field, Lights, sq, ROWS, COLS } from './Field';
 import { PlayerCube, DownCube, CUBE } from './Cube';
 import { uniformOf, teamColors, artRows } from '../data/art';
 import { DiceRolls } from './Dice';
 import { Stadium, TUNNEL_Z } from './Stadium';
+import { Telestrator } from './Telestrator';
 import { settings } from '../game/prefs';
 
 const SPEED = 6.5; // squares per second when walking
@@ -20,7 +21,7 @@ const SPEED = 6.5; // squares per second when walking
 // jump: { id, delay } = a leap (going up for a catch) after `delay` seconds
 // orbit: { id, pts:[[x,z]] } = walk round someone (a spin move), turning a full circle on the way
 // pile: { id, at:[x,z], level, delay, jx, jz, tilt:[rx,ry,rz] } = leap onto the pile after the whistle and stay there
-function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge, active, colors, jump, orbit, pile, skilled, solid = true }) {
+function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge, active, colors, jump, orbit, pile, skilled, solid = true, tag = null }) {
   const g = useRef();
   const pos = useRef(null);
   const queue = useRef([]);
@@ -105,6 +106,7 @@ function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge,
         onClick={onPick ? (e) => { e.stopPropagation(); onPick(p.pid); } : undefined} pickable={solid} />
       {active && <TurnMarker colors={colors} />}
       {skilled && !active && !p.down && <AbilityGem />}
+      {tag != null && <Html position={[0, 1.3, 0]} center zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}><b className="field-key">{tag}</b></Html>}
       {ring && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} raycast={() => null}>
           <ringGeometry args={[0.5, 0.6, 32]} />
@@ -698,7 +700,7 @@ function Rig({ view, focus, dir, shot, positions, intro, setup }) {
     lift.current.t = now;
     const game = gl.domElement.closest('.game');
     const cine = !game || game.classList.contains('cine');
-    const raw = cine ? 0 : parseFloat(game.style.getPropertyValue('--bottom-h')) || 0;
+    const raw = cine ? 0 : parseFloat(game.style.getPropertyValue('--lift-h')) || 0;
     const b = Math.round(Math.min(raw, size.height * 0.6) * 0.8);
     const k = `${b}:${size.width}x${size.height}`;
     if (k === lift.current.b) return;
@@ -742,7 +744,7 @@ function Rig({ view, focus, dir, shot, positions, intro, setup }) {
 // ---------- the scene ----------
 // edit: { side, spots:[{num,col,row}] } shows a formation being placed instead of that side's real positions
 // pickable: the players the pointer can land on (null = everyone); the rest let it through to the squares under them
-export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outlines = [], rings = {}, onPlayer, edit, focusSq, shot, intro, onFree, setup, pickable = null }) {
+export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outlines = [], rings = {}, onPlayer, edit, focusSq, shot, intro, onFree, setup, pickable = null, tags = {}, camShot = true, tele = null }) {
   const s = game.state;
   const positions = useRef({});
   const unis = useMemo(() => s.teams.map((t) => uniformOf(t.id, t.uniform)), [s.teams]);
@@ -812,7 +814,7 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
         <Mover key={p.pid} p={p} uniform={unis[p.side]} row={rows[p.side][p.num]} path={paths[p.pid]} positions={positions}
           ring={rings[p.pid]} onPick={onPlayer} onHover={onHoverPlayer} lunge={lunges[p.pid]} active={s.active?.pid === p.pid && s.phase === 'play'} colors={tcolors[p.side]}
           jump={fx.jump[p.pid]} orbit={fx.orbit[p.pid]} pile={fx.pile[p.pid]}
-          skilled={!!s.skills && (p.abilities?.some((a) => s.inferno || !a.startsWith('INFERNO')) || !!p.fuego)} solid={!pickable || pickable.has(p.pid)} />
+          skilled={!!s.skills && (p.abilities?.some((a) => s.inferno || !a.startsWith('INFERNO')) || !!p.fuego)} solid={!pickable || pickable.has(p.pid)} tag={tags[p.pid] ?? null} />
       ))}
       <Ball ball={s.ball} positions={positions} slowmo={!settings().calm} snapFrom={s.log.findLast?.((e) => e.kind === 'snap')?.from} />
       {shot?.kind === 'hit' && <Burst key={shot.id} at={sq(...shot.at, 0)} colors={['#c9c9c9', '#7a5a3a', '#3f6b2a', '#ffffff']} count={shot.big ? 46 : 26} />}
@@ -829,10 +831,13 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
       <DiceRolls log={s.log} players={s.players} offense={s.offense} home={[s.spot, s.line]}
         teamColors={s.teams.map((t) => teamColors(t.id, t.uniform))} teamNames={s.teams.map((t) => t.name)} />
       <Tiles tiles={tiles} onPick={onTile} onHover={onHover} />
+      {tele && <Telestrator marks={tele.marks} shown={tele.shown} />}
+      {/* number keys for squares (push, scatter): press the number or click the square */}
+      {tiles.filter((t) => t.label).map((t) => { const [x, , z] = sq(t.sq[0], t.sq[1]); return <Html key={`k${t.sq}`} position={[x, 0.05, z]} center zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}><b className="field-key">{t.label}</b></Html>; })}
       {outlines.map((o, i) => <Outline key={i} squares={o.squares} color={o.color} />)}
-      <OrbitControls makeDefault enableDamping dampingFactor={0.12} enabled={!shot && !intro} maxPolarAngle={Math.PI / 2.1} minDistance={2.5} maxDistance={45}
+      <OrbitControls makeDefault enableDamping dampingFactor={0.12} enabled={!(shot && camShot) && !intro} maxPolarAngle={Math.PI / 2.1} minDistance={2.5} maxDistance={45}
         onStart={() => { drag.current = { x: null, y: null }; }} onEnd={() => { drag.current = null; }} />
-      <Rig view={view} focus={focus} dir={s.teams[s.offense].dir} shot={shot} positions={positions} intro={intro} setup={setup} />
+      <Rig view={view} focus={focus} dir={s.teams[s.offense].dir} shot={camShot ? shot : null} positions={positions} intro={intro} setup={setup} />
     </>
   );
 }

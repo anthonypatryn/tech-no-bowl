@@ -19,6 +19,14 @@ messages, the bug list (`?view=bugs`, PIN), the Art Review Board (`?view=art`) a
 the owner pastes their "copy for Claude" output. The owner often asks for a plan first: give one, then build it.
 
 ### Latest round (all pushed, live)
+- Camera: lifts the picture only when a new question comes up (`--lift-h`), never on hover (the breakdown box grew the
+  prompt, the picture slid and clicks missed). Settings / pause: Cinematic camera = Big plays (TD, long throw, kick) /
+  Every moment / Never (`movesCamera` in shots.js); Overhead and Free never move; replays keep your view.
+- Number keys: push and scatter squares and players to pick (free activation, option, on fire) show 1-9 markers;
+  press the number (`keyed` / `tags` from GameView's board memo, `field-key` labels).
+- Replays play like TV: no dice, quicker holds; big plays (TD, long run / throw, knockdown, 2+ chained free
+  activations) get the telestrator (`src/three/Telestrator.jsx`): run arrows, throw arcs, circles round blocks.
+- Fixed: the crowd bed never started since the seamless loop (a source's buffer was set twice).
 - BUG-6: a free activation is never declined by a key press (the bonus prompt has no Space shortcut, it lists the
   players as buttons), and the main-button key does nothing during a cinematic or replay. Test: chained free activations.
 - Touchdowns (and every play end): the engine now waits for the screen (`catchUp()` at the top of `playDown`) before

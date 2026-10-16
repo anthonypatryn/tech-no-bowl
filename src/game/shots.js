@@ -47,6 +47,13 @@ export function shotFor(e, players) {
   if (e.kind === 'kick' && e.from) return { kind: 'kick', from: e.from, dir: e.dir, good: e.good, side: e.side };
   return null;
 }
+// does this shot take the camera away from the view you picked? Settings → Cinematic camera: 'big' (touchdowns, long
+// throws, kicks), 'all', 'off'. Overhead and Free always stay put (the effects and callouts still play).
+export function movesCamera(shot, view, pref = 'big') {
+  if (!shot || pref === 'off' || view === 'overhead' || view === 'free') return false;
+  return pref === 'all' || ['td', 'throw', 'kick'].includes(shot.kind);
+}
+
 // how long until a moment is really on screen: a touchdown waits for the runner's cube to walk into the end zone
 export function delayFor(log, i) {
   const e = log[i];

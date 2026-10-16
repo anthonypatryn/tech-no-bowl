@@ -28,6 +28,10 @@ export default function Settings() {
         <Row label="Calm motion">
           <Toggle checked={s.calm} onChange={(calm) => setSettings({ calm })}>Skip camera moves and cinematics</Toggle>
         </Row>
+        <Row label="Cinematic camera">
+          <Chips small value={s.camMoves ?? 'big'} onChange={(camMoves) => setSettings({ camMoves })} options={[['big', 'Big plays'], ['all', 'Every moment'], ['off', 'Never']]} />
+          <span className="hint">When the camera leaves your view for a shot. Big plays = touchdowns, long throws, kicks. Overhead and Free never move.</span>
+        </Row>
         <Row label="Field detail">
           <Toggle checked={s.fieldHi} onChange={(fieldHi) => setSettings({ fieldHi })}>Sharp 4K field, crowd and big shadows (off by default on phones and tablets: it can run them out of memory)</Toggle>
         </Row>

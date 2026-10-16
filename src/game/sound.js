@@ -187,15 +187,16 @@ export async function playClip(c, mix = 1, { late = 2.5, rate = 1 } = {}) {
   const len = Math.max(0.05, Math.min(c.len ?? buf.duration - start, buf.duration - start));
   const fade = Math.min(c.fade ?? 0.1, len / 2);
   const src = ctx.createBufferSource(), gain = ctx.createGain(), t = ctx.currentTime, v = (c.vol ?? 1) * mix;
-  src.buffer = buf;
+  // a buffer can only be set once on a source: the crowd loop gets its baked seamless copy here
+  const looped = c.loop && len > 2;
+  src.buffer = looped ? seamless(buf, start, len) : buf;
   src.playbackRate.value = rate; // a touch faster / slower so repeats don't sound identical
   if (c.loop) {
     // the baked loop, entered at a random point so no two games hear the same stretch at the same moment
-    src.buffer = len > 2 ? seamless(buf, start, len) : buf;
     src.loop = true;
-    if (src.buffer === buf) { src.loopStart = start; src.loopEnd = start + len; }
+    if (!looped) { src.loopStart = start; src.loopEnd = start + len; }
     gain.gain.setValueAtTime(0.0001, t); gain.gain.linearRampToValueAtTime(v, t + Math.max(fade, 1));
-    src.connect(gain).connect(out()); src.start(0, src.buffer === buf ? start : Math.random() * src.buffer.duration);
+    src.connect(gain).connect(out()); src.start(0, looped ? Math.random() * src.buffer.duration : start);
   } else {
     gain.gain.setValueAtTime(0.0001, t); gain.gain.linearRampToValueAtTime(v, t + Math.min(0.02, fade));
     gain.gain.setValueAtTime(v, t + Math.max(0, len - fade)); gain.gain.linearRampToValueAtTime(0.0001, t + len);
