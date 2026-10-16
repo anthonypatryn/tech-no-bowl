@@ -607,7 +607,7 @@ button.card:hover { border-color: var(--led); }
 .rule-sec ul { margin: 0; padding-left: var(--s5); display: flex; flex-direction: column; gap: var(--s1); }
 .rules-page { max-width: 900px; }
 .rules-browser { display: flex; flex-direction: column; gap: var(--s2); }
-.rules-search { width: 100%; font: inherit; font-family: var(--body); padding: var(--s2) var(--s3); background: rgba(0,0,0,.4); color: var(--ink, #fff); border: var(--px) solid var(--line); border-radius: var(--r2); margin-top: var(--s2); }
+.rules-search { width: 100%; font: inherit; font-family: var(--body); padding: var(--s2) var(--s3); background: rgba(0,0,0,.4); color: var(--text); border: var(--px) solid var(--line); border-radius: var(--r2); margin-top: var(--s2); }
 .rules-search:focus { outline: none; border-color: var(--led); }
 .rules-tabs { display: flex; flex-wrap: wrap; gap: var(--s1); }
 .rules-tab { font-family: var(--pixel); font-size: var(--t1); padding: var(--s2) var(--s2); background: rgba(255,255,255,.05); color: #cfd8e2; border: var(--px) solid var(--line); border-radius: var(--r2); cursor: pointer; }
