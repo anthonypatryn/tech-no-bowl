@@ -23,7 +23,11 @@ answers ──▶ │ Game: async down loop · ask(side, req) · validate  │ �
   block, tackle, skill action and fire-token option, so the UI only ever offers what the rules allow.
 - **The log is the source of truth for the screen.** Each entry carries data (who, from, to, path, dice, result).
   The 3D board walks cubes along logged paths, the sound hook plays cues, the shot director picks cinematics, and
-  replays rebuild plays, all from the log.
+  replays play plays back, all from the log.
+- **Frames for replays:** a screen game's engine also records where every player and the ball are after each log
+  entry of a play (`game.frames`, outside the state). `lastPlay(state, frames)` turns a finished play into steps (log
+  entry + recorded positions), so a replay is exactly what happened. An online friend's screen has no frames and
+  falls back to rebuilding from the events. Big plays get the telestrator (`src/three/Telestrator.jsx`).
 - **Pacing:** `pace(entry)` gives each entry screen time; the next `ask` waits for it, and so does clearing the field
   for the next down (`catchUp()`), so the end of a play is always seen. The simulator passes no pace and runs flat out.
 - **Determinism:** dice come from a seeded `mulberry32`. The same seed plus the same answers rebuild the same game,
@@ -44,7 +48,9 @@ answers ──▶ │ Game: async down loop · ask(side, req) · validate  │ �
 - **Animation comes from the log:** walks follow logged paths; a contact check makes the actor lunge; `moveFx` adds
   catch jumps, spin-move orbits and the end-of-play pile; the ball flies between holders.
 - **Cameras:** presets (Broadcast, Follow, End zone, Overhead, Field level) and Free (mouse orbit). During a
-  cinematic (`useShot`) the rig flies a scripted shot and the HUD letterboxes.
+  cinematic (`useShot`) the rig flies a scripted shot and the HUD letterboxes, when Settings → Cinematic camera allows
+  it (`movesCamera`: big plays by default; Overhead and Free never move). The picture is lifted above the cards +
+  prompt by `--lift-h`, measured only when a new question comes up.
 - **The stadium** (`Stadium.jsx`): block stands (low on the broadcast side so they never block the camera), a crowd of
   cubes that jumps on big moments, tunnels built into the end-zone stands, light towers.
 - **Cube numbers** turn in quarter steps so their top points up the screen, using the camera's own up vector (so

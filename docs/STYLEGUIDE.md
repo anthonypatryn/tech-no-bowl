@@ -39,6 +39,7 @@ selected, green for the main action, red for danger. Near-square corners. Press 
 | `.drawer` + `.drawer-head` / `.drawer-foot` | The in-game side panel (Rules, Players) | Escape closes; one open at a time is fine |
 | `.menu-card` | A big choice on Home; `.primary` = the main one | |
 | `.hint`, `.warn`, `.muted`, `.led` | Text roles | |
+| Field labels: `.field-key` (yellow number-key marker), `.field-odds` (chance over a head, coloured by action), `.field-why` (+ / - helper / hurter), `.why-chip` (breakdown chips) | drei `Html` over cubes and squares, `zIndexRange={[2, 0]}` so the HUD stays on top | |
 | Game: `.skill-chip` (`.live` = usable now), `.roster-tag`, `.card` (`.card-star` = ability player: gold edge, opens the card), `.player-tag`, `.why` (breakdowns), `PlayerCard` (the full card pop-up), `.pc-card` (drawer cards), `.depth-row` | | Ability = gold (`#ffb000`): card edges, the ✦ badge, the gem over a cube |
 
 Never: `<select>`, a raw checkbox or range input, `confirm` / `alert`, inline font sizes, a radius above 4px on a box.

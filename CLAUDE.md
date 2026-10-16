@@ -18,7 +18,10 @@ stadium, sound, music, review tools. **Now: owner play-testing, then more reques
 messages, the bug list (`?view=bugs`, PIN), the Art Review Board (`?view=art`) and the moment review (`?view=review`);
 the owner pastes their "copy for Claude" output. The owner often asks for a plan first: give one, then build it.
 
-### Latest round (all pushed, live)
+### Latest round (all pushed, live; session of 2026-10-15/16)
+- Owner's moment review: all 20 moments approved except the reworked Fire bomb (v4), which is waiting on a re-look.
+- Not yet checked by the owner: the + / - badges and Odds on the field in a real game, auto follow-up, the number
+  keys on a real push, the Cinematic camera setting, the crowd loop by ear, phones / iPad for real, the season crash.
 - BUG-9: cubes became unclickable after any move: turning click-through back on passed `raycast={undefined}`, which
   R3F applies as undefined, not the real method. Cube.jsx now swaps `THREE.Mesh.prototype.raycast` / a no-op. Never pass
   undefined to switch a three.js method back on.
@@ -65,9 +68,8 @@ the owner pastes their "copy for Claude" output. The owner often asks for a plan
 - The 3D canvas rebuilds itself if the browser drops the WebGL context (Stage.jsx); in dev `window.__gl` is the
   renderer (`gl.info.memory`). A 2-minute fast-forward game showed no GPU leak (textures level off at 30).
 - Rules: a Glossary tab (30 terms) and the Adjustment rule.
-- Clicking / tapping a cube the open question can't use opens his card (`pickPlayer` in GameView). The touchdown's
-  auto replay is the whole scoring play (snap to end zone) at 0.75 speed, labelled with the scorer, on the broadcast
-  camera; replays skim action more than 4 squares from the ball and rebuild the down / line it was played on.
+- Clicking / tapping a cube the open question can't use opens his card (`pickPlayer` in GameView). Replays skim
+  action more than 4 squares from the ball and rebuild the down / line it was played on.
 - The depth chart opens before your first line-up of a game (the play clock waits). While moving, only target players
   catch the pointer (`pickable` on Board, `solid` on Mover); rings never do, so squares near players are easy to hit.
 - Helmet thumbnails (`public/art/helmets/sm/`, `helmetUrl(id, true)`; made by extract_art.py) for grids, schedules,
@@ -208,6 +210,14 @@ the owner pastes their "copy for Claude" output. The owner often asks for a plan
 - **Helmets:** every helmet is the same model in the same frame; `do_helmets` clips all 32 to one master silhouette.
 - **Play ends wait for the screen**: `catchUp()` before the field is cleared. Don't clear state the screen is still
   animating; the engine runs ahead of the screen by the paced time.
+- **Replays come from `game.frames`** (recorded positions), never from re-guessing positions out of log events. Add a
+  new kind of field event? It's in the frames automatically; just add its kind to `SHOW` in replay.js if it should be seen.
+- **Never pass `undefined` to switch a three.js method back on** in JSX (e.g. `raycast`): R3F sets it to undefined.
+  Pass the real one (`THREE.Mesh.prototype.raycast`). That made players unclickable after a move (BUG-9).
+- **The ball isn't cleared at the end of a play** (endPlay): only at the next down, after `catchUp()`, or a scoring
+  catch's flight is never drawn.
+- **Hooks order in GameView's Screen**: effects that read `prefsNow` / `board` / `why` go after those are declared
+  (a TDZ crash there takes the whole game screen down; lint doesn't catch it, so look in the browser).
 - **Timeouts** are an answer (`{ timeout: true }`) to any dead-ball question (`DEAD_BALL` in game.js), so they're
   validated, saved and sent online like everything else. `same()` never matches a missing square (bad answers fail).
 

@@ -238,6 +238,10 @@ Owner's additions (do first):
   and coin sounds.
 - Play-test fixes: touchdowns seen in full, Players card grid + ability gems + card pop-ups, move / roll
   breakdowns, depth chart + QB pick, movement left after a move, season continue, foldable cards panel.
+- Replays and controls round: replays from recorded frames (exact), touchdown replay = the scoring run, TV-style
+  replays with a telestrator on big plays; the camera holds still on hover and stays on your view (Cinematic camera
+  setting); number keys + markers for picks; move-and-hit buttons; odds over heads and + / - badges; auto follow-up;
+  field goals into a net; fire bomb throw shot; BUG-5..9 fixed; helmet home-screen icons; the crowd bed starts again.
 
 ### Next
 - Owner play-testing and more requests (the owner compacts the session, then sends the next list).

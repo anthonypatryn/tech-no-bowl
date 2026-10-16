@@ -15,9 +15,10 @@ the rulebook.
   saved: the host resumes and the friend rejoins later. Quick chat and reactions.
 - **Season** with standings and an 8-team playoff to the Techno Bowl. **Tutorial**, searchable **rules**, a
   **playbook** of preset formations, odds on every action, undo, a coach's suggestion, quick play, fast-forward, a **Players** drawer (key P) with every ability on both teams, a
-  **depth chart** (pick your QB, line and backs), cost and modifier breakdowns on hover, Undo, and a glossary.
+  **depth chart** (pick your QB, line and backs), cost and modifier breakdowns on hover, odds over the players' heads,
+  move-and-hit buttons, number keys for picks, Undo, and a glossary.
 - **TV presentation:** a stadium, opening show, score bug, chyrons, a LIVE commentary line, cinematic cameras for big
-  throws, hits, sacks, touchdowns and specials, pile-ups, instant replays and half-time highlights, crowd, whistles
+  throws, hits, sacks, touchdowns and specials, pile-ups, exact instant replays (with a telestrator on big plays) and half-time highlights, crowd, whistles
   and real dice sounds, NFL TV themes, and a jukebox of 24 ESPN Primetime tracks with a full player.
 - Works on desktop, iPad and phones; installable to the home screen; colour-blind mode; rebindable keys.
 
