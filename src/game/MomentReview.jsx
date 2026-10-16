@@ -84,7 +84,7 @@ async function act(g, pid, mode = 'card') {
 // ---------- the moments ----------
 // each: key, title, what you should see, and build(onChange) -> { game, focus, run }
 export const REVIEW = [
-  { key: 'throw', title: 'Long throw', expect: 'A 10-square pass: chase cam rides behind the ball, slow motion at the top of the arc, low lens at the catch.',
+  { key: 'throw', v: 2, title: 'Long throw', expect: 'A 10-square pass: the ball flies (no teleport): chase cam behind it, slow motion at the top of the arc, and the receiver jumps up to catch it.',
     build(on) {
       const { g, qb, put, clear, O } = scene({ dice: [5, 5] }, on);
       const wr = O.find((p) => p !== qb && p.skill >= 5) ?? O[O.length - 2];
@@ -92,7 +92,7 @@ export const REVIEW = [
       script(g, { [qb.pid]: [{ kind: 'pass', to: [wr.col, wr.row] }] });
       return { g, focus: [qb.col, qb.row - 4], run: () => act(g, qb.pid) };
     } },
-  { key: 'hit', title: 'Big hit (tackle)', expect: 'The defender lunges into the ball carrier, snap zoom with a shake and debris, the carrier tips over, whistle.',
+  { key: 'hit', v: 2, title: 'Big hit (tackle)', expect: 'The defender lunges into the carrier, snap zoom, debris, the carrier tips over, then the tackler and his nearby teammates leap on top one by one and stay piled up.',
     build(on) {
       const { g, qb, put, clear, D } = scene({ dice: [6, 4] }, on);
       const d = D[0]; clear(qb.col, qb.row, 1, [qb]); put(d, qb.col, qb.row - 1);
@@ -113,7 +113,7 @@ export const REVIEW = [
       script(g, { [o.pid]: [{ kind: 'block', pid: d.pid }] }, { followUp: () => false });
       return { g, focus: [6, 9], run: () => act(g, o.pid) };
     } },
-  { key: 'sack', title: 'Sack', expect: 'A defender steps in next to the passer behind the line with his bench too thin: low slow push-in, ring of dust, boom.',
+  { key: 'sack', v: 2, title: 'Sack', expect: 'A defender steps in next to the passer behind the line with his bench too thin: low slow push-in, ring of dust, boom, and the defense piles on.',
     build(on) {
       const { g, s, qb, put, clear, D } = scene({}, on);
       s.cards[0].bench = [qb.num];
@@ -149,7 +149,7 @@ export const REVIEW = [
       script(g, { [d.pid]: [{ kind: 'tackle', pid: qb.pid }] });
       return { g, focus: [qb.col, qb.row], run: () => act(g, d.pid) };
     } },
-  { key: 'spin', title: 'Spin move', expect: 'A tackle on a SPIN MOVE carrier misses on a playmaker match: he spins past, the two swap squares.',
+  { key: 'spin', v: 2, title: 'Spin move', expect: 'A tackle on a SPIN MOVE carrier misses on a playmaker match: he spins a full turn as he swings round the outside of the tackler into his square.',
     build(on) {
       const { g, qb, put, clear, D } = scene({ mode: 'alltechno', dice: [4, 2, 4] }, on);
       qb.abilities = ['SPIN MOVE'];
@@ -157,7 +157,7 @@ export const REVIEW = [
       script(g, { [d.pid]: [{ kind: 'tackle', pid: qb.pid }] });
       return { g, focus: [qb.col, qb.row], run: () => act(g, d.pid) };
     } },
-  { key: 'juke', title: 'Juke', expect: 'The ball carrier jukes the defender in front of him (pushed back), then keeps running upfield.',
+  { key: 'juke', v: 2, title: 'Juke', expect: 'The ball carrier cuts hard to the side (the defender is beaten and pushed back), then keeps running upfield.',
     build(on) {
       const { g, qb, put, clear, D } = scene({ mode: 'alltechno', dice: [6, 4] }, on);
       qb.abilities = ['JUKE'];
@@ -181,7 +181,7 @@ export const REVIEW = [
       script(g, { [qb.pid]: [{ kind: 'pass', to: [wr.col, wr.row] }] });
       return { g, focus: [qb.col + 1, qb.row - 5], run: () => act(g, qb.pid) };
     } },
-  { key: 'fuego', title: 'En fuego', expect: 'INFERNO: 3 tokens give the carrier JUKE for this turn (EN FUEGO! callout, fire), then he jukes the defender.',
+  { key: 'fuego', v: 2, title: 'En fuego', expect: 'INFERNO: 3 tokens give the carrier JUKE for this turn (EN FUEGO! callout, fire), then he cuts hard to the side past the defender.',
     build(on) {
       const { g, s, qb, put, clear, D } = scene({ mode: 'inferno', dice: [6, 4] }, on);
       s.fire[0] = 3;
@@ -189,7 +189,7 @@ export const REVIEW = [
       script(g, { [qb.pid]: [{ kind: 'fuego', skill: 'JUKE' }, { kind: 'juke', pid: d.pid }] }, { followUp: () => false });
       return { g, focus: [qb.col, qb.row - 1], run: () => act(g, qb.pid) };
     } },
-  { key: 'firebomb', title: 'Fire bomb', expect: 'INFERNO: a throw past normal range (3 tokens): FIRE BOMB! callout, then the long-throw camera to the catch.',
+  { key: 'firebomb', v: 2, title: 'Fire bomb', expect: 'INFERNO: a throw past normal range (3 tokens): FIRE BOMB! callout, then the ball really flies, long-throw camera, and the receiver leaps for it.',
     build(on) {
       const { g, s, qb, put, clear, O } = scene({ mode: 'inferno', dice: [6, 5] }, on);
       s.fire[0] = 3;
@@ -199,20 +199,20 @@ export const REVIEW = [
       script(g, { [qb.pid]: [{ kind: 'pass', to: [wr.col, wr.row] }] });
       return { g, focus: [qb.col, qb.row - 5], run: () => act(g, qb.pid) };
     } },
-  { key: 'dogpile', title: 'Dogpile', expect: 'INFERNO: a tackle\'s total success becomes a dogpile: a teammate piles on the downed carrier with a dirty hit (DOGPILE! callout).',
+  { key: 'dogpile', v: 2, title: 'Dogpile', expect: 'INFERNO: the tackle is a total success, so DOGPILE! The tackler and his teammates jump on the downed carrier and stack up on top of him.',
     build(on) {
       const { g, qb, put, clear, D } = scene({ mode: 'inferno', dice: [6, 5, 5, 6] }, on);
       const d = D[0], d2 = D[1]; clear(qb.col, qb.row, 1, [qb]); put(d, qb.col, qb.row - 1); put(d2, qb.col + 1, qb.row - 1);
       script(g, { [d.pid]: [{ kind: 'tackle', pid: qb.pid }], [d2.pid]: [{ kind: 'dirty', pid: qb.pid }] }, { bonus: (r) => (r.kind === 'dogpile' && r.options.includes(d2.pid) ? d2.pid : null) });
       return { g, focus: [qb.col, qb.row], run: () => act(g, d.pid) };
     } },
-  { key: 'fg', title: 'Field goal: good', expect: 'PRO: low behind the kicker, the ball end over end through the posts, confetti, FIELD GOAL! (3 dice beat the distance).',
+  { key: 'fg', v: 2, title: 'Field goal: good', expect: 'PRO: low behind the kicker, the ball end over end through the posts and on past them, coming down and skipping away. Confetti, FIELD GOAL!',
     build(on) {
       const { g } = scene({ mode: 'pro', dice: [6, 5, 4], line: 10 }, on);
       script(g, {});
       return { g, focus: [6, 6], run: () => g.maybeKick() };
     } },
-  { key: 'fgmiss', title: 'Field goal: no good', expect: 'PRO: the kick sails wide, NO GOOD!, the other team takes over.',
+  { key: 'fgmiss', v: 2, title: 'Field goal: no good', expect: 'PRO: at random, the kick either sails wide of an upright and keeps going, or DOINKS off the post and bounces back. NO GOOD!',
     build(on) {
       const { g } = scene({ mode: 'pro', dice: [1, 2, 2], line: 10 }, on);
       script(g, {});
@@ -235,10 +235,12 @@ export const REVIEW = [
 ];
 
 const VERDICT = { ok: 'Approved', fix: 'Needs a change', reject: 'Rejected' };
+// verdicts only count for the version of the moment they were given on (a reworked moment comes back up)
+const current = (verdicts) => Object.fromEntries(REVIEW.filter((r) => verdicts[r.key] && (verdicts[r.key].v ?? 1) === (r.v ?? 1)).map((r) => [r.key, verdicts[r.key]]));
 
 export default function MomentReview({ go }) {
-  const [verdicts, setVerdicts] = useState(load);
-  const [i, setI] = useState(() => { const v = load(); const k = REVIEW.findIndex((m) => !v[m.key]); return k < 0 ? REVIEW.length : k; });
+  const [verdicts, setVerdicts] = useState(() => current(load()));
+  const [i, setI] = useState(() => { const v = current(load()); const k = REVIEW.findIndex((m) => !v[m.key]); return k < 0 ? REVIEW.length : k; });
   const [take, retake] = useReducer((x) => x + 1, 0);
   const [phase, setPhase] = useState('ready'); // ready | playing | done
   const [note, setNote] = useState('');
@@ -248,9 +250,11 @@ export default function MomentReview({ go }) {
   const game = built?.g;
   const s = game?.state;
   const shot = useShot(s?.log ?? [], s?.players ?? {}, { full: true }); // always the full-length cut here
-  if (import.meta.env.DEV) window.__rv = { s, phase }; // poke at it while developing
+  if (import.meta.env.DEV) window.__rv = { s, phase, g: game }; // poke at it while developing
   useEffect(() => { setPhase('ready'); setNote(verdicts[m?.key]?.note ?? ''); }, [i, take]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => () => { if (game) game.stopped = true; }, [game]);
+  // a new take replaces the old game: stop the old one (not on unmount: React's dev double-mount would kill the live one)
+  const prevGame = useRef(null);
+  useEffect(() => { if (prevGame.current && prevGame.current !== game) prevGame.current.stopped = true; prevGame.current = game; }, [game]);
 
   // the end of a moment: the script has run, no shot is on screen and nothing new has been logged for a while
   const lastLog = useRef(0);
@@ -279,7 +283,7 @@ export default function MomentReview({ go }) {
   };
 
   const judge = (status) => {
-    const v = { ...verdicts, [m.key]: { status, note: note.trim(), at: Date.now() } };
+    const v = { ...verdicts, [m.key]: { status, note: note.trim(), at: Date.now(), v: m.v ?? 1 } };
     setVerdicts(v); store(v);
     // also onto the Art Review Board's list (with the PIN, if one is saved on this device)
     const pin = (() => { try { return localStorage.getItem(PIN_KEY) || ''; } catch { return ''; } })();

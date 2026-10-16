@@ -716,3 +716,4 @@ html.calm *, html.calm *::before { transition: none !important; animation: none 
 .review-nav { justify-content: space-between; }
 .game.review.cine .review-top { opacity: .35; }
 .review-done table td:nth-child(3) { max-width: 360px; }
+.sound-chip.muted, .sound-chip.off { border-color: var(--led); color: var(--led); animation: pulse-go 1s ease-in-out infinite alternate; }

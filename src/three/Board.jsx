@@ -14,8 +14,12 @@ const SPEED = 6.5; // squares per second when walking
 
 // ---------- players ----------
 // p: { pid, side, num, col, row, down }. path: the squares of the move that brought him here (if any)
-// lunge: { id, to:[c,r] } = he throws himself at that square (a block, tackle, juke...): out and back, with a hop
-function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge, active, colors }) {
+// lunge: { id, to:[c,r], side } = he throws himself at that square (a block, tackle...): out and back, with a hop.
+//   side = a juke / shake: he cuts hard to one side instead.
+// jump: { id, delay } = a leap (going up for a catch) after `delay` seconds
+// orbit: { id, pts:[[x,z]] } = walk round someone (a spin move), turning a full circle on the way
+// pile: { id, at:[x,z], level, delay, jx, jz, tilt:[rx,ry,rz] } = leap onto the pile after the whistle and stay there
+function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge, active, colors, jump, orbit, pile }) {
   const g = useRef();
   const pos = useRef(null);
   const queue = useRef([]);
@@ -26,8 +30,16 @@ function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge,
     const [x, , z] = sq(lunge.to[0], lunge.to[1]);
     const d = new THREE.Vector3(x, 0, z).sub(pos.current ?? new THREE.Vector3(x, 0, z)).setY(0);
     if (d.lengthSq() > 0) d.normalize();
-    lg.current = { id: lunge.id, t: 0, d };
+    if (lunge.side) { const sgn = lunge.id % 2 ? 1 : -1; d.set(-d.z * sgn, 0, d.x * sgn); } // a juke cuts sideways
+    lg.current = { id: lunge.id, t: 0, d, amp: lunge.side ? 0.9 : 0.62 };
   }, [lunge?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const jp = useRef({ id: null, t0: 0 });
+  useEffect(() => { if (jump && jump.id !== jp.current.id && !settings().calm) jp.current = { id: jump.id, t0: performance.now() + jump.delay * 1000 }; }, [jump?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pl = useRef({ id: null });
+  useEffect(() => {
+    if (!pile) { pl.current = { id: null }; return; }
+    if (pile.id !== pl.current.id && !settings().calm) pl.current = { ...pile, t0: performance.now() + pile.delay * 1000, from: null };
+  }, [pile?.id, !!pile]); // eslint-disable-line react-hooks/exhaustive-deps
   const at = `${p.col},${p.row}`;
   useLayoutEffect(() => {
     const goal = new THREE.Vector3(...sq(p.col, p.row));
@@ -38,6 +50,13 @@ function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge,
     if (!walking && pos.current.distanceTo(goal) > 2.5) { pos.current = goal.clone(); queue.current = []; return; }
     queue.current = (walking ? path : [[p.col, p.row]]).map(([c, r]) => new THREE.Vector3(...sq(c, r)));
   }, [at, path, p.col, p.row]);
+  // after the move above: a spin move swaps squares the long way round
+  const sp = useRef({ id: null, t: 1 });
+  useLayoutEffect(() => {
+    if (!orbit || orbit.id === sp.current.id || settings().calm) return;
+    sp.current = { id: orbit.id, t: 0 };
+    queue.current = orbit.pts.map(([x, z]) => new THREE.Vector3(x, 0, z));
+  }, [orbit?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   useFrame((_, dt) => {
     if (!pos.current || !g.current) return;
     const q = queue.current;
@@ -47,14 +66,35 @@ function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge,
       const step = SPEED * dt;
       if (d <= step) { pos.current.copy(next); q.shift(); hop.current = 0; } else { pos.current.lerp(next, step / d); hop.current += dt * SPEED; }
     }
+    const now = performance.now();
+    // the pile: once his leap starts he's off the field's grid until the next down resets everyone
+    const P = pl.current;
+    if (P.id && now >= P.t0) {
+      const u = Math.min(1, (now - P.t0) / 560);
+      P.from ??= g.current.position.clone();
+      const to = new THREE.Vector3(P.at[0] + P.jx, CUBE * P.level, P.at[1] + P.jz);
+      const e = u * u * (3 - 2 * u);
+      g.current.position.lerpVectors(P.from, to, e);
+      g.current.position.y += Math.sin(u * Math.PI) * 1.15;
+      g.current.rotation.set(P.tilt[0] * e, P.tilt[1] * e, P.tilt[2] * e);
+      positions.current[p.pid] = g.current.position;
+      return;
+    }
     let ox = 0, oz = 0, oy = 0;
     const L = lg.current;
     if (L.t < 1) {
       L.t = Math.min(1, L.t + dt / 0.7);
       // wind up a touch, burst in hard, settle back
       const k = L.t < 0.18 ? -0.25 * Math.sin((L.t / 0.18) * Math.PI / 2) : Math.sin(((L.t - 0.18) / 0.82) * Math.PI) * (1 - 0.15 * L.t);
-      ox = L.d.x * k * 0.62; oz = L.d.z * k * 0.62; oy = Math.max(0, k) * 0.22;
+      ox = L.d.x * k * L.amp; oz = L.d.z * k * L.amp; oy = Math.max(0, k) * 0.22;
     }
+    // going up for the ball
+    const J = jp.current;
+    if (J.id && now >= J.t0 && now < J.t0 + 750) oy += Math.sin(((now - J.t0) / 750) * Math.PI) * 0.95;
+    // the spin: a full turn while he goes round
+    const S = sp.current;
+    if (S.t < 1) S.t = Math.min(1, S.t + dt / 0.65);
+    g.current.rotation.set(0, S.t < 1 ? S.t * Math.PI * 2 : 0, 0);
     g.current.position.set(pos.current.x + ox, (q.length ? Math.abs(Math.sin(hop.current * Math.PI)) * 0.12 : 0) + oy, pos.current.z + oz);
     positions.current[p.pid] = g.current.position;
   });
@@ -97,6 +137,58 @@ function TurnMarker({ colors = ['#39ff6a', '#ffffff'] }) {
       <pointLight color={colors[0]} intensity={1.6} distance={2.2} decay={2} />
     </group>
   );
+}
+
+// ---------- the fun bits, read off the log ----------
+// jump: the receiver of the newest catch leaps as the ball gets there. orbit: the newest spin move goes round the
+// tackler. pile: when a play ends in a tackle or a sack, the tackler and up to three more of his team (dogpilers
+// first) leap on top of the downed ball carrier, one after another, and stay stacked until the next down.
+const hash = (str) => { let h = 7; for (const ch of String(str)) h = (h * 31 + ch.charCodeAt(0)) % 100003; return h / 100003; };
+function moveFx(s) {
+  const log = s.log;
+  const jump = {}, orbit = {}, pile = {};
+  const lastDown = log.findLastIndex((e) => e.kind === 'down' || e.kind === 'formation');
+  for (let i = log.length - 1; i > Math.max(lastDown, log.length - 10); i--) {
+    const e = log[i];
+    if (e.kind === 'catch' && !jump[e.pid] && e.to) {
+      const passer = s.players[e.from];
+      const [ax, , az] = passer?.col != null ? sq(passer.col, passer.row) : sq(...e.to);
+      const [bx, , bz] = sq(...e.to);
+      const d = Math.hypot(bx - ax, bz - az);
+      jump[e.pid] = { id: e.id, delay: Math.max(0, (d >= 7.5 && !settings().calm ? 2.2 : 0.25 + d * 0.06) - 0.42) };
+    }
+    if (e.kind === 'spin' && !orbit[e.pid] && e.from && e.to) {
+      const [ax, , az] = sq(...e.from), [bx, , bz] = sq(...e.to);
+      const cx = (ax + bx) / 2, cz = (az + bz) / 2, vx = ax - cx, vz = az - cz;
+      const pts = [];
+      for (let k = 1; k <= 6; k++) {
+        const th = (k / 6) * Math.PI, r = 1 + 1.1 * Math.sin(th); // round the outside of the tackler
+        pts.push([cx + (vx * Math.cos(th) - vz * Math.sin(th)) * r, cz + (vx * Math.sin(th) + vz * Math.cos(th)) * r]);
+      }
+      orbit[e.pid] = { id: e.id, pts };
+    }
+  }
+  // the pile
+  const end = log.findLastIndex((e) => e.kind === 'tackle' || e.kind === 'sack');
+  if (end > lastDown) {
+    const e = log[end];
+    const c = s.players[e.pid];
+    if (c?.col != null) {
+      const [x, , z] = sq(c.col, c.row);
+      const by = s.players[e.by];
+      const side = by?.side ?? 1 - c.side;
+      const dogs = log.slice(end).filter((x2) => x2.kind === 'dogpile').map((x2) => x2.pid);
+      const near = Object.values(s.players).filter((q) => q.side === side && !q.down && q.col != null && Math.max(Math.abs(q.col - c.col), Math.abs(q.row - c.row)) <= 2)
+        .sort((a, b) => Math.hypot(a.col - c.col, a.row - c.row) - Math.hypot(b.col - c.col, b.row - c.row)).map((q) => q.pid);
+      const crew = [...new Set([e.by, ...dogs, ...near].filter((pid) => pid && s.players[pid] && pid !== c.pid))].slice(0, 4);
+      crew.forEach((pid, k) => {
+        const h = hash(pid + e.id), h2 = hash(e.id + pid + 'z');
+        pile[pid] = { id: e.id, at: [x, z], level: k + 1, delay: 0.25 + k * 0.32, jx: (h - 0.5) * 0.24, jz: (h2 - 0.5) * 0.24,
+          tilt: [(h2 - 0.5) * 0.5, (h - 0.5) * 1.6, (hash(pid) - 0.5) * 0.5] };
+      });
+    }
+  }
+  return { jump, orbit, pile };
 }
 
 // ---------- ON FIRE: 8-bit flames licking up off the cube ----------
@@ -177,22 +269,51 @@ function GoalPosts() {
   ));
 }
 
-// ---------- a field goal: the ball end over end from the kick spot at the posts ----------
+// ---------- a field goal: the ball end over end from the kick spot. Good: through the posts and on into the stands'
+// direction, landing and bouncing. No good: wide of an upright and gone, or (at random) off the post: DOINK.
+const POST_Z = ROWS / 2 + 0.35, POST_X = 0.95, BAR_Y = 1.1;
+function kickPath(shot) {
+  const a = new THREE.Vector3(...sq(...shot.from)).setY(0.15);
+  const dz = shot.dir * POST_Z;
+  const r = hash(`kick${shot.id}`);
+  const doink = !shot.good && r < 0.45;
+  const sideX = shot.good ? (r - 0.5) * 0.9 : (r < 0.72 ? 1 : -1) * (doink ? POST_X : POST_X + 0.7 + r * 0.8);
+  const atPost = new THREE.Vector3(sideX, doink ? BAR_Y + 0.6 + r : 2.6, dz);
+  return { a, atPost, doink, out: new THREE.Vector3(sideX * (doink ? 1 : 1.5), 0.12, dz + shot.dir * 7) };
+}
 function KickBall({ shot }) {
   const g = useRef();
   const tum = useRef();
-  const a = useMemo(() => new THREE.Vector3(...sq(...shot.from)).setY(0.15), [shot]);
-  const side = useMemo(() => (shot.good ? 0 : (shot.id % 2 ? 1 : -1) * (1.4 + (shot.id % 3) * 0.3)), [shot]);
-  const b = useMemo(() => new THREE.Vector3(side, shot.good ? 2.8 : 2.2, shot.dir * (ROWS / 2 + 1.2)), [shot, side]);
+  const path = useMemo(() => kickPath(shot), [shot]);
+  const bounceBack = useMemo(() => path.atPost.clone().add(new THREE.Vector3(Math.sign(path.atPost.x || 1) * 1.6, -path.atPost.y + 0.12, -shot.dir * 2.6)), [path, shot]);
   useFrame(() => {
     if (!g.current) return;
-    const u = Math.min(1, ((performance.now() - shot.t0) / 1000 - 0.5) / 1.9);
-    g.current.visible = u >= 0;
-    const k = Math.max(0, u);
-    g.current.position.lerpVectors(a, b, k);
-    g.current.position.y = a.y + (b.y - a.y) * k + Math.sin(k * Math.PI) * 3.2;
-    if (tum.current) tum.current.rotation.x += 0.35;
-    shot.ball = g.current.position;
+    const t = (performance.now() - shot.t0) / 1000 - 0.5; // the kick: half a second in
+    g.current.visible = t >= 0;
+    if (t < 0) return;
+    const { a, atPost, out, doink } = path;
+    const T1 = 1.5; // kick to the posts
+    const pos = g.current.position;
+    let spinning = true;
+    if (t < T1) {
+      const u = t / T1;
+      pos.lerpVectors(a, atPost, u);
+      pos.y = a.y + (atPost.y - a.y) * u + Math.sin(u * Math.PI * 0.82) * 3.4;
+    } else if (!doink) {
+      // through (or past) and on, coming down and skipping along the ground
+      const u = Math.min(1, (t - T1) / 1.1);
+      pos.lerpVectors(atPost, out, u);
+      pos.y = atPost.y * (1 - u) * (1 - u) + Math.abs(Math.sin(u * Math.PI * 2.2)) * 0.5 * (1 - u) + 0.12;
+      spinning = u < 0.9;
+    } else {
+      // DOINK: off the upright, back towards the field, a couple of bounces
+      const u = Math.min(1, (t - T1) / 1.2);
+      pos.lerpVectors(atPost, bounceBack, u);
+      pos.y = Math.max(0.12, atPost.y * (1 - u) + Math.abs(Math.sin(u * Math.PI * 2.5)) * 0.7 * (1 - u));
+      spinning = u < 0.85;
+    }
+    if (tum.current && spinning) tum.current.rotation.x += doink && t > T1 ? -0.5 : 0.35;
+    shot.ball = pos;
   });
   return (
     <group ref={g} visible={false}>
@@ -215,7 +336,9 @@ function Ball({ ball, positions, slowmo, snapFrom }) {
     return new THREE.Vector3(x, ball.at === 'air' ? 1.6 : 0.14, z);
   };
   const sig = ball.at === 'held' ? `h${ball.pid}` : `${ball.at}${ball.col},${ball.row}`;
-  useEffect(() => {
+  // a layout effect: it must set up the flight before the next frame draws, or that frame snaps the ball straight to
+  // its new holder and there's no flight left to show (the "teleporting" throw)
+  useLayoutEffect(() => {
     const goal = goalOf();
     if (!goal || !g.current) return;
     // the snap: the ball comes out of the center's hands, not out of thin air
@@ -596,12 +719,13 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
   // the last move of each player, so his cube walks the same path
   const paths = {};
   for (const e of s.log) if (e.kind === 'move' && e.path) paths[e.pid] = e.path;
-  // the newest contact: that player lunges at his target
+  // the newest contact: that player lunges at his target (a juke / shake cuts to the side)
   const lunges = {};
   for (let i = s.log.length - 1; i >= Math.max(0, s.log.length - 8); i--) {
     const e = s.log[i];
-    if (e.kind === 'check' && e.tat && e.pid) { lunges[e.pid] = { id: e.id, to: e.tat }; break; }
+    if (e.kind === 'check' && e.tat && e.pid) { lunges[e.pid] = { id: e.id, to: e.tat, side: e.action === 'juke' || e.action === 'shake' }; break; }
   }
+  const fx = useMemo(() => moveFx(s), [s.log.length, s.log.at(-1)?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const players = Object.values(s.players).map((p) => {
     if (edit && p.side === edit.side) {
       const sp = edit.spots.find((x) => x.num === p.num);
@@ -649,7 +773,8 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
       {intro && <RunOut teams={[0, 1].map((side) => Object.values(s.players).filter((p) => p.side === side))} unis={unis} rows={rows} t0={intro.t0} startAt={intro.startAt} />}
       {!intro && players.map((p) => (
         <Mover key={p.pid} p={p} uniform={unis[p.side]} row={rows[p.side][p.num]} path={paths[p.pid]} positions={positions}
-          ring={rings[p.pid]} onPick={onPlayer} onHover={onHoverPlayer} lunge={lunges[p.pid]} active={s.active?.pid === p.pid && s.phase === 'play'} colors={tcolors[p.side]} />
+          ring={rings[p.pid]} onPick={onPlayer} onHover={onHoverPlayer} lunge={lunges[p.pid]} active={s.active?.pid === p.pid && s.phase === 'play'} colors={tcolors[p.side]}
+          jump={fx.jump[p.pid]} orbit={fx.orbit[p.pid]} pile={fx.pile[p.pid]} />
       ))}
       <Ball ball={s.ball} positions={positions} slowmo={!settings().calm} snapFrom={s.log.findLast?.((e) => e.kind === 'snap')?.from} />
       {shot?.kind === 'hit' && <Burst key={shot.id} at={sq(...shot.at, 0)} colors={['#c9c9c9', '#7a5a3a', '#3f6b2a', '#ffffff']} count={shot.big ? 46 : 26} />}
