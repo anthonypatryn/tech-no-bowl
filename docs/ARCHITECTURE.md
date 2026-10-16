@@ -79,7 +79,8 @@ answers ──▶ │ Game: async down loop · ask(side, req) · validate  │ �
 
 ## Server pieces (`api/`, `lib/`)
 Tiny Vercel functions: bug reports, Art Review verdicts and sound-editor overrides (Upstash Redis via REST, writes
-need the PIN), and the TURN relay. `vite.config.js` mounts the same handlers in dev, saving to `.data/`.
+need the PIN), sync codes (`lib/sync.js`: a device's saves under an 8-character code, newer saves never overwritten
+unless forced; the client is `src/game/sync.js`), and the TURN relay. `vite.config.js` mounts the same handlers in dev, saving to `.data/`.
 
 ## Testing
 - `npm test`: the rulebook's worked examples and scenario tests with forced dice (every skill, field goals, Inferno).

@@ -13,6 +13,8 @@ the rulebook.
 - **The computer coach** at three levels: Rookie, Starter, All-Pro.
 - **Online:** host a room, send the 5-letter code (or the invite link), play a friend. Others can watch. Games are
   saved: the host resumes and the friend rejoins later. Quick chat and reactions.
+- **Play on another device:** Settings → Play on another device makes a sync code; type it on your phone or iPad
+  and your season, unfinished game, stats, depth charts and playbook carry over. No accounts.
 - **Season** with standings and an 8-team playoff to the Techno Bowl. **Tutorial**, searchable **rules**, a
   **playbook** of preset formations, odds on every action, undo, a coach's suggestion, quick play, fast-forward, a **Players** drawer (key P) with every ability on both teams, a
   **depth chart** (pick your QB, line and backs), cost and modifier breakdowns on hover, odds over the players' heads,

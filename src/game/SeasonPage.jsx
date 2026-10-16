@@ -8,6 +8,7 @@ import { altSlots } from '../data/abilities';
 import { loadSeason, newSeason, endSeason, nextGame, standings, oppUniform } from './season';
 import { useConfirm } from './ui';
 import { loadResume, resumeMatch } from './useGame';
+import { autoSave, syncCode } from './sync';
 
 const name = (id) => teamById(id)?.name ?? id;
 function Helmet({ id, size = 40, flip }) {
@@ -18,7 +19,7 @@ function Helmet({ id, size = 40, flip }) {
 export default function SeasonPage({ onPlay }) {
   const [season, setSeason] = useState(loadSeason);
   const [confirmIt, dialog] = useConfirm();
-  if (!season) return <main className="page season"><h1 className="page-title">Season</h1><Setup onStart={(cfg) => setSeason(newSeason(cfg))} />{dialog}</main>;
+  if (!season) return <main className="page season"><h1 className="page-title">Season</h1><Setup onStart={(cfg) => { setSeason(newSeason(cfg)); autoSave(); }} />{dialog}</main>;
   const next = nextGame(season);
   const table = standings(season);
   const me = season.table[season.team];
@@ -33,6 +34,7 @@ export default function SeasonPage({ onPlay }) {
   return (
     <main className="page season">
       <h1 className="page-title">Season</h1>
+      {!syncCode() && <p className="hint">Want to play this season on your phone or iPad too? Settings → Play on another device.</p>}
       <Panel className="season-head" style={{ '--c0': c0 }}>
         <Helmet id={season.team} size={80} />
         <div>
@@ -48,7 +50,7 @@ export default function SeasonPage({ onPlay }) {
             if (unfinished && !await confirmIt({ title: 'Start this game over?', body: 'The game you left will be lost.', yes: 'Start over', danger: true })) return;
             play();
           }}>{unfinished ? 'Start it over' : `${next.label}: vs ${name(next.opp)}`}</Button>}
-          <Button size="small" onClick={async () => { if (await confirmIt({ title: 'End this season?', body: 'Its schedule and standings will be lost.', yes: 'End season', danger: true })) { endSeason(); setSeason(null); } }}>{season.champion ? 'New season' : 'Abandon season'}</Button>
+          <Button size="small" onClick={async () => { if (await confirmIt({ title: 'End this season?', body: 'Its schedule and standings will be lost.', yes: 'End season', danger: true })) { endSeason(); setSeason(null); autoSave(); } }}>{season.champion ? 'New season' : 'Abandon season'}</Button>
         </div>
       </Panel>
       <div className="season-grid">

@@ -3,12 +3,14 @@ import { Button, Chips, Panel, Row, Slider, Toggle } from './ui';
 import { setSettings, useSettings } from './prefs';
 import { nudgeAudio, play as playSound } from './sound';
 import { DEFAULT_KEYS, KEY_ACTIONS, RESERVED, keyLabel, rebind } from './keys';
+import SyncPanel from './SyncPanel';
 
 export default function Settings() {
   const s = useSettings();
   return (
     <main className="page settings">
       <h1 className="page-title">Settings</h1>
+      <SyncPanel />
       <Panel className="setting-list">
         <Row label="Text size">
           <Chips value={s.text} onChange={(text) => setSettings({ text })} options={[['normal', 'Normal'], ['large', 'Large'], ['larger', 'Larger']]} />

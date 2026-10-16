@@ -988,3 +988,12 @@ html.calm *, html.calm *::before { transition: none !important; animation: none 
 /* the replay bar and the cinematic Skip button sit above the widescreen bars (and below the top one) */
 .replay-ui { z-index: 30; top: calc(11vh + var(--s2)); }
 .skip-shot { z-index: 30; bottom: calc(11vh + var(--s2)); }
+
+/* Settings → Play on another device */
+.sync-panel { margin-bottom: var(--s4); }
+.sync-panel h2 { color: var(--led); font-size: var(--t4); }
+.sync-code { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s3); margin: var(--s2) 0; }
+.sync-code b { font-size: var(--t6); letter-spacing: .12em; }
+.sync-load { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); margin-top: var(--s4); padding-top: var(--s3); border-top: var(--px) solid var(--line); }
+.sync-input { width: 11em; text-transform: uppercase; letter-spacing: .12em; font-size: var(--t5); } /* 16px+: phones don't zoom in on it */
+.sync-newer { margin: var(--s2) 0; }

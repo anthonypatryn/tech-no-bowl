@@ -19,6 +19,11 @@ messages, the bug list (`?view=bugs`, PIN), the Art Review Board (`?view=art`) a
 the owner pastes their "copy for Claude" output. The owner often asks for a plan first: give one, then build it.
 
 ### Latest round (all pushed, live; session of 2026-10-15/16)
+- **Sync codes** (Settings → Play on another device; `src/game/sync.js`, `SyncPanel.jsx`, `api/sync.js`, `lib/sync.js`):
+  `SYNC_KEYS` (season, resume, stats, records, depth, playbook, last set, name; never settings) go up under an
+  8-character code (Redis `tech-no-bowl:sync:CODE`, 400 days). Auto-saves after a game, a new / ended season and when
+  the page is hidden; a save over a newer one from another device is refused (409) and the panel offers Load the
+  newer / Keep this device's. Tested in one browser (make, wipe, load, conflict), not yet on two real devices.
 - **The real touchdown-replay bug**: during the replay the next down's line-up question was already open, and the
   Board drew the human's pieces at that line-up (`edit`) over the replay. Board now gets `edit` / `focusSq` only when not
   replaying. Found with `src/dev/tdcheck.js` (dev tool: answers side 0 through the screen like a person, checks every
@@ -178,7 +183,7 @@ the owner pastes their "copy for Claude" output. The owner often asks for a plan
 | `src/three/Cube.jsx`, `textures.js`, `Field.jsx`, `Dice.jsx`, `Stage.jsx` | Player / down cubes (numbers face up the screen), atlases, the field + `sq(col,row)`, 3D dice (team tags, steer round players), the canvas wrapper |
 | `src/engine/` | The rules engine, no UI: `board.js` geometry, `rules.js` pure rules + skills, `game.js` the `Game`, `formations.js`, `ai.js` (`makeAI`), `bot.js` (simulator coaches) |
 | `src/data/art.js` (+ generated `art.json`, `teams.json`), `abilities.js`, `sounds.json`, `music.json` | Art manifest + rosters, ability texts + alternates, clip table, track list |
-| `api/*.js` + `lib/*.js` | Vercel functions: bugs, reviews, sounds (Redis, PIN), turn (Cloudflare relay). Dev middleware in `vite.config.js` saves to `.data/` (PIN 1234) |
+| `api/*.js` + `lib/*.js` | Vercel functions: bugs, reviews, sounds (Redis, PIN), sync (sync codes, no PIN), turn (Cloudflare relay). Dev middleware in `vite.config.js` saves to `.data/` (PIN 1234) |
 | `tools/` | `extract_art.py` (art), `cut_music.py` (music), `simulate.mjs` (simulator), `test-rules.mjs` (tests) |
 
 ## Board geometry

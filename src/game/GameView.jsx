@@ -40,6 +40,7 @@ import { telestrate, bigPlay } from '../three/Telestrator';
 import CoinToss from './CoinToss';
 import { recordResult } from './records';
 import { recordGameStats } from './stats';
+import { autoSave } from './sync';
 import { loadSeason, reportResult } from './season';
 import { crowd, stopTheme, audioState, nudgeAudio, play as playSound } from './sound';
 import MusicPlayer, { FullscreenButton } from './MusicPlayer.jsx';
@@ -99,6 +100,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
     if (s.phase !== 'over') return;
     // career stats (Stats page): every finished game you coached
     if (!spectating) recordGameStats(s, ME, { seed: match.seed ?? net?.code, mode: match.mode, level: match.level, season: match.season, online });
+    autoSave(4000); // the sync code (if any) gets the new record, stats and season
     if (online) { if (net?.code) clearOnlineResume(net.code); return; }
     recordResult([s.teams[0].id, s.teams[1].id], s.winner, match.seed);
     clearResume();
