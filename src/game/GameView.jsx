@@ -35,10 +35,11 @@ import { useGameSounds } from './useGameSounds';
 import { useShot, calloutFor, delayFor, skipShot, movesCamera } from './shots';
 import { ScoreBug, Chyrons, StatCard, Wipe } from './Broadcast';
 import OpeningShow, { SHOW } from './OpeningShow';
-import { lastPlay, useReplay, tdCut } from './replay';
+import { lastPlay, useReplay } from './replay';
 import { telestrate, bigPlay } from '../three/Telestrator';
 import CoinToss from './CoinToss';
 import { recordResult } from './records';
+import { recordGameStats } from './stats';
 import { loadSeason, reportResult } from './season';
 import { crowd, stopTheme, audioState, nudgeAudio, play as playSound } from './sound';
 import MusicPlayer, { FullscreenButton } from './MusicPlayer.jsx';
@@ -96,6 +97,8 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
   useEffect(() => { if (s.phase === 'over') musicScene('break'); }, [s.phase]);
   useEffect(() => {
     if (s.phase !== 'over') return;
+    // career stats (Stats page): every finished game you coached
+    if (!spectating) recordGameStats(s, ME, { seed: match.seed ?? net?.code, mode: match.mode, level: match.level, season: match.season, online });
     if (online) { if (net?.code) clearOnlineResume(net.code); return; }
     recordResult([s.teams[0].id, s.teams[1].id], s.winner, match.seed);
     clearResume();
@@ -132,13 +135,12 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
   useEffect(() => {
     if (!lastTd || lastTd.old || settings().calm) return;
     const i = s.log.indexOf(lastTd);
-    // the whole scoring play (snap to end zone), a bit quicker, labelled with who scored
-    // just the run in: the scorer's last activation (one earlier if that one gave him the ball), from the real positions
-    const base = tdCut(lastPlay(game.state, game.frames), lastTd.pid);
+    // the whole scoring play, snap to end zone, played exactly like the end-of-game highlights (the same play object,
+    // the same player): no cut. (A cut to the scorer's last turn showed a one-square step and missed the run.)
+    const play = lastPlay(game.state, game.frames);
     const who = s.players[lastTd.pid];
-    const play = base && { ...base, speed: 0.85 };
     const label = `Touchdown ${s.teams[lastTd.side].name}${who ? `: #${who.num} ${who.name}` : ''}`;
-    const t = setTimeout(() => { if (play) { replayQueue.current = []; setReel({ i: 0, n: 1, labels: [label] }); setReplay(play); } }, (delayFor(s.log, i) + 3.4 + 0.8 + (s.log.slice(Math.max(0, i - 4), i).some((e) => e.kind === 'check' && e.action === 'pass' && (e.dist >= 8 || e.bomb)) ? 3 : 0)) * 1000 / (isTurbo() ? 4 : 1));
+    const t = setTimeout(() => { if (play) watchAll([{ play, label }]); }, (delayFor(s.log, i) + 3.4 + 0.8 + (s.log.slice(Math.max(0, i - 4), i).some((e) => e.kind === 'check' && e.action === 'pass' && (e.dist >= 8 || e.bomb)) ? 3 : 0)) * 1000); // (cinematics don't speed up with fast-forward, so neither does this)
     return () => clearTimeout(t);
   }, [lastTd?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const shot = useShot(shown.log, shown.players);

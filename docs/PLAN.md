@@ -242,6 +242,7 @@ Owner's additions (do first):
   replays with a telestrator on big plays; the camera holds still on hover and stays on your view (Cinematic camera
   setting); number keys + markers for picks; move-and-hit buttons; odds over heads and + / - badges; auto follow-up;
   field goals into a net; fire bomb throw shot; BUG-5..9 fixed; helmet home-screen icons; the crowd bed starts again.
+- Touchdown replays: the whole play, no phantom re-play of the live touchdown afterwards. Career stats page.
 
 ### Next
 - Owner play-testing and more requests (the owner compacts the session, then sends the next list).

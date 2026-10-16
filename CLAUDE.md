@@ -19,6 +19,12 @@ messages, the bug list (`?view=bugs`, PIN), the Art Review Board (`?view=art`) a
 the owner pastes their "copy for Claude" output. The owner often asks for a plan first: give one, then build it.
 
 ### Latest round (all pushed, live; session of 2026-10-15/16)
+- Touchdown replay = the whole scoring play through the same path as the end-of-game highlights (`watchAll`); the
+  cut to the scorer's last turn (`tdCut`) is gone. The real "wrong replay" after it: coming back from a replay, the shot
+  director re-played the live touchdown over the empty field. `useShot` now plays each log entry's shot once
+  (`played`), cancels pending shots on skip, and a replayed touchdown holds until its shot is over.
+- BUG-10: career stats (`src/game/stats.js`, `tb-stats`, recorded at every game end) and a Stats page (`?view=stats`,
+  main nav + Home): record, by team, recent games, player totals ranked by any stat, the season's player stats.
 - Owner's moment review: all 20 moments approved except the reworked Fire bomb (v4), which is waiting on a re-look.
 - Not yet checked by the owner: the + / - badges and Odds on the field in a real game, auto follow-up, the number
   keys on a real push, the Cinematic camera setting, the crowd loop by ear, phones / iPad for real, the season crash.
@@ -133,7 +139,7 @@ the owner pastes their "copy for Claude" output. The owner often asks for a plan
 ## Code map
 | Path | What |
 |---|---|
-| `src/main.jsx`, `src/App.jsx` | Entry; no router: `?view=` home / teams / game / tutorial / season / online / rules / settings / art / review / moments / sounds / bugs / styleguide. `TopBar` = the one nav (main links + More menu), ♪ player, full screen |
+| `src/main.jsx`, `src/App.jsx` | Entry; no router: `?view=` home / teams / game / tutorial / season / online / stats / rules / settings / art / review / moments / sounds / bugs / styleguide. `TopBar` = the one nav (main links + More menu), ♪ player, full screen |
 | `src/game/Home.jsx` | Title screen over a 3D fly-around (`formation.js` lines the cubes up), menu cards, Resume |
 | `src/game/TeamPicker.jsx` | Head-to-head team select: helmets, ability players (`AbilityCard`), Random, `TeamGrid`, `LineupPicker` (alternates), rules mode (`MODES`, `MODE_INFO`) |
 | `src/game/GameView.jsx` | The game screen: board, score bug, cards, play log (rolls open `RollDetail`), dice toast, callouts, a prompt per request type, pause menu, sound chip, end screen + highlights. `me` prop / module `ME` = the side this screen coaches |
@@ -147,6 +153,7 @@ the owner pastes their "copy for Claude" output. The owner often asks for a plan
 | `src/game/SoundEditor.jsx` | `?view=sounds`: trim clips per slot; Save (PIN) overrides `sounds.json` for everyone via `/api/sounds` |
 | `src/game/OnlinePage.jsx`, `src/net/room.js` | Online: lobby (host / join by code, `TeamChooser` with ability cards + lineups), "Your online games" (Resume / Rejoin), `HostRoom`, `JoinClient` (waits for an away host), `sanitize`, `RemoteGame`, `REACTIONS` + `PHRASES` |
 | `src/game/SeasonPage.jsx`, `season.js` | Season: schedule, standings, top-8 bracket (`tb-season`) |
+| `src/game/StatsPage.jsx`, `stats.js` | Career stats (`tb-stats`): record, by team, recent games, player totals, season stats |
 | `src/game/RulesDrawer.jsx`, `src/data/rulesText.js` | Tabbed, searchable rules (drawer in game, `?view=rules`); `HELP_FOR` maps prompts to sections |
 | `src/game/CoachTips.jsx` | Tutorial coach cards |
 | `src/data/playbook.js` | Preset formations (follow the depth chart), saved formations / plays, "same as last", depth chart (`depthFor`) |

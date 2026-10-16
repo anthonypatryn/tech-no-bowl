@@ -8,6 +8,7 @@
 //   ?view=moments     Moment Lab: fire each cinematic on demand
 //   ?view=sounds      the owner's sound editor (PIN to save)
 //   ?view=styleguide  the style guide: every control and token, live
+//   ?view=stats       career stats: record, player totals, the season's stats
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import Home from './game/Home.jsx';
 import TeamPicker from './game/TeamPicker.jsx';
@@ -24,6 +25,7 @@ import MusicPlayer, { FullscreenButton } from './game/MusicPlayer.jsx';
 import { musicScene } from './game/music';
 const SoundEditor = lazy(() => import('./game/SoundEditor.jsx'));
 const StyleGuide = lazy(() => import('./game/StyleGuide.jsx'));
+const StatsPage = lazy(() => import('./game/StatsPage.jsx'));
 import BugReport from './game/BugReport.jsx';
 import { RulesPage } from './game/RulesDrawer.jsx';
 import SeasonPage from './game/SeasonPage.jsx';
@@ -71,6 +73,7 @@ export default function App() {
       {view === 'season' && <SeasonPage onPlay={(m) => { setMatch(m); go('game'); }} />}
       {view === 'sounds' && <Suspense fallback={<div className="loading">Loading…</div>}><SoundEditor /></Suspense>}
       {view === 'bugs' && <Suspense fallback={<div className="loading">Loading…</div>}><BugList /></Suspense>}
+      {view === 'stats' && <Suspense fallback={<div className="loading">Loading…</div>}><StatsPage /></Suspense>}
       {view === 'styleguide' && <Suspense fallback={<div className="loading">Loading…</div>}><StyleGuide /></Suspense>}
       {view === 'art' && <Suspense fallback={<div className="loading">Loading the art…</div>}><ArtReview /></Suspense>}
     </div>
@@ -79,7 +82,7 @@ export default function App() {
 
 // The one nav, on every menu page: the player's pages up front, settings and the owner's tools behind "More".
 // Phones get a single Menu button that opens the same list.
-const MAIN = [['teams', 'Play'], ['season', 'Season'], ['online', 'Online'], ['rules', 'Rules']];
+const MAIN = [['teams', 'Play'], ['season', 'Season'], ['online', 'Online'], ['stats', 'Stats'], ['rules', 'Rules']];
 const MORE = [['tutorial', 'Tutorial'], ['settings', 'Settings']];
 const TOOLS = [['art', 'Art review'], ['review', 'Moment review'], ['moments', 'Moment lab'], ['sounds', 'Sound editor'], ['bugs', 'Bug list']];
 

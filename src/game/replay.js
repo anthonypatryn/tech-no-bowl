@@ -55,25 +55,6 @@ export function lastPlay(s, frames = null, endId = null) {
   return { id, exact: false, spots, motions, events, chain, down, big };
 }
 
-// a touchdown replay: only the run in. It starts at the scorer's last activation, or one activation earlier when that
-// one put the ball in his hands (the throw he caught, the hand-off), and ends in the end zone.
-export function tdCut(play, scorer) {
-  if (!play?.exact || !scorer) return play;
-  const all = play.all;
-  const acts = all.map((e, i) => (e.kind === 'activate' ? i : -1)).filter((i) => i >= 0);
-  const last = acts.filter((i) => all[i].pid === scorer).at(-1);
-  if (last == null) return play;
-  let startI = last;
-  const got = all.findLastIndex((e, i) => i < last && (((e.kind === 'snap' || e.kind === 'handoff') && e.to === scorer) || ((e.kind === 'catch' || e.kind === 'sport') && e.pid === scorer)));
-  if (got >= 0) {
-    const gotAct = acts.filter((i) => i <= got).at(-1);
-    if (gotAct != null && acts.indexOf(last) - acts.indexOf(gotAct) <= 1) startI = gotAct;
-  }
-  const fromId = all[startI].id;
-  const from = play.steps.findIndex((x) => x.e.id > fromId);
-  return from > 0 ? { ...play, from } : play;
-}
-
 // the board state for a recorded frame
 function atFrame(base, f, prevBall) {
   const players = {};
@@ -156,6 +137,12 @@ export function useReplay(s, play, onDone) {
       setSt(cur);
       const h = HOLD[e.kind];
       let ms = (typeof h === 'function' ? h(e) : h ?? 250) * (play.speed ?? 1);
+      // the touchdown: hold until its cinematic is over (it waits for the runner's walk, then plays ~3.4 s), or the
+      // replay would end first and the orbit play on over the live field
+      if (e.kind === 'td') {
+        const walk = play.events.slice(0, i - 1).reverse().find((x) => x.kind === 'move' && x.pid === e.pid);
+        ms = (Math.min(2.5, (walk?.path?.length ?? 1) / 6.5 + 0.15) + 3.6) * 1000;
+      }
       // away from the ball (a block downfield while the camera rides with the carrier): don't make the viewer wait on it
       if (far(cur, e)) ms = Math.min(ms, e.kind === 'move' ? 150 + 165 * (e.path?.length ?? 1) : 280);
       // a walk always gets the time it needs on screen (or the next step cuts it off mid-stride)

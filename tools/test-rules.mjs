@@ -694,7 +694,7 @@ test('p.15: total successes chain free activations (each free activation can ear
 
 test('replays: every play rebuilt from the recorded frames matches what happened (walks start and end in place)', async () => {
   const { makeAI } = await import('../src/engine/ai.js');
-  const { lastPlay, tdCut } = await import('../src/game/replay.js');
+  const { lastPlay } = await import('../src/game/replay.js');
   let plays = 0, tds = 0;
   for (const seed of [11, 22, 33]) {
     const ai = makeAI('starter');
@@ -724,8 +724,10 @@ test('replays: every play rebuilt from the recorded frames matches what happened
         }
         if (end.kind === 'td') {
           tds++;
-          const cut = tdCut(play, end.pid);
-          assert.ok(cut.from == null || cut.steps.slice(cut.from).some((x) => x.e.kind === 'move' && x.e.pid === end.pid), 'the touchdown cut shows the scorer moving');
+          // the touchdown replay is the whole play: it ends with the scorer in the end zone holding the ball
+          const last = play.steps.at(-1);
+          assert.equal(last.e.kind, 'td');
+          assert.ok(play.steps.some((x) => x.e.kind === 'move' && x.e.pid === end.pid), 'the scorer moves in the replay');
         }
       },
     });

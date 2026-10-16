@@ -6,7 +6,7 @@
 //   onfire a player is set ON FIRE: close orbit, flames
 //   skill  a special ability fires (stiff arm, spin move, juke, shove, bring the heat...): snap to it, its effect
 //   kick   a field goal: low behind the kicker, the ball end over end at the posts
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { settings } from './prefs';
 
 export const LONG_THROW = 8;
@@ -65,6 +65,9 @@ export function delayFor(log, i) {
 // each kind plays in full the first time; after that a shorter cut (a long throw keeps its length: the ball's flight
 // is timed to it). Any shot can be skipped: skipShot() (the Skip button, Enter, a click on the field).
 const seen = new Map();
+// log entries whose cinematic already played: coming back from a replay to the live game must not play the live
+// touchdown (still among the last few entries) a second time over the empty field
+const played = new Set();
 export const skipShot = () => window.dispatchEvent(new Event('tb-skip-shot'));
 
 // the shot running now (or null). The newest cinematic log entry wins.
@@ -81,10 +84,13 @@ export function useShot(log, players, { full = false } = {}) {
     return null;
   }, [log, players]);
   const [shot, setShot] = useState(null);
+  const pending = useRef([]); // timers for shots not started yet: a skip (or a replay ending) cancels them too
   useEffect(() => {
-    if (!last || settings().calm) return;
+    if (!last || settings().calm || played.has(last.id)) return;
     let t2, t3;
     const run = (sh, then) => {
+      played.add(sh.id); played.add(last.id); // marked when it really starts (React's dev double-run cancels the first)
+      if (played.size > 500) played.delete(played.values().next().value);
       const n = seen.get(sh.kind) ?? 0;
       seen.set(sh.kind, n + 1);
       const s = { ...sh, t0: performance.now(), dur: DUR[sh.kind] * (n && !full && sh.kind !== 'throw' ? 0.6 : 1) };
@@ -92,13 +98,15 @@ export function useShot(log, players, { full = false } = {}) {
       t2 = setTimeout(() => { if (then) then(); else setShot((x) => (x?.id === s.id ? null : x)); }, s.dur * 1000);
     };
     const t1 = setTimeout(() => {
-      if (last.lead) run(last.lead, () => { t3 = setTimeout(() => run(last), 50); });
+      if (last.lead) run(last.lead, () => { t3 = setTimeout(() => run(last), 50); pending.current.push(t3); });
       else run(last);
+      pending.current.push(t2);
     }, (last.lead ? 0 : last.wait) * 1000);
+    pending.current = [t1];
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [last?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    const skip = () => setShot(null);
+    const skip = () => { for (const t of pending.current) clearTimeout(t); pending.current = []; setShot(null); };
     window.addEventListener('tb-skip-shot', skip);
     return () => window.removeEventListener('tb-skip-shot', skip);
   }, []);

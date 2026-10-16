@@ -971,3 +971,16 @@ html.calm *, html.calm *::before { transition: none !important; animation: none 
 /* a callout over a throw (FIRE BOMB!) sits in the top band, out of the ball's way */
 .callout.top { top: 12%; }
 .callout.top span { font-size: var(--d1); }
+
+/* stats page */
+.stats-page .chips { margin-bottom: var(--s4); }
+.stats-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: var(--s3); margin-bottom: var(--s4); text-align: center; }
+.stats-summary b { display: block; font-size: var(--t6); }
+.stats-summary small { color: var(--muted); }
+.stats-table { width: 100%; }
+.stats-table td, .stats-table th { white-space: nowrap; }
+.stats-table .on { color: var(--led); }
+.stats-table tr.win b { color: var(--go); } .stats-table tr.loss b { color: var(--bad); }
+.stats-helmet { height: 18px; vertical-align: -4px; transform: scaleX(-1); }
+.stats-by { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); margin-bottom: var(--s3); }
+.stats-page .panel, .stats-page .glass { overflow-x: auto; }

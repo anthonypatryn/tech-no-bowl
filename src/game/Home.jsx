@@ -55,6 +55,9 @@ export default function Home({ go, onResume }) {
           <button className="menu-card glass" onClick={() => go('tutorial')}>
             <b>Tutorial</b><span>A guided first game with the coach's tips</span>
           </button>
+          <button className="menu-card glass" onClick={() => go('stats')}>
+            <b>Stats</b><span>Your record, player totals and season stats</span>
+          </button>
           <button className="menu-card glass" onClick={() => go('rules')}>
             <b>How to play</b><span>All the rules, short and sweet</span>
           </button>

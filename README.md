@@ -30,6 +30,7 @@ the rulebook.
 | `?view=tutorial` | Guided first game |
 | `?view=season` | Season and playoffs |
 | `?view=online` | Play a friend |
+| `?view=stats` | Your record, player totals and season stats |
 | `?view=rules` | How to play |
 | `?view=settings` | Settings (sound, music, text size, keys, motion, colour-blind mode) |
 | `?view=art` | Art Review Board (verdicts need the PIN) |
