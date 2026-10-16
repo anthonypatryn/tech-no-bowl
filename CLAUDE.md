@@ -26,7 +26,9 @@ the owner pastes their "copy for Claude" output. The owner often asks for a plan
   SKILL, abilities, his numbers: CAREER for yours, VS YOU for opponents (`playerLine`; `tb-stats` now also keeps
   `foes`), or DEBUT / FIRST MEETING) and a headshot strip fills in. Then the two stars (captains) walk to midfield
   with a striped referee holding the coin; that picture is held (`HOLD` / `boardIntro` in GameView) through the coin
-  toss. New synth sounds `launch` / `pop`. Seen in the browser (portrait and landscape, Skip); not heard (audio).
+  toss. Sounds: the owner's `fireworks` (barrage + finale over the home run-out) and `smoke` (tunnel cannons, CO2
+  burst) slots; synth `launch` / `pop` only if the recording can't play. Seen in the browser (portrait and landscape,
+  Skip); not heard (audio).
 - **Sync codes** (Settings → Play on another device; `src/game/sync.js`, `SyncPanel.jsx`, `api/sync.js`, `lib/sync.js`):
   `SYNC_KEYS` (season, resume, stats, records, depth, playbook, last set, name; never settings) go up under an
   8-character code (Redis `tech-no-bowl:sync:CODE`, 400 days). Auto-saves after a game, a new / ended season and when

@@ -577,5 +577,41 @@
    "fade": 0.8,
    "name": "big boos"
   }
+ ],
+ "fireworks": [
+  {
+   "file": "fireworks",
+   "start": 0.0,
+   "len": 5.5,
+   "vol": 0.7,
+   "fade": 0.8,
+   "name": "barrage"
+  },
+  {
+   "file": "fireworks",
+   "start": 28.0,
+   "len": 5.5,
+   "vol": 0.7,
+   "fade": 1.0,
+   "name": "finale"
+  }
+ ],
+ "smoke": [
+  {
+   "file": "smoke",
+   "start": 0.2,
+   "len": 3.8,
+   "vol": 1.6,
+   "fade": 0.9,
+   "name": "smoke cannon"
+  },
+  {
+   "file": "smoke",
+   "start": 0.3,
+   "len": 1.3,
+   "vol": 1.4,
+   "fade": 0.5,
+   "name": "CO2 burst"
+  }
  ]
 }

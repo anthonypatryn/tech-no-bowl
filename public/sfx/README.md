@@ -9,6 +9,8 @@ Game-day sound for Techno Bowl.
 - crowd-cheer-a / crowd-cheer-b / crowd-boo: "crowd cheering in stadium" 435357 (vishiv), "crowd cheering" 379666,
   "crowd large outrage then booing" 25915 (freesound_community), Pixabay; the owner's picks. Cut into the cheer / boo
   slots (home crowd reactions).
+- fireworks / smoke: "fireworks" 29629 (freesound_community) and "smoke" 454927 (magiaz), Pixabay; the owner's picks
+  for the opening show (the home team's fireworks, the tunnel smoke cannons).
 - helmet-smash: "window smash sfx" 382708 (Dragon Studio, Pixabay), the owner's pick for the helmets crashing in the
   opening show.
 - Whooshes, menu blips, the dice fallback rattle, the big-hit crack, the sack boom, fire and the kick

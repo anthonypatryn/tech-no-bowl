@@ -30,18 +30,23 @@ export default function OpeningShow({ s, t0, me = 0, onDone }) {
       if (t >= SHOW_LEN) onDone(); else raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    // the sound of the show: helmets fly in (whoosh) and crash (bash); the away team is booed, the home team cheered
-    // under its fireworks; a whoosh as the captains walk out
+    // the sound of the show: helmets fly in (whoosh) and crash (bash); smoke cannons in the tunnels; the away team is
+    // booed, the home team cheered under its fireworks; a whoosh as the captains walk out
     const at = (secs, fn) => setTimeout(fn, Math.max(0, secs * 1000 - (performance.now() - t0)));
     const run = (secs, fn) => at(SHOW.h2h + secs, fn);
+    const pops = [];
+    const synthPops = (a, b) => FIREWORKS.slice(a, b).forEach(([t]) => pops.push(run(t, () => synth('launch')), run(t + ROCKET, () => synth('pop'))));
     const cues = [at(1.25, () => synth('whoosh')), at(2.05, () => play('smash').then((h) => { if (!h) synth('bash'); })), at(SHOW.h2h - 0.5, () => synth('whooshOut')),
       run(INTRO.away + 0.4, () => { play('boo'); crowd(1.5, 3); }), run(INTRO.away + 4.6, () => play('boo', { vol: 0.7 })),
       run(INTRO.home, () => { play('cheer'); crowd(2.4, 6); }), run(INTRO.home + 5.2, () => play('cheer', { vol: 0.8 })),
-      ...FIREWORKS.flatMap(([t]) => [run(t, () => synth('launch')), run(t + ROCKET, () => synth('pop'))]),
+      run(INTRO.away + 0.1, () => play('smoke', { pick: 0, vol: 0.8 })), run(INTRO.home, () => play('smoke', { pick: 0 })), run(INTRO.home + 1.3, () => play('smoke', { pick: 1 })),
+      // the fireworks: the recorded barrage, then the finale; synthesized pops on each burst only if they can't play
+      run(FIREWORKS[0][0], () => play('fireworks', { pick: 0 }).then((h) => { if (!h) synthPops(0, 5); })),
+      run(FIREWORKS[5][0], () => play('fireworks', { pick: 1 }).then((h) => { if (!h) synthPops(5, FIREWORKS.length); })),
       run(INTRO.meet + 0.2, () => synth('whoosh'))];
     const key = (e) => { if (e.key === ' ' || e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); onDone(); } };
     window.addEventListener('keydown', key);
-    return () => { cancelAnimationFrame(raf); cues.forEach(clearTimeout); window.removeEventListener('keydown', key); };
+    return () => { cancelAnimationFrame(raf); cues.forEach(clearTimeout); pops.forEach(clearTimeout); window.removeEventListener('keydown', key); };
   }, [t0, onDone]);
   const side = (i) => {
     const [c0, c1] = teamColors(s.teams[i].id, s.teams[i].uniform);
