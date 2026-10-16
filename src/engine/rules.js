@@ -312,5 +312,4 @@ export function checkDefense(spots, offense, { line, dir, col, count }) {
   return { ok: !errors.length, errors: [...new Set(errors)] };
 }
 
-export const ALL_COLS = Array.from({ length: COLS }, (_, i) => i);
 export { distance, halfOf, neighbours, adjacent };

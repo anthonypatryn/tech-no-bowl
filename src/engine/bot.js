@@ -1,5 +1,5 @@
-// A simple computer coach: legal, greedy and a bit sloppy. It is the placeholder for the Rookie level and the
-// opponent the simulator uses to shake out rules bugs. (Batch 3 brings the real Rookie / Starter / All-Pro.)
+// A simple computer coach: legal, greedy and a bit sloppy, and it tries every skill and fire-token option now and then.
+// The simulator's default opponent, for shaking out rules bugs. (The real coach is ai.js: Rookie / Starter / All-Pro.)
 // All randomness goes through game.random, so a seed replays a game exactly.
 import { distance, same } from './board.js';
 import { ballSquare, carrier, sqOf, threatCount } from './rules.js';

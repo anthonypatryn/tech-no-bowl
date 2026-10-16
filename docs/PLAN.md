@@ -215,6 +215,20 @@ Owner's additions (do first):
 - `sanitize()` hides the bench and play stack. Both coaches lock in simultaneous play calls before reveal.
 - Shared timers, so the play clock becomes real. Reconnect, spectate.
 
+### After B7 · Play-test rounds ✅
+- Online relay keys on Vercel (Cloudflare TURN), bug-list fixes (iPad audio, cancelable adjustment, Follow camera,
+  coin sound), the 10 play-faster helpers, colour-blind mode, Random team, team-coloured turn marker.
+- Helmets clipped to one master silhouette; plain drawn down marker; footsteps on every move.
+- The moment review (`?view=review`) replacing the old Moments tab flow; reworked animations from the owner's review:
+  the ball's flight (no teleport), catch jumps, spin orbits, sideways jukes, end-of-play piles, field goals through /
+  wide / off the post.
+- Sound settings linked into one setting (sound on by default), the TV theme streamed instead of decoded, the sound
+  chip; the ESPN Primetime jukebox (24 tracks); a full-screen button; dead-code sweep and these docs.
+
+### Next
+- Owner play-testing: fixes come from the bug list, the Art Review Board and the moment review.
+- Ideas not started: chat in online games, season stats leaders, a highlight reel across a season.
+
 ## Rule rulings I'll apply unless told otherwise
 - A Playmaker-negated die counts as 0.
 - ON FIRE ends on any fumble (the rulebook wins over the QRS).

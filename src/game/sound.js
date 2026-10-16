@@ -1,6 +1,6 @@
 // Game-day sound: the owner's recordings in public/sfx/*.mp3, cut into clips by src/data/sounds.json
-// ({ slot: [{ file, start, len, vol, fade, loop?, name? }] }, one picked at random each time). The sound editor (B5)
-// will edit that table. Three mixer channels from Settings: fx, crowd, music.
+// ({ slot: [{ file, start, len, vol, fade, loop?, name? }] }, one picked at random each time). The sound editor
+// (?view=sounds) can override that table for everyone. Mixer channels from Settings: fx, crowd, music.
 import BUILTIN from '../data/sounds.json';
 
 // the built-in clip table, overridden by whatever the sound editor saved (loaded once at start)
@@ -16,7 +16,6 @@ import { settings, onSettings } from './prefs';
 
 const CHANNEL = { crowd: 'crowd', theme: 'music' };
 const level = (slot) => settings().mix?.[CHANNEL[slot] ?? 'fx'] ?? 1;
-export const soundConfig = () => SOUNDS;
 
 let ctx = null;
 const AC = () => (typeof window !== 'undefined' ? window.AudioContext || window.webkitAudioContext : null);

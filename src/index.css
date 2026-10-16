@@ -41,7 +41,6 @@ p, li { text-wrap: pretty; overflow-wrap: break-word; }
 .hint { color: var(--muted); font-size: .88em; margin: var(--s2) 0 0; }
 .warn { color: #ffb347; margin: var(--s2) 0; }
 .loading { padding: 40px; color: var(--muted); font-family: var(--pixel); font-size: .8em; }
-.spacer { flex: 1; }
 
 /* Panel: the one box used everywhere (dark, hard 2px pixel edge, offset shadow) */
 .glass { background: var(--glass); border: var(--px) solid var(--line); border-radius: 4px; padding: var(--s4); box-shadow: 0 var(--s1) 0 rgba(0, 0, 0, .45);
@@ -82,7 +81,7 @@ p, li { text-wrap: pretty; overflow-wrap: break-word; }
 .toggle.on .toggle-knob { left: 24px; background: #fff; }
 .toggle-text { min-width: 0; }
 kbd.kh { display: inline-block; font: 400 8px var(--pixel); padding: 2px 4px; border: 1px solid currentColor; border-bottom-width: 2px; border-radius: 2px; opacity: .7; margin-left: var(--s1); }
-@media (hover: none) { kbd.kh, .kh-wrap { display: none; } }
+@media (hover: none) { kbd.kh { display: none; } }
 
 .modal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(0, 0, 0, .6); padding: var(--s4); animation: fadeIn .15s ease; }
 .modal-card { max-width: 460px; width: 100%; max-height: calc(100dvh - 32px); overflow: auto; }
@@ -240,11 +239,6 @@ table.checks tr.bad td { color: #ffb347; }
 .game-tools { position: absolute; top: max(10px, env(safe-area-inset-top)); left: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; max-width: 30%; }
 .scoreboard { position: absolute; top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; align-items: stretch;
   background: #050505; border: 2px solid var(--led-dim); border-radius: 10px; box-shadow: 0 6px 24px rgba(0, 0, 0, .6); overflow: hidden; max-width: calc(100% - 24px); }
-.sb-team { display: flex; align-items: center; gap: 10px; padding: 8px 14px; font-size: clamp(8px, 1.3vw, 13px); border-top: 3px solid transparent; }
-.sb-team.ball { border-top-color: var(--led); }
-.sb-team .digits { font-size: 2em; }
-.tos { color: #ff4040; font-size: 10px; letter-spacing: 2px; min-width: 18px; }
-.sb-mid { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 6px 14px; border-left: 1px solid #222; border-right: 1px solid #222; font-size: clamp(10px, 1.5vw, 15px); }
 .cubes { display: flex; gap: 4px; min-height: 10px; }
 .cubes i { width: 10px; height: 10px; background: var(--led); box-shadow: 0 0 6px rgba(245, 224, 74, .7); }
 .cubes i.red { background: #ff3b3b; box-shadow: 0 0 6px rgba(255, 59, 59, .7); }
@@ -335,14 +329,10 @@ button.card:hover { border-color: var(--led); }
 @media (max-width: 760px) {
   .rules-drawer { width: auto; left: 12px; }
   .logfeed { display: none; }
-  .cam-chips, .kh-wrap { display: none; }
+  .cam-chips { display: none; }
   .game-tools { top: max(6px, env(safe-area-inset-top)); left: 8px; right: 8px; max-width: none; flex-wrap: nowrap; overflow-x: auto; gap: 6px; }
   .game-tools .btn { white-space: nowrap; }
   .scoreboard { top: calc(max(6px, env(safe-area-inset-top)) + 40px); max-width: calc(100% - 16px); }
-  .sb-team { padding: 6px 8px; gap: 6px; font-size: 8px; }
-  .sb-name { max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .sb-mid { padding: 4px 8px; font-size: 9px; }
-  .tos { display: none; }
   .dice-toast { top: 120px; font-size: .8em; }
   .game-bottom { left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); flex-direction: column; align-items: stretch; gap: 6px; }
   .cards { width: auto; flex-direction: row; flex-wrap: wrap; align-items: center; padding: 6px 8px; gap: 8px; cursor: pointer; }
@@ -572,8 +562,6 @@ button.card:hover { border-color: var(--led); }
 .help-q { position: absolute; top: var(--s2); right: var(--s2); padding: 4px 8px; }
 .prompt { position: relative; }
 .prompt h3 { padding-right: 44px; }
-.rules-toc { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s3); margin: var(--s2) 0 var(--s3); }
-.rules-toc a { font-family: var(--pixel); font-size: 9px; color: var(--led); text-decoration: none; }
 .rule-sec { scroll-margin-top: 80px; padding: var(--s2) 0; border-top: var(--px) solid var(--line); }
 .rule-sec.focus h3 { color: var(--led); }
 .rule-sec h3 small { color: var(--muted); font-size: .9em; margin-left: var(--s2); }

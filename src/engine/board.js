@@ -5,10 +5,8 @@
 export const COLS = 13;
 export const ROWS = 24;
 export const START_LINE = { '-1': 18, '1': 6 }; // each team's own 20-yard line
-export const HASH_COLS = [4, 6, 8];               // where the ball is spotted across the field
 
 export const key = (c, r) => `${c},${r}`;
-export const unkey = (k) => k.split(',').map(Number);
 export const inBounds = (c, r) => c >= 0 && c < COLS && r >= 0 && r < ROWS;
 export const same = (a, b) => a[0] === b[0] && a[1] === b[1];
 export const DIRS = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];

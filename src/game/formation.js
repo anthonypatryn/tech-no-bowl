@@ -1,4 +1,4 @@
-// Stand-in line-ups so pages can show two teams on the field before the rules engine exists (Batch 1).
+// Quick display line-ups (no rules): two teams standing in a plausible formation for the Home screen's fly-around.
 // Offense attacks towards row 0 (the blue end zone) from its own 20: the line of scrimmage sits between
 // rows 17 and 18. Squares are [col, row].
 import { rosterFor } from '../data/art';

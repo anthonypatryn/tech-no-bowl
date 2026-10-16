@@ -4,7 +4,6 @@ import TEAMS from './teams.json';
 
 export const FIELD = ART.field; // image calibration: play area = 13 cols x 24 rows (incl. 2 end-zone rows each end)
 export const PUNCH = ART.punch;
-export const DOWNS = ART.uniforms._downs;
 export { TEAMS };
 
 export const teamById = (id) => TEAMS.find((t) => t.id === id);
