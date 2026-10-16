@@ -45,6 +45,10 @@ answers ──▶ │ Game: async down loop · ask(side, req) · validate  │ �
   catch jumps, spin-move orbits and the end-of-play pile; the ball flies between holders.
 - **Cameras:** presets (Broadcast, Follow, End zone, Overhead, Field level) and Free (mouse orbit). During a
   cinematic (`useShot`) the rig flies a scripted shot and the HUD letterboxes.
+- **The stadium** (`Stadium.jsx`): block stands (low on the broadcast side so they never block the camera), a crowd of
+  cubes that jumps on big moments, tunnels built into the end-zone stands, light towers.
+- **Cube numbers** turn in quarter steps so their top points up the screen, using the camera's own up vector (so
+  straight-down views work too).
 
 ## Sound and music
 - **One AudioContext** with a master gain and a compressor. Clips come from `src/data/sounds.json` (cut from
@@ -62,6 +66,10 @@ answers ──▶ │ Game: async down loop · ask(side, req) · validate  │ �
 - Big state messages are split into parts (PeerJS refuses ~16 KB+). Pings every 3 s; quiet for 10 s means gone. The
   friend retries for about 90 s; a host who reloads gets the same code back and rebuilds the game from the trail.
 - The friend's screen runs on `RemoteGame`, a stand-in that looks enough like `Game` for `GameView`.
+- **Saved games:** the host's game (match + answer trail + room) and the friend's room code are kept on each device
+  ("Your online games"). The host resumes with the same code (the game is rebuilt from the trail); a friend waiting
+  on an away host keeps retrying, so either can come back first.
+- **Timeouts** are answers (`{ timeout: true }`) to any dead-ball question, so they travel online like everything else.
 
 ## Server pieces (`api/`, `lib/`)
 Tiny Vercel functions: bug reports, Art Review verdicts and sound-editor overrides (Upstash Redis via REST, writes

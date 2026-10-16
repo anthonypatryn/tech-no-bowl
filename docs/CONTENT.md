@@ -19,13 +19,17 @@ under `public/art/` and writes `src/data/art.json` and `teams.json` (don't hand-
 - **Sound editor** (`?view=sounds`): pick a slot, trim clips on the waveform, set volume and fades, play them. Save
   (with the PIN) stores overrides for everyone; "Copy for Claude" hands the table back to bake into `sounds.json`.
 - Footsteps: 13 levelled clips from four grass-running recordings; each move plays one cut to the walk's length.
-- Synthesized in code: dice rattle, big-hit crack, sack boom, fire whoosh, kick thud, the coin flip.
+- From Long Shot (Pixabay, free): the dice roll, coin flips and the coin landing, card snaps (calling plays), the
+  winner's fanfare. Credits in `public/sfx/README.md`.
+- Synthesized in code: whooshes (wipes, opening-show cards), the helmet bash, 8-bit menu blips (Settings: Menu
+  sounds), the big-hit crack, the sack boom, fire, the kick thud.
 
 ## Music (`public/music`, `src/data/music.json`)
 - `python tools/cut_music.py "<ESPN NFL Primetime compilation>.mp3"` splits the compilation at MP3 frame boundaries
   (no re-encoding) using the track list in the script. To fix a cut, edit its start time there and re-run.
 - The jukebox (♪ in the top bar and the game's tools) plays tracks on the menus, at half time and the final whistle,
-  and during games if switched on (Settings → Music player).
+  and during games if switched on (Settings → Music player). The player has play / pause / previous / next / shuffle,
+  a progress line (click to jump), a volume slider (the same Music level as Settings) and the track list.
 
 ## Reviewing
 - **Art Review Board** (`?view=art`): every asset gets a verdict (approve / needs fix / reject + a note, PIN needed).

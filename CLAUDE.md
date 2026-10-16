@@ -11,10 +11,24 @@ and cinematics) and **Escape Order 66** (sound editor, kits), both siblings on t
   transcribed rules and all 32 rosters.
 
 ## Status
-Every planned batch is done (B0-B7, see `docs/PLAN.md`): all five rule modes, the computer coach at three levels,
-online play, season, tutorial, playbook, cinematics, sound, music, review tools. **Now: owner play-testing.** Work comes
-from the bug list (`?view=bugs`, PIN), the Art Review Board (`?view=art`) and the moment review (`?view=review`); the
-owner pastes their "copy for Claude" output.
+Every planned batch is done (B0-B7) plus several play-test rounds (see `docs/PLAN.md`): all five rule modes, the
+computer coach at three levels, online play (with saved games), season, tutorial, playbook, timeouts, cinematics, a
+stadium, sound, music, review tools. **Now: owner play-testing, then more requests.** Work comes from the owner's
+messages, the bug list (`?view=bugs`, PIN), the Art Review Board (`?view=art`) and the moment review (`?view=review`);
+the owner pastes their "copy for Claude" output. The owner often asks for a plan first: give one, then build it.
+
+### Latest round (all pushed, live)
+- Fumble-scatter crash fixed (touch "tap again" tile kept no data; `same()` now never matches a missing square).
+- Cube numbers read up the screen from the camera's own up vector (any view); overhead leans slightly.
+- Timeouts by the rulebook: a Timeout button on every dead-ball prompt, sent as an answer (`{ timeout: true }`).
+- Online: "Your online games" (host Resume with the same code, friend Rejoin), the friend waits for a host who's away.
+- Sound: Long Shot's dice / coin / card / fanfare recordings, synthesized whooshes, helmet bash and menu blips.
+- Stadium (`Stadium.jsx`), labelled dice that stay longer, half-time highlights, LIVE commentary ticker, player of the
+  game, season leaders, online quick chat + rematch.
+- Music player: progress line (seek, time left) and a volume slider (`Slider` in ui.jsx). Online team select shows
+  ability players (tap to read) and the lineup picker. Motion logs its route and the cube walks it.
+- Not yet checked by the owner: the new sounds (Claude can't hear), online resume across two real devices, motion
+  walking on screen, the lineup picker with an alternates team (Ankhs / Chefs / Reapers).
 
 ## Working with the owner
 - Push in batches the owner can play-test. Say plainly what's verified and what isn't (e.g. "I can't hear audio here").
@@ -39,7 +53,7 @@ owner pastes their "copy for Claude" output.
 | `src/game/Lab.jsx` | `?view=moments`: Moment Lab, fire any cinematic freely |
 | `src/game/ArtReview.jsx` | `?view=art`: Teams, Helmets, Down marker, Field, Scoreboard, Moments, Checks, Review. `Verdict`s saved to `/api/reviews` (PIN) |
 | `src/game/SoundEditor.jsx` | `?view=sounds`: trim clips per slot; Save (PIN) overrides `sounds.json` for everyone via `/api/sounds` |
-| `src/game/OnlinePage.jsx`, `src/net/room.js` | Online: lobby (host / join by code), `HostRoom`, `JoinClient`, `sanitize`, `RemoteGame` |
+| `src/game/OnlinePage.jsx`, `src/net/room.js` | Online: lobby (host / join by code, `TeamChooser` with ability cards + lineups), "Your online games" (Resume / Rejoin), `HostRoom`, `JoinClient` (waits for an away host), `sanitize`, `RemoteGame`, `REACTIONS` + `PHRASES` |
 | `src/game/SeasonPage.jsx`, `season.js` | Season: schedule, standings, top-8 bracket (`tb-season`) |
 | `src/game/RulesDrawer.jsx`, `src/data/rulesText.js` | Tabbed, searchable rules (drawer in game, `?view=rules`); `HELP_FOR` maps prompts to sections |
 | `src/game/CoachTips.jsx` | Tutorial coach cards |
@@ -47,13 +61,13 @@ owner pastes their "copy for Claude" output.
 | `src/game/Broadcast.jsx`, `OpeningShow.jsx`, `CoinToss.jsx` | Score bug, chyrons, stat cards, wipes; the opening show; the coin flip |
 | `src/game/shots.js` | Shot director: `useShot(log)` picks the cinematic (throw / hit / sack / td / onfire / skill / kick), callouts, skip |
 | `src/game/replay.js` | `lastPlay(state)` rebuilds a play from the log; `useReplay` plays it back |
-| `src/game/sound.js`, `useGameSounds.js` | Audio engine (one context, mixer, crowd bed, streamed theme, unlock) and the log-driven cues |
-| `src/game/music.js`, `MusicPlayer.jsx` | The jukebox (24 ESPN Primetime tracks) and the ♪ player + `FullscreenButton` |
+| `src/game/sound.js`, `useGameSounds.js` | Audio engine (one context, mixer, crowd bed, streamed theme, unlock, `synth()` whoosh / bash / blips, `menuSounds()`) and the log-driven cues |
+| `src/game/music.js`, `MusicPlayer.jsx` | The jukebox (24 ESPN Primetime tracks; `position` / `seek`) and the ♪ player (progress line, volume slider, track list, when-music-plays switches) + `FullscreenButton` |
 | `src/game/prefs.js`, `Settings.jsx`, `keys.js` | Per-device settings (`tb-settings`; prefs.js, not settings.js: Windows name clash), the Settings page, rebindable keys |
 | `src/game/odds.js`, `records.js`, `ui.jsx` | Odds text, W-L records, the 8-bit control kit |
 | `src/three/Board.jsx` | The 3D game: `Mover` cubes (walk, lunge, jump, orbit, pile), `Ball`, `Tiles`, outlines, effects (`Burst`, `Dust`, `Flames`, `Swirl`, `KickBall`, `GoalPosts`), `moveFx`, camera `Rig` + `shotCam` |
 | `src/three/Stadium.jsx` | The stadium: stands (low on the broadcast side), crowd cubes that jump on big moments, tunnels in the end-zone stands (`TUNNEL_Z`), light towers |
-| `src/three/Cube.jsx`, `textures.js`, `Field.jsx`, `Dice.jsx`, `Stage.jsx` | Player / down cubes, atlases, the field + `sq(col,row)`, 3D dice, the canvas wrapper |
+| `src/three/Cube.jsx`, `textures.js`, `Field.jsx`, `Dice.jsx`, `Stage.jsx` | Player / down cubes (numbers face up the screen), atlases, the field + `sq(col,row)`, 3D dice (team tags, steer round players), the canvas wrapper |
 | `src/engine/` | The rules engine, no UI: `board.js` geometry, `rules.js` pure rules + skills, `game.js` the `Game`, `formations.js`, `ai.js` (`makeAI`), `bot.js` (simulator coaches) |
 | `src/data/art.js` (+ generated `art.json`, `teams.json`), `abilities.js`, `sounds.json`, `music.json` | Art manifest + rosters, ability texts + alternates, clip table, track list |
 | `api/*.js` + `lib/*.js` | Vercel functions: bugs, reviews, sounds (Redis, PIN), turn (Cloudflare relay). Dev middleware in `vite.config.js` saves to `.data/` (PIN 1234) |

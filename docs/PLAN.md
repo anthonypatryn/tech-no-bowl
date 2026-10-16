@@ -225,9 +225,16 @@ Owner's additions (do first):
 - Sound settings linked into one setting (sound on by default), the TV theme streamed instead of decoded, the sound
   chip; the ESPN Primetime jukebox (24 tracks); a full-screen button; dead-code sweep and these docs.
 
+- Second play-test round: bug list and Moments links in the menu; the fumble-scatter crash; overhead numbers; real
+  timeouts (rulebook p.13-14); saved online games (Resume / Rejoin, away host); real dice / coin / card / fanfare
+  sounds, whooshes, the helmet bash, menu blips; the stadium with built-in tunnels; labelled dice that stay longer;
+  half-time highlights, the LIVE ticker, player of the game, season leaders, online quick chat and rematch.
+- Third round: the music player (progress, seek, volume slider), the online team select (ability players, lineups),
+  motion walks its route.
+
 ### Next
-- Owner play-testing: fixes come from the bug list, the Art Review Board and the moment review.
-- Ideas not started: chat in online games, season stats leaders, a highlight reel across a season.
+- Owner play-testing and more requests (the owner compacts the session, then sends the next list).
+- Ideas not started: a highlight reel across a season, achievements, an online spectator chat.
 
 ## Rule rulings I'll apply unless told otherwise
 - A Playmaker-negated die counts as 0.

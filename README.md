@@ -11,11 +11,13 @@ the rulebook.
   and Inferno (fire tokens, On Fire, En Fuego, Fire Bomb, Bring the Heat, dirty hits, dogpiles).
 - **32 teams** with their real uniforms, helmets, ability players and alternate lineups.
 - **The computer coach** at three levels: Rookie, Starter, All-Pro.
-- **Online:** host a room, send the 5-letter code (or the invite link), play a friend. Others can watch.
+- **Online:** host a room, send the 5-letter code (or the invite link), play a friend. Others can watch. Games are
+  saved: the host resumes and the friend rejoins later. Quick chat and reactions.
 - **Season** with standings and an 8-team playoff to the Techno Bowl. **Tutorial**, searchable **rules**, a
   **playbook** of preset formations, odds on every action, undo, a coach's suggestion, quick play, fast-forward.
-- **TV presentation:** opening show, score bug, chyrons, cinematic cameras for big throws, hits, sacks, touchdowns
-  and specials, instant replays, crowd and whistles, NFL TV themes, and a jukebox of 24 ESPN Primetime tracks.
+- **TV presentation:** a stadium, opening show, score bug, chyrons, a LIVE commentary line, cinematic cameras for big
+  throws, hits, sacks, touchdowns and specials, pile-ups, instant replays and half-time highlights, crowd, whistles
+  and real dice sounds, NFL TV themes, and a jukebox of 24 ESPN Primetime tracks with a full player.
 - Works on desktop, iPad and phones; installable to the home screen; colour-blind mode; rebindable keys.
 
 ## Pages
