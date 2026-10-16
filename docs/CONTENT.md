@@ -19,9 +19,11 @@ under `public/art/` and writes `src/data/art.json` and `teams.json` (don't hand-
 - **Sound editor** (`?view=sounds`): pick a slot, trim clips on the waveform, set volume and fades, play them. Save
   (with the PIN) stores overrides for everyone; "Copy for Claude" hands the table back to bake into `sounds.json`.
 - Footsteps: 13 levelled clips from four grass-running recordings; each move plays one cut to the walk's length.
-- From Long Shot (Pixabay, free): the dice roll, coin flips and the coin landing, card snaps (calling plays), the
-  winner's fanfare. Credits in `public/sfx/README.md`.
-- Synthesized in code: whooshes (wipes, opening-show cards), the helmet bash, 8-bit menu blips (Settings: Menu
+- From Long Shot (Pixabay, free): the dice roll, the coin landing, card snaps (calling plays), the winner's fanfare.
+- The owner's picks (Pixabay): the coin flip, and the window smash used for the helmets crashing in the opening show
+  (`smash`). Credits in `public/sfx/README.md`.
+- The crowd bed is baked into a seamless loop when it loads (cross-faded ends, level evened out).
+- Synthesized in code: whooshes (wipes, opening-show cards), 8-bit menu blips (Settings: Menu
   sounds), the big-hit crack, the sack boom, fire, the kick thud.
 
 ## Music (`public/music`, `src/data/music.json`)

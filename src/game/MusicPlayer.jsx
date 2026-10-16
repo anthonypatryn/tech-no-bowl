@@ -3,7 +3,7 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { TRACKS, nowPlaying, onMusic, playTrack, toggle, next, prev, position, seek } from './music';
 import { setSettings, useSettings } from './prefs';
-import { Toggle, Slider } from './ui';
+import { Button, Slider, Toggle } from './ui';
 
 const clock = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 
@@ -38,13 +38,13 @@ export default function MusicPlayer({ small }) {
             <span className="jb-time">-{clock(track ? Math.max(0, len - t) : 0)}</span>
           </div>
           <div className="btns jb-ctl">
-            <button className="btn small" onClick={prev} aria-label="Previous">⏮</button>
-            <button className="btn small primary" onClick={toggle}>{playing ? '⏸ Pause' : '▶ Play'}</button>
-            <button className="btn small" onClick={next} aria-label="Next">⏭</button>
+            <Button size="small" onClick={prev} aria-label="Previous">⏮</Button>
+            <Button kind="primary" size="small" onClick={toggle}>{playing ? '⏸ Pause' : '▶ Play'}</Button>
+            <Button size="small" onClick={next} aria-label="Next">⏭</Button>
             <button className={`btn small ${s.musicShuffle !== false ? 'on' : ''}`} onClick={() => setSettings({ musicShuffle: s.musicShuffle === false })} title="Shuffle">🔀</button>
           </div>
           <div className="jb-vol">
-            <button className="btn small" onClick={() => setVol(vol ? 0 : lastVol.current)} title={vol ? 'Mute the music' : 'Music back on'}>{vol ? '🔊' : '🔇'}</button>
+            <Button size="small" onClick={() => setVol(vol ? 0 : lastVol.current)} title={vol ? 'Mute the music' : 'Music back on'}>{vol ? '🔊' : '🔇'}</Button>
             <Slider value={vol} onChange={setVol} label="Music volume" />
             <span className="jb-time">{Math.round(vol * 100)}%</span>
           </div>
@@ -61,7 +61,7 @@ export default function MusicPlayer({ small }) {
             <Toggle checked={!!s.musicGame} onChange={(v) => setSettings({ musicGame: v })}>During games</Toggle>
           </div>
           <p className="hint">The Music level and the mute are in Settings (they apply here too).</p>
-          <div className="btns"><button className="btn small" onClick={() => setOpen(false)}>Close</button></div>
+          <div className="btns"><Button size="small" onClick={() => setOpen(false)}>Close</Button></div>
         </div>
       )}
     </span>
@@ -83,5 +83,5 @@ export function FullscreenButton() {
     if (document.fullscreenElement || document.webkitFullscreenElement) (document.exitFullscreen ?? document.webkitExitFullscreen)?.call(document);
     else (d.requestFullscreen ?? d.webkitRequestFullscreen)?.call(d)?.catch?.(() => {});
   };
-  return <button className="btn small fs-btn" onClick={go} title="Full screen (F)">{on ? '⤓ Exit full screen' : '⛶ Full screen'}</button>;
+  return <Button size="small" className="fs-btn" onClick={go} title="Full screen (F)">{on ? '⤓ Exit full screen' : '⛶ Full screen'}</Button>;
 }

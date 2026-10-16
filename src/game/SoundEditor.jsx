@@ -20,7 +20,7 @@ const SLOTS = [
   ['fanfare', 'Victory fanfare (you win)'],
   ['hit', 'Hits (contact, knockdowns)'],
 ];
-const FILES = ['crowd', 'themes', 'whistle-start', 'whistle-final', 'grunts', 'effects', 'steps-a', 'steps-b', 'steps-c', 'steps-d', 'dice', 'coin-flip-a', 'coin-flip-b', 'chip-land-a', 'deal', 'fanfare'];
+const FILES = ['crowd', 'themes', 'whistle-start', 'whistle-final', 'grunts', 'effects', 'steps-a', 'steps-b', 'steps-c', 'steps-d', 'dice', 'coin-flip', 'helmet-smash', 'chip-land-a', 'deal', 'fanfare'];
 const PIN_KEY = 'tb-bug-pin';
 const fmt = (t) => `${Math.floor(t / 60)}:${(t % 60).toFixed(2).padStart(5, '0')}`;
 const same = (a, b) => JSON.stringify(a ?? []) === JSON.stringify(b ?? []);

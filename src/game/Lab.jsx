@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { Stage } from '../three/Stage';
 import { Board, VIEWS } from '../three/Board';
-import { Chips } from './ui';
+import { Button, Chips } from './ui';
 import { Game } from '../engine/game.js';
 import { autoDefense, autoOffense } from '../engine/formations.js';
 import { START_LINE } from '../engine/board.js';
@@ -178,8 +178,8 @@ export default function Lab() {
         <h3>Moment Lab</h3>
         <div className="btns">
           {MOMENTS.map(([k, label]) => <button key={k} className={`btn ${k === last ? 'primary' : ''}`} onClick={() => fire(k)}>{label}</button>)}
-          <button className="btn" disabled={!last} onClick={() => fire(last)}>↻ Replay</button>
-          <button className="btn" onClick={() => { setPair(pickPair()); reseed(); }}>New teams</button>
+          <Button disabled={!last} onClick={() => fire(last)}>↻ Replay</Button>
+          <Button onClick={() => { setPair(pickPair()); reseed(); }}>New teams</Button>
           <a className="btn" href="/">Home</a>
         </div>
         <Chips small value={view} onChange={setView} options={VIEWS} />

@@ -2,7 +2,7 @@
 // abilities down the outside (tap one to read what his abilities do), name and home/away at the bottom. Teams with
 // alternate players ask who suits up when you pick them.
 import { useEffect, useState } from 'react';
-import { Chips } from './ui';
+import { Button, Chips } from './ui';
 import { TEAMS, teamById, uniformsFor, uniformOf, teamColors, artUrl, helmetUrl, rosterFor } from '../data/art';
 import { abilityText, altSlots, lineup } from '../data/abilities';
 import { LEVELS } from '../engine/ai.js';
@@ -64,7 +64,7 @@ export default function TeamPicker({ onStart }) {
         <div className="opt"><span>Rules</span><Chips small value={mode} onChange={setMode} options={MODES} /></div>
         <p className="hint mode-info">{MODE_INFO[mode]}</p>
         {clash && <p className="warn">Same team, same uniform: change one side's uniform.</p>}
-        <button className="btn primary big" disabled={clash} onClick={() => onStart({ you, cpu, level, mode })}>Take the field <kbd className="kh">Enter</kbd></button>
+        <Button kind="primary" size="big" disabled={clash} onClick={() => onStart({ you, cpu, level, mode })}>Take the field <kbd className="kh">Enter</kbd></Button>
         <p className="hint">← → flips through teams. Rookie makes mistakes, Starter plays the odds, All-Pro manages cards, the clock and coverage.</p>
       </div>
       {grid && <TeamGrid current={sides[grid][0].team} onPick={(t) => { pickTeam(grid, t); setGrid(null); }} onClose={() => setGrid(null)} />}
@@ -89,10 +89,10 @@ function Half({ who, label, tag, sel, set, step, random, openGrid, onInfo, onLin
       <header className="ts-top">
         <span className="ts-who">{label}</span>
         <div className="ts-nav">
-          <button className="btn small" onClick={() => step(-1)} aria-label="Previous team">◀</button>
-          <button className="btn small" onClick={openGrid}>All teams</button>
-          <button className="btn small" onClick={() => step(1)} aria-label="Next team">▶</button>
-          <button className="btn small" onClick={random} title="Random team">Random</button>
+          <Button size="small" onClick={() => step(-1)} aria-label="Previous team">◀</Button>
+          <Button size="small" onClick={openGrid}>All teams</Button>
+          <Button size="small" onClick={() => step(1)} aria-label="Next team">▶</Button>
+          <Button size="small" onClick={random} title="Random team">Random</Button>
         </div>
       </header>
       <div className="ts-body">
@@ -108,7 +108,7 @@ function Half({ who, label, tag, sel, set, step, random, openGrid, onInfo, onLin
             </button>
           ))}
           {/* alternates: who suits up, right under the players it changes */}
-          {hasAlt && <button className="btn small ts-lineup" onClick={onLineup}>Lineup{Object.values(sel.picks).includes('alt') ? ' (alternate)' : ''}</button>}
+          {hasAlt && <Button size="small" className="ts-lineup" onClick={onLineup}>Lineup{Object.values(sel.picks).includes('alt') ? ' (alternate)' : ''}</Button>}
         </div>
         <div className="ts-logo">{helmet && <img src={helmet} alt={`${team.name} helmet`} />}</div>
       </div>
@@ -144,7 +144,7 @@ export function TeamGrid({ current, onPick, onClose }) {
             );
           })}
         </div>
-        <div className="btns"><button className="btn" onClick={onClose}>Close</button></div>
+        <div className="btns"><Button onClick={onClose}>Close</Button></div>
       </div>
     </div>
   );
@@ -159,7 +159,7 @@ export function AbilityCard({ p, onClose }) {
         <p className="hint">{p.team} · skill {p.skill} · {p.tier === 'superstar' ? 'Superstar' : p.tier === 'star' ? 'Star' : 'Impact player'}</p>
         <ul>{p.abilities.map((a) => <li key={a}><b>{a}</b><span>{abilityText(a)}</span></li>)}</ul>
         <p className="hint">Abilities are used in All Techno, All Pro and Inferno.</p>
-        <div className="btns"><button className="btn primary" onClick={onClose}>Got it</button></div>
+        <div className="btns"><Button kind="primary" onClick={onClose}>Got it</Button></div>
       </div>
     </div>
   );
@@ -189,7 +189,7 @@ export function LineupPicker({ sel, set, onClose }) {
             })}
           </div>
         ))}
-        <div className="btns"><button className="btn primary" onClick={onClose}>Done</button></div>
+        <div className="btns"><Button kind="primary" onClick={onClose}>Done</Button></div>
       </div>
     </div>
   );

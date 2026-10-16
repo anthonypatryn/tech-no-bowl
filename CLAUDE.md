@@ -19,6 +19,25 @@ messages, the bug list (`?view=bugs`, PIN), the Art Review Board (`?view=art`) a
 the owner pastes their "copy for Claude" output. The owner often asks for a plan first: give one, then build it.
 
 ### Latest round (all pushed, live)
+- Dice colours: scatter / order rolls log `sides` (whose die is whose) as they're rolled; Dice.jsx uses that, never
+  possession at draw time (a recovery had already flipped it). Die tags sit under the dice.
+- Crowd loop baked seamless (6 s equal-power cross-fade + level riding) in `seamless()` (sound.js), random entry point.
+- Half time waits for the last play on screen (`game.readyAt` from useGame's delay, and any running shot). Replays:
+  the banner styles were lost in B4c (restored), "HIGHLIGHT 1 OF 3 · label", Next, Back to the game; the camera is
+  `follow` during replays; end screen "Watch them all". Log entries rebuilt on resume / undo carry `old` (no coin toss
+  or half-time card again).
+- **Undo** any pick (prompt corner, key U) until dice roll, cards flip, the snap / kick, or the computer moves
+  (`canUndo` in useGame.js).
+- Mobile pass: phone-landscape game layout (`max-height: 520px`), the camera lifts the picture above the cards +
+  prompt (`setViewOffset` from `--bottom-h`), prompt corner on its own row on phones, team select fits, taller sliders.
+  Touch devices default to the 2K field (no crowd), 1024 shadows, DPR 1.5 (`TOUCH`, `PERF_V` in prefs.js) after a
+  season start crashed the owner's browser (not reproduced on desktop: memory is the likely cause).
+- Sounds: `smash` (helmet crash in the opening show), new `coin` flip. Owner tools row on Home.
+- First-batch leftovers done: drawers end above the prompt, rules tabs as chips, display sizes `--d1..--d3`, 141
+  buttons now `<Button>`.
+- Not yet checked by the owner: the crowd loop by ear, the new sounds, phones / iPad for real, the season crash.
+
+### Before that
 - UI audit (see `docs/STYLEGUIDE.md`): every font size / space / corner / repeated colour is now a token in index.css;
   pixel text follows Settings → Text size. One central nav (`TopBar`: Play · Season · Online · Rules + More with the
   owner tools; Menu under 860px). Style guide page `?view=styleguide`. Game toolbar is one row under 1100px; Report a

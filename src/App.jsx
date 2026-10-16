@@ -67,7 +67,7 @@ export default function App() {
       {(view === 'teams' || (view === 'game' && !match)) && <TeamPicker onStart={(m) => { setMatch({ ...m, seed: Date.now() }); go('game'); }} />}
       {view === 'settings' && <Settings />}
       {view === 'rules' && <RulesPage go={go} />}
-      {view === 'online' && <Suspense fallback={<div className="loading">Loading…</div>}><OnlinePage go={go} /></Suspense>}
+      {view === 'online' && <Suspense fallback={<div className="loading">Loading…</div>}><OnlinePage /></Suspense>}
       {view === 'season' && <SeasonPage onPlay={(m) => { setMatch(m); go('game'); }} />}
       {view === 'sounds' && <Suspense fallback={<div className="loading">Loading…</div>}><SoundEditor /></Suspense>}
       {view === 'bugs' && <Suspense fallback={<div className="loading">Loading…</div>}><BugList /></Suspense>}

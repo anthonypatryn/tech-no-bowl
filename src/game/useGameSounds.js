@@ -47,7 +47,7 @@ function whoosh(kind = 'fire') {
 export function useGameSounds(game, { theme = true } = {}) {
   const seen = useRef(0);
   useEffect(() => {
-    preload(['crowd', 'whistle', 'whistleStart', 'whistleFinal', 'grunt', 'hit', 'step', 'dice', 'coin', 'coinLand', 'card', 'fanfare']);
+    preload(['crowd', 'whistle', 'whistleStart', 'whistleFinal', 'grunt', 'hit', 'step', 'dice', 'coin', 'coinLand', 'card', 'fanfare', 'smash']);
     startCrowd();
     if (theme) playTheme(26).then(() => crowd(0.45, 22, 0.5)); // duck the crowd under the theme
     return () => { stopTheme(0.6); stopCrowd(0.8); };

@@ -105,8 +105,20 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
   const [replay, setReplay] = useState(null);
   // replays can queue up (the half-time highlights play one after another)
   const replayQueue = useRef([]);
-  const rs = useReplay(s, replay, () => setReplay(replayQueue.current.length ? replayQueue.current.shift() : null));
-  const watchAll = (plays) => { if (!plays.length) return; replayQueue.current = plays.slice(1); setReplay(plays[0]); };
+  const [reel, setReel] = useState(null); // a highlight reel: { n, labels } (the replay's own place in it is reel.i)
+  const nextReplay = () => {
+    if (replayQueue.current.length) { setReel((r) => (r ? { ...r, i: r.i + 1 } : r)); setReplay(replayQueue.current.shift()); }
+    else { setReel(null); setReplay(null); }
+  };
+  const rs = useReplay(s, replay, nextReplay);
+  // highlights: [{ play, label }]
+  const watchAll = (hl) => {
+    if (!hl.length) return;
+    replayQueue.current = hl.slice(1).map((h) => h.play);
+    setReel(hl.length > 1 || hl[0].label ? { i: 0, n: hl.length, labels: hl.map((h) => h.label ?? '') } : null);
+    setReplay(hl[0].play);
+  };
+  const endReel = () => { replayQueue.current = []; setReel(null); setReplay(null); };
   const shown = rs ?? s;
   const lastTd = s.log.findLast?.((e) => e.kind === 'td');
   useEffect(() => {
@@ -392,6 +404,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
       if (isKey(e, 'camera')) nextView();
       else if (isKey(e, 'throw') && req?.type === 'act' && req.passes.length) setMode((m) => (m === 'pass' ? 'move' : 'pass'));
       else if (isKey(e, 'rules')) setRules((x) => !x);
+      else if (isKey(e, 'undo') && undoable) undo();
       else if (isKey(e, 'team')) { setTeam((x) => !x); setSpot(null); }
       else if (isKey(e, 'bug')) setBug(true);
       else if (isKey(e, 'fullscreen')) toggleFullscreen();
@@ -403,41 +416,51 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
   });
+  // the side drawers end above the prompt: --bottom-h = how much of the screen the cards + prompt take
+  const rootRef = useRef(null), bottomRef = useRef(null);
+  useEffect(() => {
+    const root = rootRef.current, el = bottomRef.current;
+    if (!root || !el || !window.ResizeObserver) return undefined;
+    const ro = new ResizeObserver(() => root.style.setProperty('--bottom-h', `${Math.max(0, root.clientHeight - el.offsetTop)}px`));
+    ro.observe(el); ro.observe(root);
+    return () => ro.disconnect();
+  }, []);
   const leave = async () => { if (s.phase === 'over' || await confirmIt({ title: 'Leave this game?', body: 'It stays saved: Resume it from Home.', yes: 'Leave', danger: true })) onExit(); };
 
   return (
-    <div className={`game ${shot || intro || rs ? 'cine' : ''} ${intro ? 'intro' : ''} ${rs ? 'replaying' : ''}`}>
+    <div ref={rootRef} className={`game ${shot || intro || rs ? 'cine' : ''} ${intro ? 'intro' : ''} ${rs ? 'replaying' : ''}`}>
       <Stage className="game-stage">
-        <Board game={rs ? { state: rs } : game} view={view} setup={!rs && ['formation', 'call', 'motion'].includes(s.phase)} onFree={() => setView('free')} shot={shot} intro={intro} tiles={rs ? [] : board.tiles} rings={rs ? {} : rings} onTile={rs ? null : board.onTile} onHover={setHover} onHoverPlayer={(pid) => setHover(pid ? { pid } : null)} outlines={rs ? [] : board.outlines} onPlayer={rs ? null : board.onPlayer}
+        <Board game={rs ? { state: rs } : game} view={rs ? 'follow' : view} setup={!rs && ['formation', 'call', 'motion'].includes(s.phase)} onFree={() => setView('free')} shot={shot} intro={intro} tiles={rs ? [] : board.tiles} rings={rs ? {} : rings} onTile={rs ? null : board.onTile} onHover={setHover} onHoverPlayer={(pid) => setHover(pid ? { pid } : null)} outlines={rs ? [] : board.outlines} onPlayer={rs ? null : board.onPlayer}
           edit={edit && req?.type === 'formation' ? { side: ME, spots: edit } : null}
           focusSq={spot != null && P(spot)?.col != null ? [P(spot).col, P(spot).row] : null} />
       </Stage>
       <ScoreBug s={s} />
       <Chyrons s={s} />
       <Ticker s={s} />
-      <Halftime s={s} highlights={highlights.current} onWatch={watchAll} />
+      <Halftime s={s} game={game} busy={!!shot} highlights={highlights.current} onWatch={watchAll} />
       <Wipe s={s} />
       <CoinToss s={s} />
       <CoachTips s={s} enabled={tips && !intro} fresh={!match.skipIntro} onOff={() => setTips(false)} />
       <LogFeed s={s} canUndo={undoable} onUndo={undo} online={online} onOpen={setDetail} />
       <Moment s={s} />
       {hover?.pid != null && !shot && <PlayerTag s={s} p={P(hover.pid)} />}
-      {shot && !intro && <button className="btn small skip-shot" onClick={skipShot}>Skip ▸ <Kbd a="skip" /></button>}
+      {shot && !intro && <Button size="small" className="skip-shot" onClick={skipShot}>Skip &gt; <Kbd a="skip" /></Button>}
       {detail && <RollDetail e={detail} onClose={() => setDetail(null)} />}
-      <div className="game-bottom">
+      <div className="game-bottom" ref={bottomRef}>
         <Cards s={s} rows={myRows} opp={oppName} />
         <div className={`prompt glass ${minPrompt ? 'min' : ''}`}>
-          <button className="btn small prompt-min" onClick={() => setMinPrompt((x) => !x)} aria-label="Fold the prompt">{minPrompt ? '▴' : '▾'}</button>
+          <Button size="small" className="prompt-min" onClick={() => setMinPrompt((x) => !x)} aria-label="Fold the prompt">{minPrompt ? '+' : '-'}</Button>
           {/* the corner tools float top-right, so the question wraps round them instead of reserving room */}
           {req && (
             <div className="prompt-corner">
               {['formation', 'call', 'motion', 'kick', 'onFire'].includes(req.type) && !s.overtime && s.pile.length >= 1 && (
-                <button className="btn small timeout-btn" disabled={!s.timeouts[ME]} onClick={() => answer({ timeout: true })} title="Stop the clock: adds one more play to the half (rulebook p.13)">
+                <Button size="small" className="timeout-btn" disabled={!s.timeouts[ME]} onClick={() => answer({ timeout: true })} title="Stop the clock: adds one more play to the half (rulebook p.13)">
                   ⏱ Timeout ({s.timeouts[ME]} left)
-                </button>
+                </Button>
               )}
-              {['act', 'formation', 'call'].includes(req.type) && <button className="btn small" onClick={askCoach} title="What would the coach do?">Suggest</button>}
-              {HELP_FOR[req.type] && <button className="btn small" title="What's this rule?" onClick={() => setRules(HELP_FOR[req.type])}>?</button>}
+              {['act', 'formation', 'call'].includes(req.type) && <Button size="small" onClick={askCoach} title="What would the coach do?">Suggest</Button>}
+              {undoable && <Button size="small" onClick={undo} title="Take back your last pick (until dice are rolled, cards turn up or the computer moves)">↶ Undo <Kbd a="undo" /></Button>}
+              {HELP_FOR[req.type] && <Button size="small" title="What's this rule?" onClick={() => setRules(HELP_FOR[req.type])}>?</Button>}
             </div>
           )}
           {suggest && <p className="suggest">Coach: {describe(suggest, P)}</p>}
@@ -448,20 +471,22 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
         </div>
       </div>
       <div className="game-tools">
-        <button className="btn small" onClick={() => setPaused(true)}>Menu <Kbd a="back" /></button>
+        <Button size="small" onClick={() => setPaused(true)}>Menu <Kbd a="back" /></Button>
         <span className="cam-chips"><Chips small value={view} onChange={setView} options={VIEWS.map(([k, l], i) => [k, i === 0 ? <>{l} <Kbd a="camera" /></> : l])} /></span>
-        <button className="btn small cam-cycle" onClick={nextView}>Camera: {VIEWS.find(([k]) => k === view)[1]}</button>
-        <button className="btn small" onClick={() => { setTeam((x) => !x); setSpot(null); }}>Players <Kbd a="team" /></button>
-        <button className="btn small" onClick={() => setRules((r) => !r)}>Rules <Kbd a="rules" /></button>
-        <button className="btn small" disabled={!lastPlay(s) || !!rs} onClick={() => setReplay(lastPlay(s))}>Replay</button>
+        <Button size="small" className="cam-cycle" onClick={nextView}>Camera: {VIEWS.find(([k]) => k === view)[1]}</Button>
+        <Button size="small" onClick={() => { setTeam((x) => !x); setSpot(null); }}>Players <Kbd a="team" /></Button>
+        <Button size="small" onClick={() => setRules((r) => !r)}>Rules <Kbd a="rules" /></Button>
+        <Button size="small" disabled={!lastPlay(s) || !!rs} onClick={() => setReplay(lastPlay(s))}>Replay</Button>
         <SoundChip />
         <MusicPlayer small />
         <button className={`btn small ${turbo ? 'on' : ''}`} onClick={toggleTurbo} title="Fast-forward: everything runs 4x">⏩ {turbo ? 'Fast' : 'Normal'} <Kbd a="turbo" /></button>
       </div>
       {rs && (
         <div className="replay-ui">
-          <span className="replay-bug"><i />REPLAY</span>
-          <button className="btn small" onClick={() => setReplay(null)}>Skip replay</button>
+          <span className="replay-bug"><i />{reel ? `HIGHLIGHT ${reel.i + 1} OF ${reel.n}` : 'REPLAY'}</span>
+          {reel?.labels[reel.i] && <span className="replay-label">{reel.labels[reel.i]}</span>}
+          {reel && reel.i < reel.n - 1 && <Button size="small" onClick={nextReplay}>Next &gt;</Button>}
+          <Button kind="primary" size="small" onClick={endReel}>{reel ? 'Back to the game' : 'Skip replay'}</Button>
         </div>
       )}
       {bug && <BugReport onClose={() => setBug(false)} context={{
@@ -473,14 +498,14 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
           <div className="modal-card glass pause-card" onClick={(e) => e.stopPropagation()}>
             <h2 className="led">PAUSED</h2>
             <div className="pause-list">
-              <button className="btn primary" onClick={() => setPaused(false)}>Resume</button>
-              <button className="btn" onClick={() => { setPaused(false); setRules(true); }}>How to play</button>
-              <button className="btn" onClick={() => setSettings({ muted: !settings().muted })}>Sound: {prefsNow.muted ? 'OFF (turn on)' : 'ON (turn off)'}</button>
+              <Button kind="primary" onClick={() => setPaused(false)}>Resume</Button>
+              <Button onClick={() => { setPaused(false); setRules(true); }}>How to play</Button>
+              <Button onClick={() => setSettings({ muted: !settings().muted })}>Sound: {prefsNow.muted ? 'OFF (turn on)' : 'ON (turn off)'}</Button>
               <Chips small value={prefsNow.speed} onChange={(speed) => setSettings({ speed })} options={[['slow', 'Slow'], ['normal', 'Normal'], ['fast', 'Fast']]} />
-              <button className="btn" onClick={() => setSettings({ quick: !prefsNow.quick })}>Quick play: {prefsNow.quick ? 'on' : 'off'}</button>
-              <button className="btn" onClick={() => { setPaused(false); setBug(true); }}>Report a bug <Kbd a="bug" /></button>
+              <Button onClick={() => setSettings({ quick: !prefsNow.quick })}>Quick play: {prefsNow.quick ? 'on' : 'off'}</Button>
+              <Button onClick={() => { setPaused(false); setBug(true); }}>Report a bug <Kbd a="bug" /></Button>
               <span className="pause-fs"><FullscreenButton /></span>
-              <button className="btn danger" onClick={() => { setPaused(false); leave(); }}>Quit game</button>
+              <Button kind="danger" onClick={() => { setPaused(false); leave(); }}>Quit game</Button>
             </div>
             <p className="hint">Your game is saved as you play: quit any time and pick it up from Home.</p>
           </div>
@@ -491,7 +516,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
       {intro && <OpeningShow s={s} t0={intro.t0} onDone={() => endIntro.current()} />}
       {s.inferno && <FireHud s={s} opp={oppName} />}
       {online && <OnlineBar net={net} host={!!match.online} />}
-      {s.phase === 'over' && !rs && <EndScreen s={s} onExit={onExit} onRematch={onRematch} match={match} online={online} highlights={highlights.current} onWatch={setReplay} />}
+      {s.phase === 'over' && !rs && <EndScreen s={s} onExit={onExit} onRematch={onRematch} match={match} online={online} highlights={highlights.current} onWatch={watchAll} />}
       {dialog}
     </div>
   );
@@ -509,7 +534,7 @@ function Prompt(props) {
   switch (req.type) {
     case 'toss':
       primary.current = () => answer('offense');
-      return (<><h3>You won the toss!</h3><div className="btns"><button className="btn primary" onClick={() => answer('offense')}>Take the ball <Kbd a="primary" /></button><button className="btn" onClick={() => answer('defense')}>Defend first</button></div></>);
+      return (<><h3>You won the toss!</h3><div className="btns"><Button kind="primary" onClick={() => answer('offense')}>Take the ball <Kbd a="primary" /></Button><Button onClick={() => answer('defense')}>Defend first</Button></div></>);
     case 'formation': return <FormationPrompt {...props} />;
     case 'call': return <CallPrompt {...props} />;
     case 'motion': return <MotionPrompt {...props} />;
@@ -523,24 +548,24 @@ function Prompt(props) {
       return (<><h3>{req.only ? `QB READ: swap #${req.card} for your ball carrier #${req.only[0]}?` : `Read and react? Swap #${req.card} for someone off the bench.`}</h3>
         <p className="hint">They flipped #{req.other}. Your swap can take an action, a full move or an adjustment (not a half move and an action).</p>
         <CardRow nums={req.only ?? req.bench} rows={props.rows} s={s} onPick={(n) => answer(n)} />
-        <div className="btns"><button className="btn primary" onClick={() => answer(null)}>Keep #{req.card} <Kbd a="primary" /></button></div></>);
+        <div className="btns"><Button kind="primary" onClick={() => answer(null)}>Keep #{req.card} <Kbd a="primary" /></Button></div></>);
     }
     case 'first': {
       primary.current = () => answer('me');
       return (<><h3>You have the higher rating{skillOf(req.cards[0]) === skillOf(req.cards[1]) ? ' (won the roll)' : ''}: who goes first?</h3>
-        <div className="btns"><button className="btn primary" onClick={() => answer('me')}>Me (#{req.cards[ME]}) <Kbd a="primary" /></button><button className="btn" onClick={() => answer('them')}>Them (#{req.cards[1 - ME]})</button></div></>);
+        <div className="btns"><Button kind="primary" onClick={() => answer('me')}>Me (#{req.cards[ME]}) <Kbd a="primary" /></Button><Button onClick={() => answer('them')}>Them (#{req.cards[1 - ME]})</Button></div></>);
     }
     case 'act': return <ActPrompt key={req.id} {...props} name={name} />;
     case 'bonus': {
       primary.current = () => answer(null);
       return (<><h3>{req.kind === 'dogpile' ? 'DOGPILE! Pick a player to put a dirty hit on a downed opponent.' : req.kind === 'full' ? `Total success! Free activation: click any of your players.${req.party ? ' BLOCK PARTY: +2 if he blocks.' : ''}` : 'They only partly made it: half move for one of your players.'}</h3>
-        <div className="btns"><button className="btn" onClick={() => answer(null)}>No thanks <Kbd a="primary" /></button></div></>);
+        <div className="btns"><Button onClick={() => answer(null)}>No thanks <Kbd a="primary" /></Button></div></>);
     }
     case 'adjustPartner':
       primary.current = () => answer(null);
       return (<><h3>Adjustment: click the second player to move (each moves up to half)</h3>
         <p className="hint">Changed your mind? Nothing has moved yet.</p>
-        <div className="btns"><button className="btn" onClick={() => answer(null)}>Cancel the adjustment <Kbd a="primary" /></button></div></>);
+        <div className="btns"><Button onClick={() => answer(null)}>Cancel the adjustment <Kbd a="primary" /></Button></div></>);
     case 'boost': return <BoostPrompt key={req.id} {...props} name={name} />;
     case 'kick': {
       const p = pKick(req.dist);
@@ -561,14 +586,14 @@ function Prompt(props) {
     case 'heatCrit': {
       primary.current = () => answer('fire');
       return (<><h3>BRING THE HEAT, double match! Your pick:</h3>
-        <div className="btns"><button className="btn primary" onClick={() => answer('fire')}>Set #{P(req.pid).num} ON FIRE <Kbd a="primary" /></button><button className="btn" onClick={() => answer('tokens')}>Take 3 fire tokens</button></div></>);
+        <div className="btns"><Button kind="primary" onClick={() => answer('fire')}>Set #{P(req.pid).num} ON FIRE <Kbd a="primary" /></Button><Button onClick={() => answer('tokens')}>Take 3 fire tokens</Button></div></>);
     }
     case 'option': {
       primary.current = () => answer(null);
       return (<><h3>OPTION! A defender closes on #{P(req.pid).num}: pitch it?</h3>
         <p className="hint">Needs a sport check (doubles = fumble). Click a cyan-ringed teammate or a button.</p>
-        <div className="btns">{req.targets.map((pid) => <button key={pid} className="btn act-hand" onClick={() => answer(pid)}>Pitch to #{P(pid).num}</button>)}
-          <button className="btn primary" onClick={() => answer(null)}>Keep it <Kbd a="primary" /></button></div></>);
+        <div className="btns">{req.targets.map((pid) => <Button key={pid} className="act-hand" onClick={() => answer(pid)}>Pitch to #{P(pid).num}</Button>)}
+          <Button kind="primary" onClick={() => answer(null)}>Keep it <Kbd a="primary" /></Button></div></>);
     }
     case 'onFire': return <OnFirePrompt key={req.id} {...props} />;
     case 'reverse': return yesNo(req.crit ? `Critical failure! ${name(req.against)} goes down. Push him back too?` : `The block failed! Reverse it on ${name(req.against)}?`, req.crit ? 'Push him' : 'Reverse it', req.crit ? 'Just knock him down' : 'Leave it');
@@ -577,7 +602,7 @@ function Prompt(props) {
     case 'scatter': {
       const out = req.options.find((o) => o.out);
       return (<><h3>Your die was higher: pick where the ball goes (purple squares)</h3>
-        {out && <div className="btns"><button className="btn" onClick={() => answer(out)}>Out of bounds (incomplete)</button></div>}</>);
+        {out && <div className="btns"><Button onClick={() => answer(out)}>Out of bounds (incomplete)</Button></div>}</>);
     }
     default: return <h3>…</h3>;
   }
@@ -628,20 +653,20 @@ function ActPrompt({ req, answer, P, mode, setMode, primary, hover, s, reach, da
       {/* every action open to him right now, as its own button (with the odds); or click the ringed player */}
       {(req.tackles.length > 0 || req.blocks.length > 0 || req.handoffs.length > 0 || req.passes.length > 0 || req.canStand || req.dirty.length > 0 || req.jukes.length > 0 || req.shakes.length > 0) && (
         <div className="act-btns">
-          {req.tackles.map((pid) => <button key={`t${pid}`} className="btn act-tackle" onClick={() => answer({ kind: 'tackle', pid })}>{req.asMove.includes('tackle') ? 'Diving tackle' : 'Tackle'} #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'tackle')}</span></button>)}
-          {req.blocks.filter((pid) => !req.tackles.includes(pid)).map((pid) => <button key={`b${pid}`} className="btn act-block" onClick={() => answer({ kind: 'block', pid })}>{blockWord} #{P(pid).num} <span className="odds">{chance(s, p, P(pid))}</span></button>)}
-          {req.shoves.map((pid) => <button key={`s${pid}`} className="btn act-skill" onClick={() => answer({ kind: 'shove', pid })}>Shove #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'shove')}</span></button>)}
-          {req.jukes.map((pid) => <button key={`j${pid}`} className="btn act-skill" onClick={() => answer({ kind: 'juke', pid })}>Juke #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'juke')}</span></button>)}
-          {req.shakes.map((pid) => <button key={`k${pid}`} className="btn act-skill" onClick={() => answer({ kind: 'shake', pid })}>Shake #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'shake')}</span></button>)}
-          {req.dirty.map((pid) => <button key={`d${pid}`} className="btn act-dirty" onClick={() => answer({ kind: 'dirty', pid })}>Dirty hit #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'dirty')}</span></button>)}
-          {req.handoffs.map((pid) => { const far = Math.max(Math.abs(P(pid).col - p.col), Math.abs(P(pid).row - p.row)) > 1; return <button key={`h${pid}`} className="btn act-hand" onClick={() => answer({ kind: 'handoff', pid })}>{s.ball.pid === p.pid ? `${far ? 'Pitch' : 'Hand off'} to #${P(pid).num}` : `Take ${far ? 'the pitch' : 'hand-off'} from #${P(pid).num}`}</button>; })}
+          {req.tackles.map((pid) => <Button key={`t${pid}`} className="act-tackle" onClick={() => answer({ kind: 'tackle', pid })}>{req.asMove.includes('tackle') ? 'Diving tackle' : 'Tackle'} #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'tackle')}</span></Button>)}
+          {req.blocks.filter((pid) => !req.tackles.includes(pid)).map((pid) => <Button key={`b${pid}`} className="act-block" onClick={() => answer({ kind: 'block', pid })}>{blockWord} #{P(pid).num} <span className="odds">{chance(s, p, P(pid))}</span></Button>)}
+          {req.shoves.map((pid) => <Button key={`s${pid}`} className="act-skill" onClick={() => answer({ kind: 'shove', pid })}>Shove #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'shove')}</span></Button>)}
+          {req.jukes.map((pid) => <Button key={`j${pid}`} className="act-skill" onClick={() => answer({ kind: 'juke', pid })}>Juke #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'juke')}</span></Button>)}
+          {req.shakes.map((pid) => <Button key={`k${pid}`} className="act-skill" onClick={() => answer({ kind: 'shake', pid })}>Shake #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'shake')}</span></Button>)}
+          {req.dirty.map((pid) => <Button key={`d${pid}`} className="act-dirty" onClick={() => answer({ kind: 'dirty', pid })}>Dirty hit #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'dirty')}</span></Button>)}
+          {req.handoffs.map((pid) => { const far = Math.max(Math.abs(P(pid).col - p.col), Math.abs(P(pid).row - p.row)) > 1; return <Button key={`h${pid}`} className="act-hand" onClick={() => answer({ kind: 'handoff', pid })}>{s.ball.pid === p.pid ? `${far ? 'Pitch' : 'Hand off'} to #${P(pid).num}` : `Take ${far ? 'the pitch' : 'hand-off'} from #${P(pid).num}`}</Button>; })}
           {req.passes.length > 0 && <button className={`btn ${mode === 'pass' ? 'on' : 'primary'}`} onClick={() => setMode(mode === 'pass' ? 'move' : 'pass')}>{mode === 'pass' ? 'Cancel throw' : 'Throw'} <Kbd a="throw" /></button>}
-          {req.canStand && <button className="btn primary" onClick={() => answer({ kind: 'stand' })}>Stand up (costs 3)</button>}
+          {req.canStand && <Button kind="primary" onClick={() => answer({ kind: 'stand' })}>Stand up (costs 3)</Button>}
         </div>
       )}
       <div className="btns">
-        <button className="btn" onClick={() => answer({ kind: 'end' })}>{req.spent || req.mode === 'half' ? 'Done' : 'Do nothing'} <Kbd a="primary" /></button>
-        {req.canAdjust && <button className="btn" onClick={() => answer({ kind: 'adjust' })}>Adjustment</button>}
+        <Button onClick={() => answer({ kind: 'end' })}>{req.spent || req.mode === 'half' ? 'Done' : 'Do nothing'} <Kbd a="primary" /></Button>
+        {req.canAdjust && <Button onClick={() => answer({ kind: 'adjust' })}>Adjustment</Button>}
       </div>
       {req.fire && req.fire.tokens > 0 && (
         <div className="fire-row">
@@ -688,7 +713,7 @@ function BoostPrompt({ req, answer, P, primary, name }) {
           <span className="hint">extra penalty now, that many tokens if it works</span>
         </div>
       )}
-      <div className="btns"><button className="btn primary" onClick={go}>Roll <Kbd a="primary" /></button></div>
+      <div className="btns"><Button kind="primary" onClick={go}>Roll <Kbd a="primary" /></Button></div>
     </>
   );
 }
@@ -702,7 +727,7 @@ function OnFirePrompt({ req, answer, P, primary }) {
       <h3>🔥 {req.tokens} fire tokens: set a player ON FIRE? (+3 on every check until he's stopped)</h3>
       <div className="btns">
         {req.options.map((pid) => <button key={pid} className={`btn ${pick === pid ? 'on' : ''}`} onClick={() => (req.anySkill.includes(pid) ? setPick(pid) : answer({ pid }))}>#{P(pid).num}</button>)}
-        <button className="btn primary" onClick={() => answer(null)}>Not now <Kbd a="primary" /></button>
+        <Button kind="primary" onClick={() => answer(null)}>Not now <Kbd a="primary" /></Button>
       </div>
       {pick && <><p className="hint">#{P(pick).num} gets any one skill while he's on fire:</p><div className="playbook">{SKILLS.map((k) => <button key={k} className="chipbtn" onClick={() => answer({ pid: pick, skill: k })}>{k}</button>)}</div></>}
     </>
@@ -741,14 +766,14 @@ function FormationPrompt({ req, answer, edit, setEdit, sel, primary, hover, s })
       </div>
       {!res.ok && <ul className="errors">{res.errors.map((e) => <li key={e}>{e}</li>)}</ul>}
       <div className="btns">
-        <button className="btn primary" disabled={!res.ok} onClick={ready}>Ready <Kbd a="primary" /></button>
-        {lastOk && <button className="btn" onClick={() => setEdit(lastSpots)}>Same as last down</button>}
-        <button className="btn" onClick={reroll}>Reroll</button>
+        <Button kind="primary" disabled={!res.ok} onClick={ready}>Ready <Kbd a="primary" /></Button>
+        {lastOk && <Button onClick={() => setEdit(lastSpots)}>Same as last down</Button>}
+        <Button onClick={reroll}>Reroll</Button>
         {saving == null
-          ? <button className="btn" disabled={!res.ok} onClick={() => setSaving(`My ${req.role === 'offense' ? 'set' : 'D'} ${mine.length + 1}`)}>Save to playbook</button>
+          ? <Button disabled={!res.ok} onClick={() => setSaving(`My ${req.role === 'offense' ? 'set' : 'D'} ${mine.length + 1}`)}>Save to playbook</Button>
           : <span className="pb-save"><input value={saving} maxLength={20} onChange={(e) => setSaving(e.target.value)} autoFocus
               onKeyDown={(e) => { if (e.key === 'Enter') { saveFormation(teamId, req.role, saving.trim() || 'Mine', edit, ctx); setSaving(null); } e.stopPropagation(); }} />
-            <button className="btn small primary" onClick={() => { saveFormation(teamId, req.role, saving.trim() || 'Mine', edit, ctx); setSaving(null); }}>Save</button></span>}
+            <Button kind="primary" size="small" onClick={() => { saveFormation(teamId, req.role, saving.trim() || 'Mine', edit, ctx); setSaving(null); }}>Save</Button></span>}
       </div>
     </>
   );
@@ -779,12 +804,12 @@ function CallPrompt({ req, answer, stack, setStack, rows, s, primary, askCoach }
       </div>
       <CardRow nums={left} rows={rows} s={s} onPick={(n) => { if (stack.length < req.count) { setStack([...stack, n]); playSound('card'); } }} />
       <div className="btns">
-        <button className="btn primary" disabled={!ready} onClick={() => call(stack)}>Call it <Kbd a="primary" /></button>
-        <button className="btn" onClick={askCoach} title="The All-Pro coach's five, in order">Coach's call</button>
-        {lastOk && <button className="btn" onClick={() => setStack([...last])}>Same as last</button>}
-        <button className="btn" onClick={() => { const pool = [...req.bench]; const out = []; while (out.length < req.count) out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]); setStack(out); }}>Random</button>
-        {ready && <button className="btn" onClick={() => savePlay(teamId, `Play ${stack.map((n) => n).join('-')}`, stack)}>Save play</button>}
-        {stack.length > 0 && <button className="btn" onClick={() => setStack([])}>Clear</button>}
+        <Button kind="primary" disabled={!ready} onClick={() => call(stack)}>Call it <Kbd a="primary" /></Button>
+        <Button onClick={askCoach} title="The All-Pro coach's five, in order">Coach's call</Button>
+        {lastOk && <Button onClick={() => setStack([...last])}>Same as last</Button>}
+        <Button onClick={() => { const pool = [...req.bench]; const out = []; while (out.length < req.count) out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]); setStack(out); }}>Random</Button>
+        {ready && <Button onClick={() => savePlay(teamId, `Play ${stack.map((n) => n).join('-')}`, stack)}>Save play</Button>}
+        {stack.length > 0 && <Button onClick={() => setStack([])}>Clear</Button>}
       </div>
     </>
   );
@@ -802,14 +827,14 @@ function MotionPrompt({ req, answer, motion, discard, setDiscard, rows, s, prima
       {motion && (
         <>
           <CardRow nums={left} rows={rows} s={s} onPick={(n) => discard.length < req.cost && setDiscard([...discard, n])} />
-          {discard.length > 0 && <p className="hint">Discarding: {discard.map((n) => `#${n}`).join(', ')} <button className="btn small" onClick={() => setDiscard([])}>Clear</button></p>}
+          {discard.length > 0 && <p className="hint">Discarding: {discard.map((n) => `#${n}`).join(', ')} <Button size="small" onClick={() => setDiscard([])}>Clear</Button></p>}
         </>
       )}
       <div className="btns">
         {motion
-          ? <><button className="btn primary pulse" disabled={discard.length !== req.cost} onClick={() => answer({ ...motion, discard })}>Go in motion {discard.length === req.cost && <Kbd a="primary" />}</button>
-            <button className="btn" onClick={() => answer(null)}>No motion</button></>
-          : <button className="btn primary" onClick={() => answer(null)}>No motion <Kbd a="primary" /></button>}
+          ? <><Button kind="primary" className="pulse" disabled={discard.length !== req.cost} onClick={() => answer({ ...motion, discard })}>Go in motion {discard.length === req.cost && <Kbd a="primary" />}</Button>
+            <Button onClick={() => answer(null)}>No motion</Button></>
+          : <Button kind="primary" onClick={() => answer(null)}>No motion <Kbd a="primary" /></Button>}
       </div>
     </>
   );
@@ -835,7 +860,7 @@ function OnlineBar({ net, host }) {
       <div className="online-bar glass">
         <span className={`dot ${host ? (f?.connected ? 'on' : 'off') : net.status === 'game' ? 'on' : 'off'}`} />
         <span>{host ? (f ? `${f.name}${f.connected ? '' : ' (disconnected)'}${f.cpu ? ' · computer covering' : ''}` : 'No opponent') : net.status === 'reconnecting' ? 'Reconnecting to the host…' : `Room ${net.code}`}</span>
-        {host && f && !f.connected && !f.cpu && <button className="btn small" onClick={() => net.takeOver()}>Let the computer play</button>}
+        {host && f && !f.connected && !f.cpu && <Button size="small" onClick={() => net.takeOver()}>Let the computer play</Button>}
         <span className="reacts">{REACTIONS.map((e, k) => <button key={k} className="chipbtn" onClick={() => (host ? net.react(0, k) : net.react(k))}>{e}</button>)}</span>
         <span className="jukebox"><button className="chipbtn" onClick={() => setChat(!chat)} title="Quick chat">💬</button>
           {chat && <span className="chat-menu glass">{PHRASES.map((p, i) => <button key={p} className="chipbtn" onClick={() => { const k = REACTIONS.length + i; if (host) net.react(0, k); else net.react(k); setChat(false); }}>{p}</button>)}</span>}</span>
@@ -901,9 +926,9 @@ function LogFeed({ s, canUndo, onUndo, online, onOpen }) {
   return (
     <div className={`logfeed ${open ? 'open' : ''}`}>
       <div className="log-head">
-        {!hidden && <button className="btn small" onClick={() => setOpen((x) => !x)}>{open ? 'Less' : 'Full log'}</button>}
-        <button className="btn small" onClick={() => hide(!hidden)}>{hidden ? 'Show log' : 'Hide log'}</button>
-        {!online && <button className="btn small" disabled={!canUndo} onClick={onUndo} title="Take back your last move (only before any dice are rolled)">Undo move</button>}
+        {!hidden && <Button size="small" onClick={() => setOpen((x) => !x)}>{open ? 'Less' : 'Full log'}</Button>}
+        <Button size="small" onClick={() => hide(!hidden)}>{hidden ? 'Show log' : 'Hide log'}</Button>
+        {!online && <Button size="small" disabled={!canUndo} onClick={onUndo} title="Take back your last pick (until dice are rolled, cards turn up or the computer moves)">Undo</Button>}
       </div>
       <div className="log-list" ref={list}>
         {items.map((e) => {
@@ -1010,17 +1035,18 @@ function EndScreen({ s, onExit, onRematch, match, online, highlights = [], onWat
         {top.length > 0 && (
           <div className="recap">
             <h3>Highlights</h3>
-            {top.map((h, i) => <button key={h.play.id} className="btn small" onClick={() => onWatch(h.play)}>▶ {i + 1}. {h.label}</button>)}
+            {top.length > 1 && <Button kind="primary" size="small" onClick={() => onWatch(top.map((h) => ({ play: h.play, label: h.label })))}>▶ Watch them all</Button>}
+            {top.map((h, i) => <Button key={h.play.id} size="small" onClick={() => onWatch([{ play: h.play, label: h.label }])}>▶ {i + 1}. {h.label}</Button>)}
           </div>
         )}
-        <div className="btns"><button className="btn small" onClick={share}>{copied ? 'Copied!' : 'Copy the result to share'}</button></div>
+        <div className="btns"><Button size="small" onClick={share}>{copied ? 'Copied!' : 'Copy the result to share'}</Button></div>
         <div className="btns">{online
           ? (match?.online
-            ? <><button className="btn" onClick={onExit}>Back to the lobby</button><button className="btn primary" onClick={onRematch}>Rematch</button></>
-            : <><span className="hint">The host can start a rematch.</span><button className="btn" onClick={onExit}>Leave</button></>)
+            ? <><Button onClick={onExit}>Back to the lobby</Button><Button kind="primary" onClick={onRematch}>Rematch</Button></>
+            : <><span className="hint">The host can start a rematch.</span><Button onClick={onExit}>Leave</Button></>)
           : match?.season
-          ? <button className="btn primary" onClick={onExit}>Back to the season</button>
-          : <><button className="btn" onClick={onExit}>Change teams</button><button className="btn primary" onClick={onRematch}>Rematch</button></>}</div>
+          ? <Button kind="primary" onClick={onExit}>Back to the season</Button>
+          : <><Button onClick={onExit}>Change teams</Button><Button kind="primary" onClick={onRematch}>Rematch</Button></>}</div>
       </div>
     </div>
   );
@@ -1046,16 +1072,32 @@ function delayOfGame(req, edit, stack) {
 
 // the halftime stat card, shown for a few seconds when the second half starts (Continue closes it sooner)
 // the half-time show: the stat card, and the first half's best plays to watch (the jukebox plays a track meanwhile)
-function Halftime({ s, highlights = [], onWatch }) {
+function Halftime({ s, game, busy, highlights = [], onWatch }) {
   const half = s.log.findLast?.((e) => e.kind === 'half' && e.half === 2);
   const [open, setOpen] = useState(null);
+  const [due, setDue] = useState(null); // the half has come, but the last play is still on screen
   const top = highlights.filter((h) => h.half === 1).sort((x, y) => y.score - x.score).slice(0, 3).sort((x, y) => x.play.id - y.play.id);
+  // wait for the last play to finish on screen (a field goal's kick, a touchdown run): the engine is already past it,
+  // so wait until the time it owes the screen runs out (readyAt), or ~4.5 s after a kick on a friend's screen
   useEffect(() => {
-    if (!half) return;
-    setOpen(half.id);
-    const t = setTimeout(() => setOpen(null), top.length ? 12000 : 7000);
+    if (!half || half.old) return undefined;
+    const i = s.log.indexOf(half);
+    const kicked = s.log.slice(Math.max(0, i - 6), i).some((e) => e.kind === 'kick' || e.kind === 'td');
+    const ms = game?.readyAt ? game.readyAt - performance.now() - 1200 : kicked ? 4500 : 0;
+    const t = setTimeout(() => setDue(half.id), Math.max(0, ms));
     return () => clearTimeout(t);
   }, [half?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!half || due !== half.id || busy) return undefined;
+    setOpen(half.id);
+    setDue(null);
+    return undefined;
+  }, [due, busy, half?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!half || open !== half.id) return undefined;
+    const t = setTimeout(() => setOpen(null), top.length ? 15000 : 8000);
+    return () => clearTimeout(t);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!half || open !== half.id) return null;
   return (
     <div className="halftime">
@@ -1064,7 +1106,7 @@ function Halftime({ s, highlights = [], onWatch }) {
         <div className="half-hl glass">
           <b className="led">FIRST-HALF HIGHLIGHTS</b>
           {top.map((h) => <span key={h.play.id}>{h.label}</span>)}
-          <button className="btn primary" onClick={() => { setOpen(null); onWatch(top.map((h) => h.play)); }}>▶ Watch them</button>
+          <Button onClick={() => { setOpen(null); onWatch(top.map((h) => ({ play: h.play, label: `1st half · ${h.label}` }))); }}>▶ Watch them</Button>
         </div>
       )}
     </div>
@@ -1129,7 +1171,7 @@ function RollDetail({ e, onClose }) {
       <div className="modal-card glass roll-detail" onClick={(ev) => ev.stopPropagation()}>
         <h3>{e.label ?? e.text}</h3>
         <table className="checks"><tbody>{rows.map(([k, v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody></table>
-        <div className="btns"><button className="btn primary" onClick={onClose}>Got it</button></div>
+        <div className="btns"><Button kind="primary" onClick={onClose}>Got it</Button></div>
       </div>
     </div>
   );

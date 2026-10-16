@@ -2,7 +2,7 @@
 // One chapter at a time on tabs, plus a search across every rule.
 import { useEffect, useRef, useState } from 'react';
 import { RULES } from '../data/rulesText';
-import { Panel } from './ui';
+import { Button, Panel } from './ui';
 
 // the rule text with the search words lit up
 function Lit({ text, words }) {
@@ -45,8 +45,8 @@ function RulesBrowser({ focus, autoFocus }) {
             <h3>{sec.title} <small>rulebook p.{sec.page}</small></h3>
             <ul>{sec.items.map((l) => <li key={l}>{l}</li>)}</ul>
             <div className="rules-pager">
-              {i > 0 ? <button className="btn small" onClick={() => setTab(RULES[i - 1].id)}>◀ {RULES[i - 1].title}</button> : <span />}
-              {i < RULES.length - 1 && <button className="btn small" onClick={() => setTab(RULES[i + 1].id)}>{RULES[i + 1].title} ▶</button>}
+              {i > 0 ? <Button size="small" onClick={() => setTab(RULES[i - 1].id)}>◀ {RULES[i - 1].title}</Button> : <span />}
+              {i < RULES.length - 1 && <Button size="small" onClick={() => setTab(RULES[i + 1].id)}>{RULES[i + 1].title} ▶</Button>}
             </div>
           </section>
         )}
@@ -63,7 +63,7 @@ export default function RulesDrawer({ onClose, focus }) {
   }, [onClose]);
   return (
     <aside className="drawer rules-drawer glass" role="dialog" aria-label="Rules">
-      <header className="drawer-head"><h2>Rules</h2><button className="btn small" onClick={onClose}>Close</button></header>
+      <header className="drawer-head"><h2>Rules</h2><Button size="small" onClick={onClose}>Close</Button></header>
       <RulesBrowser focus={focus} />
     </aside>
   );
@@ -75,7 +75,7 @@ export function RulesPage({ go }) {
       <h1 className="page-title">How to play</h1>
       <Panel className="rules-intro">
         <p>Techno Bowl is tabletop football on a grid: every player is a cube, every play is a stack of five cards, and the dice decide the hits. These are the Techno mode rules (7-vs-7, no special abilities, no field goals).</p>
-        <div className="btns"><button className="btn primary" onClick={() => go('tutorial')}>Play the tutorial</button><button className="btn" onClick={() => go('teams')}>Play a game</button></div>
+        <div className="btns"><Button kind="primary" onClick={() => go('tutorial')}>Play the tutorial</Button><Button onClick={() => go('teams')}>Play a game</Button></div>
       </Panel>
       <Panel><RulesBrowser /></Panel>
     </main>

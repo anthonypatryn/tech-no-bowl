@@ -190,6 +190,10 @@ test('engine: a critical tackle knocks the ball loose and the down goes on', asy
   await g.runActivation('1:45', 'card');
   assert.equal(g.s.players['0:6'].down, true);
   assert.ok(g.s.ball.at === 'ground' || g.s.ball.at === 'held');
+  // the scatter roll records whose die is whose as it's rolled (the board colours the dice from this, not from
+  // possession later, which a recovery may already have flipped)
+  const sc = g.s.log.find((e) => e.kind === 'scatter');
+  assert.deepEqual(sc.sides, [0, 1]);
 });
 
 test('engine: a failed block can be reversed and gives the other coach a free activation', async () => {

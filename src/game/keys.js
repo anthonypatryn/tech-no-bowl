@@ -8,6 +8,7 @@ export const KEY_ACTIONS = [
   ['camera', 'Next camera', 'c'],
   ['rules', 'Quick rules', 'r'],
   ['team', 'Players and their abilities', 'p'],
+  ['undo', 'Undo your last pick', 'u'],
   ['bug', 'Report a bug', 'b'],
   ['fullscreen', 'Full screen', 'f'],
   ['back', 'Back / cancel / leave', 'Escape'],

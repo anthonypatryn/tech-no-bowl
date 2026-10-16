@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { bugApi } from './BugReport';
-import { Toggle, useConfirm } from './ui';
+import { Button, Toggle, useConfirm } from './ui';
 
 // /?view=bugs — the owner's list of bug reports: enter the PIN, copy reports for Claude, mark them fixed.
 export function bugText(b) {
@@ -68,7 +68,7 @@ export default function BugList() {
           <label className="field"><span>PIN</span><input className="pin-input" type="text" inputMode="numeric" name="tb-bug-pin-entry" autoComplete="off" data-lpignore="true" data-1p-ignore spellCheck={false} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} autoFocus /></label>
           {LOCAL && <p className="note">This is the local test copy on this computer: it has its own bug list (PIN 1234). Your real bug reports are on the live site.</p>}
           {err && <p className="err">{err}</p>}
-          <div className="btns"><button className="btn primary" type="submit">Open</button></div>
+          <div className="btns"><Button kind="primary" type="submit">Open</Button></div>
         </form>
       </div>
     );
@@ -90,9 +90,9 @@ export default function BugList() {
       {b.device && <p className="note bug-device">{b.device}</p>}
       {b.status === 'fixed' && b.fixNote && <p className="bug-fix">Fixed: {b.fixNote}</p>}
       <div className="btns">
-        <button className="btn primary" onClick={() => copy([b])}>Copy for Claude</button>
-        {b.status === 'fixed' ? <button className="btn" onClick={() => act('reopen', [b.no])}>Reopen</button> : <button className="btn" onClick={() => act('fix', [b.no])}>Mark fixed</button>}
-        <button className="btn" onClick={async () => { if (await confirmIt({ title: `Delete BUG-${b.no}?`, body: 'This can’t be undone.', yes: 'Delete', danger: true })) act('remove', [b.no]); }}>Delete</button>
+        <Button kind="primary" onClick={() => copy([b])}>Copy for Claude</Button>
+        {b.status === 'fixed' ? <Button onClick={() => act('reopen', [b.no])}>Reopen</Button> : <Button onClick={() => act('fix', [b.no])}>Mark fixed</Button>}
+        <Button onClick={async () => { if (await confirmIt({ title: `Delete BUG-${b.no}?`, body: 'This can’t be undone.', yes: 'Delete', danger: true })) act('remove', [b.no]); }}>Delete</Button>
       </div>
     </li>
   );
@@ -100,19 +100,19 @@ export default function BugList() {
     <div className="page buglist">
       <header className="bug-head">
         <h1 className="page-title">Bug reports · {open.length} open</h1>
-        <div className="btns"><button className="btn" onClick={() => load()}>Refresh</button></div>
+        <div className="btns"><Button onClick={() => load()}>Refresh</Button></div>
       </header>
       <main>
         <div className="btns bug-bulk">
-          <button className="btn primary" disabled={!open.length} onClick={() => copy(open)}>Copy all open ({open.length})</button>
-          <button className="btn" disabled={!pickedBugs.length} onClick={() => copy(pickedBugs)}>Copy {pickedBugs.length} picked</button>
-          <button className="btn" disabled={!pickedBugs.length} onClick={() => act('fix', picked)}>Mark {pickedBugs.length} fixed</button>
+          <Button kind="primary" disabled={!open.length} onClick={() => copy(open)}>Copy all open ({open.length})</Button>
+          <Button disabled={!pickedBugs.length} onClick={() => copy(pickedBugs)}>Copy {pickedBugs.length} picked</Button>
+          <Button disabled={!pickedBugs.length} onClick={() => act('fix', picked)}>Mark {pickedBugs.length} fixed</Button>
           {msg && <span className="bug-msg">{msg}</span>}
         </div>
         {err && <p className="err">{err}</p>}
         {!open.length && <p>No open bugs.</p>}
         <ul className="bugs">{open.map(row)}</ul>
-        {fixed.length > 0 && <button className="btn small" onClick={() => setShowFixed(!showFixed)}>{showFixed ? 'Hide' : 'Show'} {fixed.length} fixed</button>}
+        {fixed.length > 0 && <Button size="small" onClick={() => setShowFixed(!showFixed)}>{showFixed ? 'Hide' : 'Show'} {fixed.length} fixed</Button>}
         {showFixed && <ul className="bugs">{fixed.map(row)}</ul>}
       </main>
       {confirmDialog}

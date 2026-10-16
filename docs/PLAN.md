@@ -233,6 +233,9 @@ Owner's additions (do first):
   motion walks its route.
 
 - UI audit round: design tokens everywhere, one central nav, style guide page, the in-game Players drawer.
+- Follow-up round: dice colour ownership, seamless crowd, half time after the last play, highlight reels that
+  follow the play, Undo any pick, a mobile pass (landscape layout, camera lift, lighter graphics on touch), new smash
+  and coin sounds.
 
 ### Next
 - Owner play-testing and more requests (the owner compacts the session, then sends the next list).

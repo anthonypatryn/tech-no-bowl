@@ -58,7 +58,7 @@ export function Lights() {
   return (
     <>
       <hemisphereLight args={['#dfe9ff', '#1b2a12', 0.9]} />
-      <directionalLight position={[8, 18, 6]} intensity={2.2} castShadow shadow-mapSize={[2048, 2048]}
+      <directionalLight position={[8, 18, 6]} intensity={2.2} castShadow shadow-mapSize={settings().fieldHi ? [2048, 2048] : [1024, 1024]}
         shadow-camera-left={-16} shadow-camera-right={16} shadow-camera-top={16} shadow-camera-bottom={-16} />
     </>
   );

@@ -57,6 +57,13 @@ export default function Home({ go, onResume }) {
             <b>Settings</b><span>Text size, motion, field detail</span>
           </button>
         </div>
+        {/* the owner's tools, one tap from Home (also in the top bar's Menu) */}
+        <nav className="home-tools glass" aria-label="Owner tools">
+          <small>Owner tools</small>
+          {[['art', 'Art review'], ['review', 'Moment review'], ['sounds', 'Sound editor'], ['bugs', 'Bug list'], ['styleguide', 'Style guide']].map(([v, l]) => (
+            <a key={v} href={`?view=${v}`} onClick={(e) => { e.preventDefault(); go(v); }}>{l}</a>
+          ))}
+        </nav>
       </div>
     </main>
   );

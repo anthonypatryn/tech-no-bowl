@@ -1,6 +1,7 @@
 // The tutorial coach: in a tutorial game, the first time each kind of moment comes up, a coach card explains it.
 import { useEffect, useRef, useState } from 'react';
 import { HUMAN } from './useGame';
+import { Button } from './ui';
 
 const TIPS = {
   toss: ['Welcome to Techno Bowl!', 'You won the toss. Take the ball: you\'ll learn offense first. Every drive starts on your own 20, and you get four downs to score. No first downs!'],
@@ -44,7 +45,7 @@ export default function CoachTips({ s, enabled, onOff, fresh = true }) {
       <span className="coach-badge">COACH</span>
       <h3>{tip[0]}</h3>
       <p>{tip[1]}</p>
-      <div className="btns"><button className="btn primary small" onClick={() => setTip(null)}>Got it</button><button className="btn small" onClick={() => { setTip(null); onOff(); }}>No more tips</button></div>
+      <div className="btns"><Button kind="primary" size="small" onClick={() => setTip(null)}>Got it</Button><Button size="small" onClick={() => { setTip(null); onOff(); }}>No more tips</Button></div>
     </div>
   );
 }

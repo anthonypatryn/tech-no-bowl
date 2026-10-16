@@ -58,7 +58,8 @@ export function useGame(match) {
         }
       },
       pace: (e) => (g.rewinding ? 0 : (settings().calm ? 0.5 : 1) * (BEATS[e.kind]?.(e) ?? 200)),
-      delay: (ms) => wait(ms / speed()),
+      // readyAt: when the screen has caught up with the engine (the half-time card waits for it)
+      delay: (ms) => { g.readyAt = performance.now() + ms / speed(); return wait(ms / speed()); },
     });
     if (match.online) { match.online.room.cpuAgent = cpu; match.online.room.attach(g); }
     setGame(g);
@@ -105,9 +106,12 @@ export const loadResume = () => { try { return JSON.parse(localStorage.getItem(R
 export const clearResume = () => { try { localStorage.removeItem(RESUME); } catch { /* ignore */ } };
 // a game rebuilt from its saved answers (resume), or with the last one taken back (undo)
 export const resumeMatch = (saved, drop = 0) => ({ ...saved.match, replay: saved.trail.slice(0, saved.trail.length - drop), skipIntro: true, key: Date.now() });
-// undo is only fair before any dice: your last answer was a move and nothing has been rolled since
-export function canUndo(g) {
+// Undo takes back your last answer (a mis-click: the wrong square, card, formation spot, button...). It's only fair
+// while nothing new has come out since: no dice, no cards turned up, no snap or kick, and the computer hasn't moved.
+const REVEALS = ['check', 'sport', 'scatter', 'dice', 'cointoss', 'flip', 'snap', 'kick', 'readReact'];
+export function canUndo(g, me = HUMAN) {
   const last = g?.trail.at(-1);
-  if (!last || last.type !== 'act' || last.value?.kind !== 'move') return false;
-  return !g.state.log.some((e) => e.id > last.logAt && ['check', 'sport', 'scatter', 'dice', 'cointoss'].includes(e.kind));
+  if (!last || last.type === 'toss' || g.state.phase === 'over') return false;
+  return !g.state.log.some((e) => e.id > last.logAt && (REVEALS.includes(e.kind)
+    || (['move', 'activate', 'push', 'handoff'].includes(e.kind) && e.pid && g.state.players[e.pid]?.side !== me)));
 }

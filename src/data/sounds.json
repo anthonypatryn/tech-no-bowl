@@ -438,20 +438,12 @@
  ],
  "coin": [
   {
-   "file": "coin-flip-a",
-   "start": 0.0,
-   "len": 1.0,
-   "vol": 0.9,
-   "fade": 0.05,
-   "name": "coin flip a"
-  },
-  {
-   "file": "coin-flip-b",
-   "start": 0.0,
+   "file": "coin-flip",
+   "start": 0.08,
    "len": 0.75,
    "vol": 0.9,
-   "fade": 0.05,
-   "name": "coin flip b"
+   "fade": 0.04,
+   "name": "coin flip"
   }
  ],
  "coinLand": [
@@ -522,6 +514,16 @@
    "vol": 0.8,
    "fade": 0.3,
    "name": "victory fanfare"
+  }
+ ],
+ "smash": [
+  {
+   "file": "helmet-smash",
+   "start": 0.24,
+   "len": 1.3,
+   "vol": 0.85,
+   "fade": 0.25,
+   "name": "helmet smash"
   }
  ]
 }

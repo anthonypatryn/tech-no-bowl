@@ -114,6 +114,7 @@ export class Game {
   emit() { this.onChange(this.s); }
   log(text, kind = 'info', data = {}) {
     const entry = { ...data, text, kind, id: ++this.logNo };
+    if (this.rewinding) entry.old = true; // rebuilt while resuming / undoing: the screen doesn't replay its show
     this.s.log = [...this.s.log.slice(-299), entry];
     if (this.pace) this.owed += this.pace(entry) ?? 0;
     this.emit();
@@ -580,7 +581,7 @@ export class Game {
     else {
       const r = [this.d6(), this.d6()];
       decider = r[0] === r[1] ? s.offense : r[0] > r[1] ? 0 : 1;
-      this.log(`Same rating: dice ${r[0]} - ${r[1]}.`, 'dice', { dice: r, purpose: 'order' });
+      this.log(`Same rating: dice ${r[0]} - ${r[1]}.`, 'dice', { dice: r, sides: [0, 1], purpose: 'order' });
     }
     const who = await this.askValid(decider, { type: 'first', cards: [...up] }, (v) => (v === 'me' || v === 'them' ? null : 'me or them'), () => 'me');
     const first = who === 'me' ? decider : 1 - decider;
@@ -1284,7 +1285,7 @@ export class Game {
       const n = Math.abs(d[0] - d[1]);
       const holder = occupant(s, ...at);
       if (!n) {
-        this.log(`Scatter dice ${d[0]} - ${d[1]}: a dramatic recovery!`, 'scatter', { dice: d, from: at, to: at, cause });
+        this.log(`Scatter dice ${d[0]} - ${d[1]}: a dramatic recovery!`, 'scatter', { dice: d, sides: [s.offense, this.defense], from: at, to: at, cause });
         if (holder && !holder.down) { this.gain(holder); return; }
         if (holder) { s.ball = { at: 'held', pid: holder.pid }; this.endWithBall(holder, 'tackle'); }
         return;
@@ -1293,7 +1294,7 @@ export class Game {
       const opts = scatterOptions(s, at, n, air);
       const pick = opts.length === 1 ? opts[0]
         : await this.askValid(chooser, { type: 'scatter', from: at, n, options: opts }, (v) => (opts.some((o) => same(o.to, v?.to) && !!o.out === !!v?.out) ? null : 'pick a scatter square'), () => opts[0]);
-      this.log(`Scatter dice ${d[0]} - ${d[1]}: the ball goes ${n}${pick.out ? ' and OUT of bounds' : ''}.`, 'scatter', { dice: d, n, from: at, to: pick.to, out: !!pick.out, cause });
+      this.log(`Scatter dice ${d[0]} - ${d[1]}: the ball goes ${n}${pick.out ? ' and OUT of bounds' : ''}.`, 'scatter', { dice: d, sides: [s.offense, this.defense], n, from: at, to: pick.to, out: !!pick.out, cause });
       if (pick.out) throw new PlayEnd('incomplete', { why: 'out of bounds' });
       at = pick.to;
       const occ = occupant(s, ...at);

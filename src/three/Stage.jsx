@@ -2,11 +2,12 @@
 import { Component, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import * as THREE from 'three';
+import { TOUCH } from '../game/prefs';
 
 export function Stage({ children, camera, className = '', style, frameloop = 'always' }) {
   return (
     <div className={`stage ${className}`} style={style}>
-      <Canvas shadows dpr={[1, 2]} frameloop={frameloop} camera={{ fov: 40, near: 0.1, far: 400, position: [12, 10, 0], ...camera }}
+      <Canvas shadows dpr={[1, TOUCH ? 1.5 : 2]} frameloop={frameloop} camera={{ fov: 40, near: 0.1, far: 400, position: [12, 10, 0], ...camera }}
         gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, outputColorSpace: THREE.SRGBColorSpace }}>
         <SceneGuard><Suspense fallback={null}>{children}</Suspense></SceneGuard>
       </Canvas>

@@ -8,13 +8,18 @@ const reduceMotion = typeof window !== 'undefined' && window.matchMedia?.('(pref
 // sound is ON by default. SOUND_V: bumping it turns sound back on (and the mixer back to normal) once for everyone,
 // clearing a mute saved by older builds whose sound controls didn't agree with each other
 const SOUND_V = 2;
-const DEFAULTS = { text: 'normal', calm: !!reduceMotion, fieldHi: true, clocks: false, speed: 'normal', quick: false, cb: false, autoEnd: true, keys: {}, muted: false, musicMenus: true, menuSounds: true, musicBreaks: true, musicGame: false, musicShuffle: true, mix: { fx: 1, crowd: 0.75, music: 0.75 }, soundV: SOUND_V };
+// phones and tablets: the light field (2K, no crowd) by default; the 4K field, crowd and big shadows can run a phone's
+// browser out of memory. PERF_V moves touch devices that saved the old default onto it once.
+export const TOUCH = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches;
+const PERF_V = 1;
+const DEFAULTS = { text: 'normal', calm: !!reduceMotion, fieldHi: !TOUCH, clocks: false, speed: 'normal', quick: false, cb: false, autoEnd: true, keys: {}, muted: false, musicMenus: true, menuSounds: true, musicBreaks: true, musicGame: false, musicShuffle: true, mix: { fx: 1, crowd: 0.75, music: 0.75 }, soundV: SOUND_V, perfV: PERF_V };
 
 let cur = DEFAULTS;
 try {
   const saved = JSON.parse(localStorage.getItem(KEY) || '{}');
   cur = { ...DEFAULTS, ...saved, mix: { ...DEFAULTS.mix, ...saved.mix }, keys: { ...saved.keys } };
   if (saved.soundV !== SOUND_V) { cur = { ...cur, muted: false, mix: { ...DEFAULTS.mix }, soundV: SOUND_V }; localStorage.setItem(KEY, JSON.stringify(cur)); }
+  if (saved.perfV !== PERF_V) { cur = { ...cur, fieldHi: TOUCH ? false : cur.fieldHi, perfV: PERF_V }; localStorage.setItem(KEY, JSON.stringify(cur)); }
 } catch { /* defaults */ }
 const subs = new Set();
 // non-React code (the sound engine) follows every change too

@@ -4,6 +4,7 @@ import { synth } from './sound';
 import { useEffect, useRef, useState } from 'react';
 import { teamColors, helmetUrl, artUrl } from '../data/art';
 import { yardLabel } from '../engine/board.js';
+import { Button } from './ui';
 
 const abbr = (name) => name.replace(/[^A-Za-z]/g, '').slice(0, 4).toUpperCase();
 const ORD = ['', '1ST', '2ND', '3RD', '4TH'];
@@ -116,7 +117,7 @@ export function StatCard({ s, title, onClose }) {
           <ul key={side}>{lead.map(([key, l]) => { const L = leader(s, side, key); return <li key={key}><i>{l}</i>{L ? `#${L.p.num} ${L.p.name} · ${L.v}` : '—'}</li>; })}</ul>
         ))}
       </div>
-      {onClose && <div className="btns"><button className="btn primary" onClick={onClose}>Continue</button></div>}
+      {onClose && <div className="btns"><Button kind="primary" onClick={onClose}>Continue</Button></div>}
     </div>
   );
 }

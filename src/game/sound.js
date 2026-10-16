@@ -137,6 +137,44 @@ const load = (file) => (buffers[file] ??= fetch(`/sfx/${file}.mp3`).then((r) => 
 // spare. They stream from the file instead: playTheme.)
 export function preload(slots) { if (!wake()) return; for (const s of slots) if (s !== 'theme') for (const c of SOUNDS[s] ?? []) load(c.file); }
 
+// A loop clip, baked once into its own buffer whose end runs straight into its start: the last few seconds are
+// cross-faded (equal power) over the first ones, so the bed never audibly jumps back at the loop point.
+const loops = new Map();
+function seamless(buf, start, len) {
+  const id = `${buf.length}:${start}:${len}`;
+  if (loops.has(id)) return loops.get(id);
+  const sr = buf.sampleRate, a = Math.floor(start * sr), n = Math.floor(len * sr);
+  const x = Math.floor(Math.min(6, len / 5) * sr); // the cross-fade
+  const outBuf = ctx.createBuffer(buf.numberOfChannels, n - x, sr);
+  for (let ch = 0; ch < buf.numberOfChannels; ch++) {
+    const src = buf.getChannelData(ch), dst = outBuf.getChannelData(ch);
+    for (let i = 0; i < n - x; i++) dst[i] = src[a + i];
+    for (let i = 0; i < x; i++) {
+      const k = (i / x) * (Math.PI / 2);
+      dst[i] = src[a + i] * Math.sin(k) + src[a + n - x + i] * Math.cos(k);
+    }
+  }
+  // even out the level: the recording fades over its length and has a swell near the start, which made every pass
+  // round the loop sound like a restart. Ride the gain (1 s blocks, eased between) towards the median level.
+  const m = outBuf.length, blk = sr, nb = Math.ceil(m / blk), lv = [];
+  for (let b = 0; b < nb; b++) {
+    let t = 0, c = 0;
+    for (let ch = 0; ch < outBuf.numberOfChannels; ch++) { const d = outBuf.getChannelData(ch); for (let i = b * blk; i < Math.min(m, (b + 1) * blk); i += 16) { t += d[i] * d[i]; c++; } }
+    lv.push(Math.sqrt(t / Math.max(1, c)));
+  }
+  const target = [...lv].sort((p, q) => p - q)[nb >> 1] || 1;
+  const gain = lv.map((v) => Math.max(0.6, Math.min(1.7, target / (v || target))));
+  for (let ch = 0; ch < outBuf.numberOfChannels; ch++) {
+    const d = outBuf.getChannelData(ch);
+    for (let i = 0; i < m; i++) {
+      const f = i / blk - 0.5, b0 = Math.max(0, Math.floor(f)), b1 = Math.min(nb - 1, b0 + 1), u = Math.min(1, Math.max(0, f - b0));
+      d[i] *= gain[b0] + (gain[b1] - gain[b0]) * u;
+    }
+  }
+  loops.set(id, outBuf);
+  return outBuf;
+}
+
 // one clip -> { stop(fade), gain } ; loop clips keep going until stopped
 export async function playClip(c, mix = 1, { late = 2.5, rate = 1 } = {}) {
   if (!wake() || settings().muted) return null;
@@ -152,9 +190,12 @@ export async function playClip(c, mix = 1, { late = 2.5, rate = 1 } = {}) {
   src.buffer = buf;
   src.playbackRate.value = rate; // a touch faster / slower so repeats don't sound identical
   if (c.loop) {
-    src.loop = true; src.loopStart = start; src.loopEnd = start + len;
-    gain.gain.setValueAtTime(0.0001, t); gain.gain.linearRampToValueAtTime(v, t + fade);
-    src.connect(gain).connect(out()); src.start(0, start);
+    // the baked loop, entered at a random point so no two games hear the same stretch at the same moment
+    src.buffer = len > 2 ? seamless(buf, start, len) : buf;
+    src.loop = true;
+    if (src.buffer === buf) { src.loopStart = start; src.loopEnd = start + len; }
+    gain.gain.setValueAtTime(0.0001, t); gain.gain.linearRampToValueAtTime(v, t + Math.max(fade, 1));
+    src.connect(gain).connect(out()); src.start(0, src.buffer === buf ? start : Math.random() * src.buffer.duration);
   } else {
     gain.gain.setValueAtTime(0.0001, t); gain.gain.linearRampToValueAtTime(v, t + Math.min(0.02, fade));
     gain.gain.setValueAtTime(v, t + Math.max(0, len - fade)); gain.gain.linearRampToValueAtTime(0.0001, t + len);

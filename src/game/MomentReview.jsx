@@ -13,6 +13,7 @@ import { useShot } from './shots';
 import { useGameSounds } from './useGameSounds';
 import { calloutFor } from './shots';
 import { settings } from './prefs';
+import { Button } from './ui';
 
 const KEY = 'tb-moment-review';
 const PIN_KEY = 'tb-bug-pin';
@@ -303,13 +304,13 @@ export default function MomentReview({ go }) {
         <h1 className="page-title">{REVIEW.every((r) => verdicts[r.key]) ? 'Moment review: done' : `Moment review: ${REVIEW.filter((r) => verdicts[r.key]).length} of ${REVIEW.length} looked at`}</h1>
         <p>{counts.ok ?? 0} approved · {counts.fix ?? 0} need a change · {counts.reject ?? 0} rejected</p>
         <table className="checks">
-          <tbody>{REVIEW.map((r, k) => { const v = verdicts[r.key]; return <tr key={r.key} className={v?.status === 'ok' ? '' : 'bad'}><td>{r.title}</td><td>{v ? VERDICT[v.status] : '—'}</td><td>{v?.note}</td><td><button className="btn small" onClick={() => setI(k)}>Look again</button></td></tr>; })}</tbody>
+          <tbody>{REVIEW.map((r, k) => { const v = verdicts[r.key]; return <tr key={r.key} className={v?.status === 'ok' ? '' : 'bad'}><td>{r.title}</td><td>{v ? VERDICT[v.status] : '—'}</td><td>{v?.note}</td><td><Button size="small" onClick={() => setI(k)}>Look again</Button></td></tr>; })}</tbody>
         </table>
         <div className="btns">
-          <button className="btn primary big" onClick={copy}>{copied ? 'Copied! Paste it to Claude' : 'Copy the review for Claude'}</button>
-          <button className="btn" onClick={() => setI(0)}>Start over from the first</button>
-          <button className="btn" onClick={() => { setVerdicts({}); store({}); setI(0); }}>Clear all verdicts</button>
-          <button className="btn" onClick={() => go('home')}>Home</button>
+          <Button kind="primary" size="big" onClick={copy}>{copied ? 'Copied! Paste it to Claude' : 'Copy the review for Claude'}</Button>
+          <Button onClick={() => setI(0)}>Start over from the first</Button>
+          <Button onClick={() => { setVerdicts({}); store({}); setI(0); }}>Clear all verdicts</Button>
+          <Button onClick={() => go('home')}>Home</Button>
         </div>
       </main>
     );
@@ -331,25 +332,25 @@ export default function MomentReview({ go }) {
       {phase !== 'playing' && (
         <div className="review-panel glass">
           <p className="review-expect"><b>What should happen:</b> {m.expect}</p>
-          {phase === 'ready' && <button className="btn primary big" onClick={play}>▶ Play</button>}
+          {phase === 'ready' && <Button kind="primary" size="big" onClick={play}>▶ Play</Button>}
           {phase === 'done' && (
             <>
               <div className="btns">
-                <button className="btn big" onClick={play}>↻ Replay</button>
-                <button className="btn primary big v-ok" onClick={() => judge('ok')}>✓ Approve</button>
+                <Button size="big" onClick={play}>↻ Replay</Button>
+                <Button kind="primary" size="big" className="v-ok" onClick={() => judge('ok')}>✓ Approve</Button>
               </div>
               <textarea className="review-note" rows={2} placeholder="What should change? (needed for Needs a change / Reject)" value={note} onChange={(e) => setNote(e.target.value)} />
               <div className="btns">
-                <button className="btn v-fix" disabled={!note.trim()} onClick={() => judge('fix')}>✎ Needs a change</button>
-                <button className="btn v-reject" onClick={() => judge('reject')}>✗ Reject</button>
+                <Button className="v-fix" disabled={!note.trim()} onClick={() => judge('fix')}>✎ Needs a change</Button>
+                <Button className="v-reject" onClick={() => judge('reject')}>✗ Reject</Button>
               </div>
             </>
           )}
           {v && <p className="hint">Last verdict: {VERDICT[v.status]}{v.note ? ` — ${v.note}` : ''}</p>}
           <div className="btns review-nav">
-            <button className="btn small" disabled={i === 0} onClick={() => setI(i - 1)}>◀ Previous</button>
-            <button className="btn small" onClick={() => setI(i + 1)}>Skip ▶</button>
-            <button className="btn small" onClick={() => setI(REVIEW.length)}>See the list</button>
+            <Button size="small" disabled={i === 0} onClick={() => setI(i - 1)}>◀ Previous</Button>
+            <Button size="small" onClick={() => setI(i + 1)}>Skip ▶</Button>
+            <Button size="small" onClick={() => setI(REVIEW.length)}>See the list</Button>
           </div>
           {settings().calm && <p className="warn">Calm motion is on in Settings, so the cinematics are switched off. Turn it off to review them.</p>}
         </div>

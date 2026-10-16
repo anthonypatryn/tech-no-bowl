@@ -29,14 +29,14 @@ export default function Settings() {
           <Toggle checked={s.calm} onChange={(calm) => setSettings({ calm })}>Skip camera moves and cinematics</Toggle>
         </Row>
         <Row label="Field detail">
-          <Toggle checked={s.fieldHi} onChange={(fieldHi) => setSettings({ fieldHi })}>Sharp 4K field (turn off on slow phones)</Toggle>
+          <Toggle checked={s.fieldHi} onChange={(fieldHi) => setSettings({ fieldHi })}>Sharp 4K field, crowd and big shadows (off by default on phones and tablets: it can run them out of memory)</Toggle>
         </Row>
         <Row label="Play clocks">
           <Toggle checked={s.clocks} onChange={(clocks) => setSettings({ clocks })}>1:00 to set up and to call plays, 0:30 for motion, with the rulebook penalties</Toggle>
         </Row>
         <Row label="Sound">
           <Toggle checked={!s.muted} onChange={(on) => setSettings({ muted: !on })}>Sound on</Toggle>
-          <button className="btn small" onClick={async () => { await nudgeAudio(); playSound('whistle'); setTimeout(() => playSound('step', { len: 0.8 }), 900); }}>Test sound</button>
+          <Button size="small" onClick={async () => { await nudgeAudio(); playSound('whistle'); setTimeout(() => playSound('step', { len: 0.8 }), 900); }}>Test sound</Button>
         </Row>
         <Row label="Menu sounds">
           <Toggle checked={s.menuSounds !== false} onChange={(v) => setSettings({ menuSounds: v })}>8-bit blips on buttons and menus</Toggle>

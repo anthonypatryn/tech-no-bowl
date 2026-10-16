@@ -58,7 +58,8 @@ function Die({ value, body = '#f4f0e6', pip = '#c21d24', at, from, delay = 0, si
     o.quaternion.copy(st.target).premultiply(new THREE.Quaternion().setFromAxisAngle(st.axis, st.spin * (1 - turn)));
     o.position.set(from[0] + (at[0] - from[0]) * slide, size / 2 + 1.3 * Math.exp(-4 * t) * Math.abs(Math.sin(Math.PI * 3.2 * Math.pow(t, 0.75))), from[2] + (at[2] - from[2]) * slide);
     o.visible = st.t >= 0;
-    if (tag.current) { tag.current.position.set(o.position.x, o.position.y + size * 1.15, o.position.z); tag.current.visible = o.visible; }
+    // the tag sits on the grass under the die and drops below it on screen, so it never covers the number on top
+    if (tag.current) { tag.current.position.set(o.position.x, 0, o.position.z); tag.current.visible = o.visible; }
   });
   return (
     <>
@@ -122,8 +123,9 @@ export function DiceRolls({ log, players, teamColors, teamNames = [], offense, h
     const p = last.pid && players[last.pid]?.col != null ? players[last.pid] : null;
     const spot = last.kind === 'scatter' ? last.from : p ? [p.col, p.row] : home; // who-goes-first: at the ball
     const [x, , z] = spot ? sq(spot[0], spot[1]) : [0, 0, 0];
-    // whose die is whose: the scatter's first die is the offense's; the who-goes-first roll's first die is the home team's
-    const owners = last.kind === 'scatter' ? [offense, 1 - offense] : last.kind === 'dice' ? [0, 1] : null;
+    // whose die is whose: the roll says (the engine logs it as it rolls). Never read possession now: by the time the
+    // dice land on screen the engine may already have turned the ball over, which swapped the colours.
+    const owners = last.sides ?? (last.kind === 'scatter' ? [offense, 1 - offense] : last.kind === 'dice' ? [0, 1] : null);
     const short = (side) => (teamNames[side] ?? '').toUpperCase();
     const colors = owners
       ? owners.map((side) => ({ body: teamColors[side][0], pip: teamColors[side][1], label: { text: short(side), bg: teamColors[side][0], fg: teamColors[side][1] } }))

@@ -2,7 +2,7 @@
 // to ring him on the field and point the camera at him. (Key P, or the Players button in the tools.)
 import { useEffect, useMemo, useState } from 'react';
 import { Sprite } from './TeamPicker';
-import { Chips, Toggle } from './ui';
+import { Button, Chips, Toggle } from './ui';
 import { abilityText } from '../data/abilities';
 import { artRows } from '../data/art';
 
@@ -38,7 +38,7 @@ export default function TeamDrawer({ s, me, oppName, spot, setSpot, onClose }) {
   const list = all ? roster : roster.filter((r) => r.skills.length);
   return (
     <aside className="drawer team-drawer glass" role="dialog" aria-label="Players">
-      <header className="drawer-head"><h2>Players</h2><button className="btn small" onClick={onClose}>Close</button></header>
+      <header className="drawer-head"><h2>Players</h2><Button size="small" onClick={onClose}>Close</Button></header>
       <Chips small value={side} onChange={(v) => { setSide(v); setSpot(null); }} options={[[me, `You · ${s.teams[me].name}`], [1 - me, `${oppName} · ${s.teams[1 - me].name}`]]} />
       {!s.skills && <p className="hint">Abilities are off in this rules mode: they only count in All Techno, All Pro and Inferno.</p>}
       <ul className="roster">

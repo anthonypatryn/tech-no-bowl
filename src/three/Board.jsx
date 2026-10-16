@@ -673,9 +673,27 @@ function shotCam(shot, positions) {
 }
 
 function Rig({ view, focus, dir, shot, positions, intro, setup }) {
-  const { camera, size, controls } = useThree();
+  const { camera, size, controls, gl } = useThree();
   const target = useRef(new THREE.Vector3(0, 0, 6));
   const f = useRef(new THREE.Vector3(0, 0, 6));
+  // the cards + prompt cover the bottom of the screen (a lot of it on a phone): shift the picture up so what the camera
+  // looks at sits in the middle of the part you can still see. --bottom-h is measured by GameView.
+  const lift = useRef({ b: -1, t: 0 });
+  useFrame(() => {
+    const now = performance.now();
+    if (now - lift.current.t < 300) return;
+    lift.current.t = now;
+    const game = gl.domElement.closest('.game');
+    const cine = !game || game.classList.contains('cine');
+    const raw = cine ? 0 : parseFloat(game.style.getPropertyValue('--bottom-h')) || 0;
+    const b = Math.round(Math.min(raw, size.height * 0.6) * 0.8);
+    const k = `${b}:${size.width}x${size.height}`;
+    if (k === lift.current.b) return;
+    lift.current.b = k;
+    if (b > 8) camera.setViewOffset(size.width, size.height + b, 0, b, size.width, size.height);
+    else camera.clearViewOffset();
+    camera.updateProjectionMatrix();
+  });
   useFrame((_, dt) => {
     const sc = intro ? introCam((performance.now() - intro.t0) / 1000 - intro.startAt) : shot ? shotCam(shot, positions) : null;
     if (sc) {

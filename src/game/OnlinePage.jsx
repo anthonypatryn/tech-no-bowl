@@ -13,7 +13,7 @@ import GameView from './GameView.jsx';
 const nameKey = 'tb-name';
 const savedName = () => { try { return localStorage.getItem(nameKey) || 'Coach'; } catch { return 'Coach'; } };
 
-export default function OnlinePage({ go }) {
+export default function OnlinePage() {
   const [name, setName] = useState(savedName);
   const [code, setCode] = useState(() => cleanCode(new URLSearchParams(location.search).get('join')));
   const [room, setRoom] = useState(null); // HostRoom (we host) | JoinClient (we joined)
@@ -66,8 +66,8 @@ export default function OnlinePage({ go }) {
                   <span><b className="led">{g.code}</b> {g.teams ? `${g.teams[0]} ${g.score?.[0] ?? 0} - ${g.score?.[1] ?? 0} ${g.teams[1]}` : ''}{g.half ? ` · ${g.half === 1 ? '1st' : '2nd'} half` : ''}</span>
                   <small className="muted">{g.role === 'host' ? `You hosted${g.opp ? ` · vs ${g.opp}` : ''}` : `You joined${g.opp ? ` ${g.opp}'s room` : ''}`} · {new Date(g.at).toLocaleString()}</small>
                   <span className="btns">
-                    <button className="btn small primary" onClick={() => resumeGame(g)}>{g.role === 'host' ? 'Resume' : 'Rejoin'}</button>
-                    <button className="btn small" onClick={() => { forgetOnlineGame(g.code, g.role); setSaved(onlineGames()); }}>Forget</button>
+                    <Button kind="primary" size="small" onClick={() => resumeGame(g)}>{g.role === 'host' ? 'Resume' : 'Rejoin'}</Button>
+                    <Button size="small" onClick={() => { forgetOnlineGame(g.code, g.role); setSaved(onlineGames()); }}>Forget</Button>
                   </span>
                 </div>
               ))}
@@ -90,7 +90,6 @@ export default function OnlinePage({ go }) {
       {room && isHost && <HostLobby room={room} onStart={(m) => setMatch(m)} onLeave={leave} />}
       {room && !isHost && <JoinLobby client={room} onLeave={leave} />}
       <p className="hint">Can't connect? Phone data and some home routers block direct links; it can take a few tries. Ad blockers and VPN extensions can block online play too.</p>
-      <div className="btns"><button className="btn" onClick={() => { leave(); go('home'); }}>Back home</button></div>
     </main>
   );
 }
@@ -101,7 +100,7 @@ function CodeBox({ code }) {
   return (
     <div className="code-box">
       <span className="led big-code">{code}</span>
-      <button className="btn small" onClick={() => { navigator.clipboard?.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>{copied ? 'Copied!' : 'Copy invite link'}</button>
+      <Button size="small" onClick={() => { navigator.clipboard?.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>{copied ? 'Copied!' : 'Copy invite link'}</Button>
     </div>
   );
 }
@@ -145,13 +144,13 @@ function TeamChooser({ sel, onChange, disabled, mode }) {
       {!disabled && (
         <>
           <div className="btns">
-            <button className="btn small" onClick={() => pick(TEAMS[(i - 1 + TEAMS.length) % TEAMS.length].id)}>◀</button>
-            <button className="btn small" onClick={() => setGrid(true)}>All teams</button>
-            <button className="btn small" onClick={() => pick(TEAMS[(i + 1) % TEAMS.length].id)}>▶</button>
-            <button className="btn small" onClick={() => pick(TEAMS[Math.floor(Math.random() * TEAMS.length)].id)}>Random</button>
+            <Button size="small" onClick={() => pick(TEAMS[(i - 1 + TEAMS.length) % TEAMS.length].id)}>◀</Button>
+            <Button size="small" onClick={() => setGrid(true)}>All teams</Button>
+            <Button size="small" onClick={() => pick(TEAMS[(i + 1) % TEAMS.length].id)}>▶</Button>
+            <Button size="small" onClick={() => pick(TEAMS[Math.floor(Math.random() * TEAMS.length)].id)}>Random</Button>
           </div>
           <Chips small value={sel.uni} onChange={(uni) => onChange({ ...sel, uni })} options={uniformsFor(sel.team).map((u) => [u.id, u.label])} />
-          {alt && <button className="btn small primary" onClick={() => setLineup(true)}>Choose lineup{usingAlt ? ' (alternate)' : ''}</button>}
+          {alt && <Button kind="primary" size="small" onClick={() => setLineup(true)}>Choose lineup{usingAlt ? ' (alternate)' : ''}</Button>}
         </>
       )}
       {grid && <TeamGrid current={sel.team} onPick={(id) => { pick(id); setGrid(false); if (altSlots(teamById(id)).length) setLineup(true); }} onClose={() => setGrid(false)} />}
@@ -182,7 +181,7 @@ function HostLobby({ room, onStart, onLeave }) {
         <Panel>
           <h3>{f ? `${f.name} (away)` : 'Waiting for your friend…'}{f && !f.connected ? ' · disconnected' : ''}</h3>
           {f ? <TeamChooser sel={setup.teams[1]} disabled mode={setup.mode} /> : <p className="hint">They pick their own team once they're in.</p>}
-          {f && <button className="btn small" onClick={() => room.kick()}>Remove</button>}
+          {f && <Button size="small" onClick={() => room.kick()}>Remove</Button>}
           {room.watchers.size > 0 && <p className="hint">{room.watchers.size} watching</p>}
         </Panel>
       </div>
@@ -192,7 +191,7 @@ function HostLobby({ room, onStart, onLeave }) {
         {clash && <p className="warn">Same team, same uniform: one of you change uniforms.</p>}
         <div className="btns">
           <Button kind="primary" size="big" disabled={!f?.connected || clash} onClick={start}>Kick off</Button>
-          <button className="btn" onClick={onLeave}>Close the room</button>
+          <Button onClick={onLeave}>Close the room</Button>
         </div>
       </Panel>
     </>
@@ -205,9 +204,9 @@ function JoinLobby({ client, onLeave }) {
   const sel = mine ?? L?.setup?.teams?.[1];
   const choose = (s) => { setMine(s); client.pick(s); };
   if (client.status === 'error' || client.status === 'ended') {
-    return <Panel><p className="warn">{client.error}</p><div className="btns">{client.status === 'error' && <button className="btn primary" onClick={() => client.rejoin()}>Try again</button>}<button className="btn" onClick={onLeave}>Back</button></div></Panel>;
+    return <Panel><p className="warn">{client.error}</p><div className="btns">{client.status === 'error' && <Button kind="primary" onClick={() => client.rejoin()}>Try again</Button>}<Button onClick={onLeave}>Back</Button></div></Panel>;
   }
-  if (!L) return <Panel><p>{client.status === 'reconnecting' ? 'Reconnecting…' : `Connecting to room ${client.code}…`}</p><div className="btns"><button className="btn" onClick={onLeave}>Cancel</button></div></Panel>;
+  if (!L) return <Panel><p>{client.status === 'reconnecting' ? 'Reconnecting…' : `Connecting to room ${client.code}…`}</p><div className="btns"><Button onClick={onLeave}>Cancel</Button></div></Panel>;
   const watching = client.spectating;
   return (
     <>
@@ -219,7 +218,7 @@ function JoinLobby({ client, onLeave }) {
       <Panel>
         <Row label="Rules"><b>{MODES.find(([k]) => k === L.setup.mode)?.[1]}</b><span className="hint"> {MODE_INFO[L.setup.mode]}</span></Row>
         <Row label="Play clocks"><b>{L.setup.clocks ? 'On' : 'Off'}</b></Row>
-        <div className="btns"><button className="btn" onClick={onLeave}>Leave</button></div>
+        <div className="btns"><Button onClick={onLeave}>Leave</Button></div>
       </Panel>
     </>
   );

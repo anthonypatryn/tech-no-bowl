@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Chips, Toggle } from './ui';
+import { Button, Chips, Toggle } from './ui';
 
 // Report a bug (top bar): files a numbered report (BUG-1, BUG-2…) to /api/bugs.
 // The owner reads them at /?view=bugs (PIN) and copies them to paste to Claude.
@@ -87,7 +87,7 @@ export default function BugReport({ onClose, context }) {
           <>
             <h2>Thanks!</h2>
             <p>Sent as <b>BUG-{done}</b>.</p>
-            <div className="btns"><button type="button" className="btn primary" onClick={onClose}>Back to the game</button></div>
+            <div className="btns"><Button kind="primary" onClick={onClose}>Back to the game</Button></div>
           </>
         ) : (
           <>
@@ -105,7 +105,7 @@ export default function BugReport({ onClose, context }) {
                 {photos.map((d, i) => (
                   <span key={i} className="bug-thumb"><img src={d} alt={`Photo ${i + 1}`} /><button type="button" aria-label={`Remove photo ${i + 1}`} onClick={() => setPhotos((p) => p.filter((_, k) => k !== i))}>✕</button></span>
                 ))}
-                {photos.length < 2 && <button type="button" className="btn small bug-add-photo" onClick={() => pickRef.current?.click()}>+ Add a photo</button>}
+                {photos.length < 2 && <Button size="small" className="bug-add-photo" onClick={() => pickRef.current?.click()}>+ Add a photo</Button>}
                 <input ref={pickRef} type="file" accept="image/*" multiple hidden onChange={(e) => { addPhotos(e.target.files); e.target.value = ''; }} />
               </div>
             </div>
@@ -113,7 +113,7 @@ export default function BugReport({ onClose, context }) {
             <Toggle checked={f.blocking} onChange={(v) => setF((s) => ({ ...s, blocking: v }))}>It’s stopping me from playing</Toggle>
             <p className="note">Sent along with it: {context ? 'the game’s seed, score, down and last few log lines, ' : ''}your device and screen size{photos.length ? `, and ${photos.length === 1 ? 'the photo' : 'both photos'}` : ''}.</p>
             {err && <p className="err">{err}</p>}
-            <div className="btns"><button type="button" className="btn" onClick={onClose}>Cancel</button><button type="submit" className="btn primary" disabled={busy}>Send it</button></div>
+            <div className="btns"><Button onClick={onClose}>Cancel</Button><Button type="submit" kind="primary" disabled={busy}>Send it</Button></div>
           </>
         )}
       </form>

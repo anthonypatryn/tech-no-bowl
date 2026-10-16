@@ -6,7 +6,7 @@ export default function CoinToss({ s }) {
   const e = s.log.findLast?.((x) => x.kind === 'cointoss');
   const [shown, setShown] = useState(null);
   useEffect(() => {
-    if (!e) return;
+    if (!e || e.old) return;
     setShown(e.id);
     const t = setTimeout(() => setShown(null), 3600);
     return () => clearTimeout(t);

@@ -16,7 +16,8 @@ selected, green for the main action, red for danger. Near-square corners. Press 
 | Space | `--s1` 4 · `--s2` 8 · `--s3` 12 · `--s4` 16 · `--s5` 24 · `--s6` 32; `--px` 2 (borders) | padding, gaps, margins |
 | Corners | `--r1` 2px controls · `--r2` 4px panels and cards; `50%` only for round things (dots, the ball) | |
 | Colour | `--bg` `--bg2` `--glass` `--glass-hi` `--line` `--text` `--muted` `--led` `--led-edge` `--ink` `--go` `--go-edge` `--mfl-red` `--mfl-blue` `--warn` `--bad` `--fire` | see the live page for what each is for |
-| Breakpoints | 560 phone · 760 small tablet · 860 tablet (menus) · 1100 game toolbar row | media queries can't use variables: use these numbers only |
+| Display | `--d1` `--d2` `--d3` (clamp: follow the screen, not the text size) | TV moments only |
+| Breakpoints | 560 phone · 760 small tablet · 860 tablet (menus) · 1100 game toolbar row; `max-height: 520px` landscape phone | media queries can't use variables: use these numbers only |
 
 - Every pixel-font size is a token, so Settings → Text size grows labels and buttons as well as body text.
 - Exceptions, on purpose: broadcast graphics (score bug, chyrons, wipes) pin the tokens to fixed px because they are
@@ -73,9 +74,10 @@ Fixed:
 - Settings: the music switches overlapped; volumes were chip rows while the music player has a slider → stacked
   switches, sliders.
 
-Still open (smaller, or wants the owner's eye):
-- 197 raw `className="btn"` vs 19 `<Button>`: they render the same; convert as files are touched.
-- The rules tabs use the body font while every other chip uses the pixel font.
-- Drawers (Rules, Players) cover the prompt on narrow screens; close them to answer.
-- 13 different `clamp()` display sizes for banners and titles could become three.
-- The Online page keeps its own "Back home" (it also leaves the room).
+Second pass (same day):
+- 141 buttons converted to `<Button>` (the rest are links, or the confirm dialog's own).
+- Rules tabs are chips. Drawers end above the cards + prompt (`--bottom-h`, at least 240px tall).
+- Display sizes: `--d1` names / lower thirds, `--d2` callouts / wipes / the title, `--d3` TOUCHDOWN banners.
+- Online's "Back home" removed (leaving the page closes the room).
+- Mobile: a phone-landscape game layout, the camera centres the picture above the HUD, the prompt's corner buttons get
+  their own row on phones, the team select fits a phone, sliders are taller on touch screens.
