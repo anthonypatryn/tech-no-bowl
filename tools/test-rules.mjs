@@ -676,3 +676,18 @@ test('depth chart: the charted QB takes the snap in every set, charted line men 
   assert.equal(d.find((x) => x.num === 68).row, 11); // on the defense's line row
   assert.notEqual(d.find((x) => x.num === 6).row, 11);
 });
+
+test('p.15: total successes chain free activations (each free activation can earn the next)', async () => {
+  // A #34 blocks B #55, then free activation #45 blocks B #77, then free activation #22 blocks B #31
+  const g = scenario([[0, 34, 2, 10], [1, 55, 2, 9], [0, 45, 6, 10], [1, 77, 6, 9], [0, 22, 10, 10], [1, 31, 10, 9], [0, 6, 6, 14]], '0:6', [5, 6, 5, 6, 5, 6]);
+  const acted = [];
+  const next = { '0:34': '0:45', '0:45': '0:22' };
+  let last = '0:34';
+  g.agents[0] = scripted({
+    act: (req) => { acted.push(req.pid); last = req.pid; return req.blocks.length ? { kind: 'block', pid: req.blocks[0] } : { kind: 'end' }; },
+    bonus: (req) => (next[last] && req.options.includes(next[last]) ? next[last] : null), push: (req) => req.options[0], followUp: () => false, boost: () => 0,
+  });
+  g.agents[1] = scripted({ reverse: () => false, push: (req) => req.options[0], followUp: () => false, boost: () => 0, bonus: () => null });
+  await g.runActivation('0:34', 'card');
+  assert.deepEqual(acted, ['0:34', '0:45', '0:22']);
+});

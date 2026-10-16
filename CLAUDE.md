@@ -19,6 +19,8 @@ messages, the bug list (`?view=bugs`, PIN), the Art Review Board (`?view=art`) a
 the owner pastes their "copy for Claude" output. The owner often asks for a plan first: give one, then build it.
 
 ### Latest round (all pushed, live)
+- BUG-6: a free activation is never declined by a key press (the bonus prompt has no Space shortcut, it lists the
+  players as buttons), and the main-button key does nothing during a cinematic or replay. Test: chained free activations.
 - Touchdowns (and every play end): the engine now waits for the screen (`catchUp()` at the top of `playDown`) before
   clearing the field, so the runner is seen walking in under the TD shot; the auto replay starts after the shot.
 - Players drawer is a card grid (`TeamDrawer.jsx`: `MiniCard`, `PlayerCard` pop-up); phones get it as a bottom sheet.
@@ -191,7 +193,7 @@ the owner pastes their "copy for Claude" output. The owner often asks for a plan
 ```
 npx oxlint src tools
 npx vite build
-npm test                                   # 65 rules tests
+npm test                                   # 66 rules tests
 npm run sim -- 300                         # must print errors: 0
 node tools/simulate.mjs 60 1 passive       # side 0 never acts: games must still end
 node tools/simulate.mjs 100 1 allpro:starter

@@ -461,7 +461,8 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
       else if (isKey(e, 'fullscreen')) toggleFullscreen();
       else if (isKey(e, 'turbo')) toggleTurbo();
       else if (isKey(e, 'skip') && (shot || rs)) { e.preventDefault(); if (rs) setReplay(null); else skipShot(); }
-      else if (isKey(e, 'primary') && primary.current) { e.preventDefault(); primary.current(); }
+      // not during a cinematic or a replay: the prompt is hidden then, and a press would answer something unseen
+      else if (isKey(e, 'primary') && primary.current && !shot && !rs) { e.preventDefault(); primary.current(); }
       else if (isKey(e, 'back')) { if (mode === 'pass') setMode('move'); else if (sel) setSel(null); else setPaused((x) => !x); }
     };
     window.addEventListener('keydown', key);
@@ -616,9 +617,11 @@ function Prompt(props) {
     }
     case 'act': return <ActPrompt key={req.id} {...props} name={name} />;
     case 'bonus': {
-      primary.current = () => answer(null);
-      return (<><h3>{req.kind === 'dogpile' ? 'DOGPILE! Pick a player to put a dirty hit on a downed opponent.' : req.kind === 'full' ? `Total success! Free activation: click any of your players.${req.party ? ' BLOCK PARTY: +2 if he blocks.' : ''}` : 'They only partly made it: half move for one of your players.'}</h3>
-        <div className="btns"><Button onClick={() => answer(null)}>No thanks <Kbd a="primary" /></Button></div></>);
+      // a free activation is never thrown away by a stray key press: no main-button shortcut here, pick a player
+      primary.current = null;
+      return (<><h3>{req.kind === 'dogpile' ? 'DOGPILE! Pick a player to put a dirty hit on a downed opponent.' : req.kind === 'full' ? `Total success! Free activation: pick one of your players.${req.party ? ' BLOCK PARTY: +2 if he blocks.' : ''}` : 'They only partly made it: half move for one of your players.'}</h3>
+        <div className="act-btns">{req.options.map((pid) => <Button key={pid} kind="primary" size="small" onClick={() => answer(pid)}>#{P(pid).num}{P(pid).down ? ' (down)' : ''}</Button>)}</div>
+        <div className="btns"><Button onClick={() => answer(null)}>No thanks</Button></div></>);
     }
     case 'adjustPartner':
       primary.current = () => answer(null);
