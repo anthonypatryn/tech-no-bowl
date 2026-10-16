@@ -20,7 +20,7 @@ const SPEED = 6.5; // squares per second when walking
 // jump: { id, delay } = a leap (going up for a catch) after `delay` seconds
 // orbit: { id, pts:[[x,z]] } = walk round someone (a spin move), turning a full circle on the way
 // pile: { id, at:[x,z], level, delay, jx, jz, tilt:[rx,ry,rz] } = leap onto the pile after the whistle and stay there
-function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge, active, colors, jump, orbit, pile, skilled }) {
+function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge, active, colors, jump, orbit, pile, skilled, solid = true }) {
   const g = useRef();
   const pos = useRef(null);
   const queue = useRef([]);
@@ -102,11 +102,11 @@ function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge,
   return (
     <group ref={g} onPointerOver={onHover ? (e) => { e.stopPropagation(); onHover(p.pid); } : undefined} onPointerOut={onHover ? () => onHover(null) : undefined}>
       <PlayerCube uniform={uniform} row={row} facing={Math.PI / 2} down={p.down} label={p.artNum != null && p.artNum !== p.num ? p.num : null} labelColors={colors}
-        onClick={onPick ? (e) => { e.stopPropagation(); onPick(p.pid); } : undefined} />
+        onClick={onPick ? (e) => { e.stopPropagation(); onPick(p.pid); } : undefined} pickable={solid} />
       {active && <TurnMarker colors={colors} />}
       {skilled && !active && !p.down && <AbilityGem />}
       {ring && (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} raycast={() => null}>
           <ringGeometry args={[0.5, 0.6, 32]} />
           <meshBasicMaterial color={ring} transparent opacity={0.95} toneMapped={false} />
         </mesh>
@@ -741,7 +741,8 @@ function Rig({ view, focus, dir, shot, positions, intro, setup }) {
 
 // ---------- the scene ----------
 // edit: { side, spots:[{num,col,row}] } shows a formation being placed instead of that side's real positions
-export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outlines = [], rings = {}, onPlayer, edit, focusSq, shot, intro, onFree, setup }) {
+// pickable: the players the pointer can land on (null = everyone); the rest let it through to the squares under them
+export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outlines = [], rings = {}, onPlayer, edit, focusSq, shot, intro, onFree, setup, pickable = null }) {
   const s = game.state;
   const positions = useRef({});
   const unis = useMemo(() => s.teams.map((t) => uniformOf(t.id, t.uniform)), [s.teams]);
@@ -811,7 +812,7 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
         <Mover key={p.pid} p={p} uniform={unis[p.side]} row={rows[p.side][p.num]} path={paths[p.pid]} positions={positions}
           ring={rings[p.pid]} onPick={onPlayer} onHover={onHoverPlayer} lunge={lunges[p.pid]} active={s.active?.pid === p.pid && s.phase === 'play'} colors={tcolors[p.side]}
           jump={fx.jump[p.pid]} orbit={fx.orbit[p.pid]} pile={fx.pile[p.pid]}
-          skilled={!!s.skills && (p.abilities?.some((a) => s.inferno || !a.startsWith('INFERNO')) || !!p.fuego)} />
+          skilled={!!s.skills && (p.abilities?.some((a) => s.inferno || !a.startsWith('INFERNO')) || !!p.fuego)} solid={!pickable || pickable.has(p.pid)} />
       ))}
       <Ball ball={s.ball} positions={positions} slowmo={!settings().calm} snapFrom={s.log.findLast?.((e) => e.kind === 'snap')?.from} />
       {shot?.kind === 'hit' && <Burst key={shot.id} at={sq(...shot.at, 0)} colors={['#c9c9c9', '#7a5a3a', '#3f6b2a', '#ffffff']} count={shot.big ? 46 : 26} />}

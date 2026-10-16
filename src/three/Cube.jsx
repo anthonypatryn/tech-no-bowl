@@ -26,7 +26,7 @@ function labelTexture(num, bg, fg) {
   return t;
 }
 
-export function PlayerCube({ uniform, row, position = [0, 0, 0], facing = 0, down = false, spin = 0, size = CUBE, onClick, label = null, labelColors = ['#222', '#fff'] }) {
+export function PlayerCube({ uniform, row, position = [0, 0, 0], facing = 0, down = false, spin = 0, size = CUBE, onClick, label = null, labelColors = ['#222', '#fff'], pickable = true }) {
   const mats = useMemo(() => {
     const m = playerMaterials(uniform, row);
     if (label == null) return m;
@@ -62,7 +62,7 @@ export function PlayerCube({ uniform, row, position = [0, 0, 0], facing = 0, dow
   });
   return (
     <group position={position} rotation={[0, facing, 0]}>
-      <mesh ref={ref} material={mats} castShadow receiveShadow onClick={onClick} position={[0, size / 2, 0]}>
+      <mesh ref={ref} material={mats} castShadow receiveShadow onClick={onClick} position={[0, size / 2, 0]} raycast={pickable ? undefined : () => null}>
         <boxGeometry args={[size, size, size]} />
       </mesh>
     </group>

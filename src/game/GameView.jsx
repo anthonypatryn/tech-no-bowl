@@ -213,7 +213,15 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
   // play clocks (Settings): 1:00 to set up and call, 0:30 for motion. Out of time = the rulebook's delay-of-game fix.
   const prefs = useSettings();
   const clocksOn = online ? (match.clocks ?? net.setup?.clocks ?? net.lobby?.setup?.clocks) : prefs.clocks;
-  const limit = clocksOn && req ? { formation: 60, call: 60, motion: 30 }[req.type] : null;
+  // the depth chart opens before your first line-up of the game (after the coin toss); the play clock waits for it
+  const [depthStart, setDepthStart] = useState(false);
+  const depthAsked = useRef(false);
+  useEffect(() => {
+    if (depthAsked.current || req?.type !== 'formation' || match.tutorial || spectating) return;
+    depthAsked.current = true;
+    if (!s.log.some((e) => e.kind === 'formation' && e.side === ME)) setDepthStart(true);
+  }, [req?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const limit = clocksOn && req && !depthStart ? { formation: 60, call: 60, motion: 30 }[req.type] : null;
   const [left, setLeft] = useState(null);
   const [flag, setFlag] = useState('');
   const latest = useRef({});
@@ -390,6 +398,8 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
     }
   };
   const pickPlayer = (pid) => { if (usable(pid)) board.onPlayer(pid); else setCardOf(pid); };
+  // moving: only the players you can act on catch the pointer, so aiming at a square near anyone else hits the square
+  const pickable = useMemo(() => (req?.type === 'act' && req.moves.length ? new Set([...Object.keys(board.rings), ...Object.keys(board.reach ?? {}), ...(mode === 'pass' ? req.passes.map((x) => x.target).filter(Boolean) : [])]) : null), [req?.id, board.rings, mode]); // targets only (not the why / danger rings, which come and go as you hover) // eslint-disable-line react-hooks/exhaustive-deps
   // why: what a hovered move costs and why, or what goes into a hovered block / tackle; those players get rings
   const why = useMemo(() => {
     if (req?.type !== 'act') return null;
@@ -468,7 +478,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
     <InfoCtx.Provider value={{ hover: (pid) => setHover(pid ? { pid } : null), open: setCardOf }}>
     <div ref={rootRef} className={`game ${shot || intro || rs ? 'cine' : ''} ${intro ? 'intro' : ''} ${rs ? 'replaying' : ''}`}>
       <Stage className="game-stage">
-        <Board game={rs ? { state: rs } : game} view={rs ? 'follow' : view} setup={!rs && ['formation', 'call', 'motion'].includes(s.phase)} onFree={() => setView('free')} shot={shot} intro={intro} tiles={rs ? [] : board.tiles} rings={rs ? {} : rings} onTile={rs ? null : board.onTile} onHover={setHover} onHoverPlayer={(pid) => setHover(pid ? { pid } : null)} outlines={rs ? [] : board.outlines} onPlayer={rs ? null : pickPlayer}
+        <Board game={rs ? { state: rs } : game} view={rs ? 'follow' : view} setup={!rs && ['formation', 'call', 'motion'].includes(s.phase)} onFree={() => setView('free')} shot={shot} intro={intro} tiles={rs ? [] : board.tiles} rings={rs ? {} : rings} onTile={rs ? null : board.onTile} onHover={setHover} onHoverPlayer={(pid) => setHover(pid ? { pid } : null)} outlines={rs ? [] : board.outlines} onPlayer={rs ? null : pickPlayer} pickable={pickable}
           edit={edit && req?.type === 'formation' ? { side: ME, spots: edit } : null}
           focusSq={spot != null && P(spot)?.col != null ? [P(spot).col, P(spot).row] : null} />
       </Stage>
@@ -555,6 +565,11 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
       {s.inferno && <FireHud s={s} opp={oppName} />}
       {online && <OnlineBar net={net} host={!!match.online} />}
       {s.phase === 'over' && !rs && <EndScreen s={s} onExit={onExit} onRematch={onRematch} match={match} online={online} highlights={highlights.current} onWatch={watchAll} />}
+      {depthStart && req?.type === 'formation' && <DepthChart s={s} req={req} start onClose={() => {
+        setDepthStart(false);
+        const e = chartedEdit(s.teams[ME].id, req, { line: req.line, dir: req.dir, col: req.col, count: req.roster.length });
+        if (e) setEdit(e);
+      }} />}
       {cardOf && s.players[cardOf] && <PlayerCard s={s} p={s.players[cardOf]} onClose={() => setCardOf(null)} onFind={setSpot} />}
       {dialog}
     </div>
@@ -805,7 +820,7 @@ const PASSING = ['POCKET PASSER', 'ROUTE PASSER', 'SCREEN PASSER', 'QB READ'];
 const OFF_ROLES = [['Q', 'QB'], ['C', 'Center'], ['W', 'Receiver'], ['L', 'Line'], ['B', 'Back'], ['', 'Auto']];
 const DEF_ROLES = [['L', 'Line'], ['B', 'Back'], ['', 'Auto']];
 // the depth chart: each player's spot in the playbook sets (saved per team on this device)
-function DepthChart({ s, req, onClose }) {
+function DepthChart({ s, req, onClose, start }) {
   const teamId = s.teams[ME].id;
   const [depth, setDepth] = useState(() => depthFor(teamId));
   const rows = useMemo(() => artRows(s, ME), [s.teams]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -823,8 +838,8 @@ function DepthChart({ s, req, onClose }) {
   return (
     <div className="modal" onClick={onClose}>
       <div className="modal-card glass depth-card" onClick={(e) => e.stopPropagation()}>
-        <h2>{s.teams[ME].name}: depth chart</h2>
-        <p className="hint">Who plays where when you pick a set from the playbook (and at the start of each down). Auto = the set decides. One QB, one center.</p>
+        <h2>{start ? 'Before kick-off: your depth chart' : `${s.teams[ME].name}: depth chart`}</h2>
+        <p className="hint">Who plays where when you pick a set from the playbook (and at the start of each down). Auto = the set decides. One QB, one center.{start ? ' The play clock starts when you are done. Change it any time: Depth chart, in the formation prompt.' : ''}</p>
         {['offense', 'defense'].map((role) => (
           <section key={role} className={`depth-side ${req.role === role ? 'now' : ''}`}>
             <h3>{role === 'offense' ? 'Offense' : 'Defense'}</h3>
@@ -837,7 +852,7 @@ function DepthChart({ s, req, onClose }) {
             ))}
           </section>
         ))}
-        <div className="btns"><Button kind="primary" onClick={onClose}>Done</Button></div>
+        <div className="btns"><Button kind="primary" onClick={onClose}>{start ? 'Done: line up' : 'Done'}</Button></div>
       </div>
     </div>
   );
