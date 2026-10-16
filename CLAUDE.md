@@ -55,6 +55,12 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
   staged for it and run through the real engine (forced dice, scripted answers, game pacing, sounds, full-length
   shots). Replay / approve / needs a change (note) / reject, then the next; verdicts kept on the device (and on the
   Art Review Board with the PIN); the end screen copies the whole list for Claude. Add a moment = one REVIEW entry.
+- **Audio rules:** one shared AudioContext (`audioContext()`), unlocked on touchend/click with a silent blip and re-woken
+  on later taps / tab return. The TV themes STREAM from `themes.mp3` through an <audio> element (`streamClip`): never
+  decode that file in-game (~120 MB decoded; it silenced iPads). A clip whose file takes >2.5 s is skipped. Mute
+  changes must call `applyMute()`. The game screen's sound chip shows on / muted / waiting-for-tap.
+- **Animations:** ball flights start in a layout effect (else the ball teleports). `moveFx(s)` in Board reads the log
+  for catch jumps, spin orbits and the end-of-play pile (tackle / sack: tackler + dogpilers + nearby stack up).
 - **Next:** owner play-test.
 
 ## Look (8-bit everywhere)
