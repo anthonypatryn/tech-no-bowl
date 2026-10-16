@@ -634,3 +634,45 @@ test('motion logs the route he runs (the board walks it instead of teleporting)'
   assert.ok(entry && entry.path.length >= 1);
   assert.deepEqual(entry.path.at(-1), entry.to);
 });
+
+test('why: a move breakdown adds up to the cost, and names the players whose zones it leaves', async () => {
+  const { moveWhy, contactWhy } = await import('../src/game/why.js');
+  const { moveReach, contactMods, netModifier } = await import('../src/engine/rules.js');
+  // carrier #6 at (6,10) next to defender #45 at (6,9) and #33 at (7,10): leaving costs 3 + 3 with the ball
+  const g = scenario([[0, 6, 6, 10], [1, 45, 6, 9], [1, 33, 7, 10], [0, 22, 4, 12]], '0:6');
+  const p = g.s.players['0:6'];
+  for (const m of moveReach(g.s, p, 6, 0).values()) {
+    const w = moveWhy(g.s, p, m.to, 6, 0);
+    const sum = w.lines.reduce((n, [, v]) => n + Number(v.replace('+', '')), 0);
+    assert.equal(sum, m.cost, `cost to ${m.to}`);
+  }
+  const w = moveWhy(g.s, p, [5, 11], 6, 0);
+  assert.deepEqual(w.against.sort(), ['1:33', '1:45']);
+  // a tackle: the listed modifiers net to the engine's own (within the rule of 3)
+  const c = contactWhy(g.s, g.s.players['1:45'], p, 'tackle');
+  const mods = contactMods(g.s, g.s.players['1:45'], p, 'tackle');
+  assert.equal(c.net, netModifier(mods.bonus, mods.penalty));
+  assert.deepEqual(c.help, ['1:33']);
+});
+
+test('depth chart: the charted QB takes the snap in every set, charted line men line up on defense', async () => {
+  const { OFFENSE_SETS, DEFENSE_SETS, buildOffense, buildDefense } = await import('../src/data/playbook.js');
+  const { checkOffense, checkDefense } = await import('../src/engine/rules.js');
+  const roster = [6, 7, 33, 42, 45, 55, 68].map((num) => ({ num, skill: num < 10 ? num : Math.floor(num / 10) }));
+  const ctx = { line: 12, dir: -1, col: 6, count: roster.length };
+  for (const set of OFFENSE_SETS) {
+    const o = buildOffense(set, roster, ctx, { 6: 'Q', 33: 'C' });
+    assert.ok(checkOffense(o, ctx).ok, set.name);
+    const qSlot = set.spots.findIndex((x) => x[0] === 'Q');
+    const [, dc, d] = set.spots[qSlot];
+    const at = o.find((x) => x.col === 6 + dc && x.row === 12 + d); // offense on row 12, backs further back (+1 per row)
+    assert.equal(at?.num, 6, `${set.name}: #6 is the QB`);
+    const hiker = o.find((x) => x.col === 6 && x.row === 12);
+    assert.equal(hiker?.num, 33, `${set.name}: #33 hikes`);
+  }
+  const off = buildOffense(OFFENSE_SETS[0], roster, ctx);
+  const d = buildDefense(DEFENSE_SETS[0], roster, off, ctx, { 68: 'L', 6: 'B' });
+  assert.ok(checkDefense(d, off, ctx).ok);
+  assert.equal(d.find((x) => x.num === 68).row, 11); // on the defense's line row
+  assert.notEqual(d.find((x) => x.num === 6).row, 11);
+});

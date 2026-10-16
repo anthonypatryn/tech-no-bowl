@@ -19,6 +19,26 @@ messages, the bug list (`?view=bugs`, PIN), the Art Review Board (`?view=art`) a
 the owner pastes their "copy for Claude" output. The owner often asks for a plan first: give one, then build it.
 
 ### Latest round (all pushed, live)
+- Touchdowns (and every play end): the engine now waits for the screen (`catchUp()` at the top of `playDown`) before
+  clearing the field, so the runner is seen walking in under the TD shot; the auto replay starts after the shot.
+- Players drawer is a card grid (`TeamDrawer.jsx`: `MiniCard`, `PlayerCard` pop-up); phones get it as a bottom sheet.
+  Gold gem over ability players' cubes (`AbilityGem` in Board.jsx). Play cards of ability players: gold edge, the ✦
+  opens the card, hover shows the tag (`InfoCtx` in GameView).
+- "Why": hovering a square lists the move's cost (open squares, each opponent's zone, diagonals) and hovering a
+  target / its button lists every modifier (rating, each helper / hurter, abilities, on fire); those players get blue /
+  orange rings (`src/game/why.js`). Phones: the tapped square shows its cost.
+- Depth chart (`tb-depth`, playbook.js `depthFor` / `saveDepth`): QB / center / receiver / line / back on offense, line /
+  back on defense; every playbook set and the start-of-down layout follow it. A QB row in the formation prompt.
+- Auto-finish no longer ends a turn while movement is left ("Done (skip the N left)").
+- Seasons: "Continue Week N" picks up a season game you backed out of; Home shows the season in progress.
+- Cards panel folds (desktop), remembered.
+- Fixed: Skip replay left the board frozen on the last replay frame (`useReplay` now clears it); the KICK-OFF wipe's
+  thin stripe stuck on screen (its own keyframes + a hide timer that no new log line cancels).
+- The 3D canvas rebuilds itself if the browser drops the WebGL context (Stage.jsx); in dev `window.__gl` is the
+  renderer (`gl.info.memory`). A 2-minute fast-forward game showed no GPU leak (textures level off at 30).
+- Rules: a Glossary tab (30 terms) and the Adjustment rule.
+
+### Earlier
 - Dice colours: scatter / order rolls log `sides` (whose die is whose) as they're rolled; Dice.jsx uses that, never
   possession at draw time (a recovery had already flipped it). Die tags sit under the dice.
 - Crowd loop baked seamless (6 s equal-power cross-fade + level riding) in `seamless()` (sound.js), random entry point.
@@ -150,6 +170,8 @@ the owner pastes their "copy for Claude" output. The owner often asks for a plan
 - **Redraws** fall back to a timer when no animation frame comes (background tabs / an online host who switched away).
 - **React dev double-mount:** never stop a game in an effect cleanup on unmount; stop the one a new game replaces.
 - **Helmets:** every helmet is the same model in the same frame; `do_helmets` clips all 32 to one master silhouette.
+- **Play ends wait for the screen**: `catchUp()` before the field is cleared. Don't clear state the screen is still
+  animating; the engine runs ahead of the screen by the paced time.
 - **Timeouts** are an answer (`{ timeout: true }`) to any dead-ball question (`DEAD_BALL` in game.js), so they're
   validated, saved and sent online like everything else. `same()` never matches a missing square (bad answers fail).
 
@@ -161,7 +183,7 @@ the owner pastes their "copy for Claude" output. The owner often asks for a plan
 ```
 npx oxlint src tools
 npx vite build
-npm test                                   # 63 rules tests
+npm test                                   # 65 rules tests
 npm run sim -- 300                         # must print errors: 0
 node tools/simulate.mjs 60 1 passive       # side 0 never acts: games must still end
 node tools/simulate.mjs 100 1 allpro:starter

@@ -110,6 +110,12 @@ export class Game {
   }
 
   // ---------- plumbing ----------
+  // wait for the screen to catch up with what's been logged (UI pacing only: the simulator has no delay)
+  async catchUp() {
+    const wait = this.rewinding ? 0 : this.owed;
+    this.owed = 0;
+    if (wait && this.delay) await this.delay(wait);
+  }
   get state() { return this.s; }
   emit() { this.onChange(this.s); }
   log(text, kind = 'info', data = {}) {
@@ -263,6 +269,8 @@ export class Game {
   // one down: formations, play calls, motion, snap, the play
   async playDown() {
     const s = this.s;
+    // the last play must finish on screen (the runner walking in, the touchdown, the hit) before the field is cleared
+    await this.catchUp();
     this.stats.downs++;
     if (s.drive?.side === s.offense) s.drive.plays++;
     s.play = { startOffense: s.offense, line: s.line, forwardDone: false, crossed: false, passThrown: false, adjustUsed: [false, false], activations: 0 };
@@ -387,7 +395,7 @@ export class Game {
   async formation(side, role) {
     const s = this.s;
     const ctx = this.formationCtx();
-    const roster = this.roster(side).map((p) => ({ num: p.num, skill: p.skill }));
+    const roster = this.roster(side).map((p) => ({ num: p.num, skill: p.skill, name: p.name, abilities: p.abilities }));
     const offense = role === 'defense' ? this.roster(s.offense).map((p) => ({ num: p.num, col: p.col, row: p.row })) : null;
     const nums = new Set(roster.map((p) => p.num));
     const check = (v) => {
@@ -662,7 +670,7 @@ export class Game {
     const s = this.s;
     const left = ctx.budget - ctx.spent;
     const dog = ctx.mode === 'dogpile';
-    const req = { type: 'act', pid: p.pid, mode: ctx.mode, left, spent: ctx.spent, moves: [], handoffs: [], blocks: [], tackles: [], passes: [], shoves: [], jukes: [], shakes: [],
+    const req = { type: 'act', pid: p.pid, mode: ctx.mode, left, spent: ctx.spent, parity: ctx.parity, moves: [], handoffs: [], blocks: [], tackles: [], passes: [], shoves: [], jukes: [], shakes: [],
       dirty: [], asMove: [], canStand: false, canAdjust: false, fire: null };
     req.canAdjust = !dog && ctx.fresh && (ctx.mode === 'card' || ctx.mode === 'rr') && !s.play.adjustUsed[p.side] && carrier(s)?.pid !== p.pid;
     if (s.inferno) {

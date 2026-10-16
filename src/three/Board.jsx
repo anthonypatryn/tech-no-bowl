@@ -20,7 +20,7 @@ const SPEED = 6.5; // squares per second when walking
 // jump: { id, delay } = a leap (going up for a catch) after `delay` seconds
 // orbit: { id, pts:[[x,z]] } = walk round someone (a spin move), turning a full circle on the way
 // pile: { id, at:[x,z], level, delay, jx, jz, tilt:[rx,ry,rz] } = leap onto the pile after the whistle and stay there
-function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge, active, colors, jump, orbit, pile }) {
+function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge, active, colors, jump, orbit, pile, skilled }) {
   const g = useRef();
   const pos = useRef(null);
   const queue = useRef([]);
@@ -104,6 +104,7 @@ function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge,
       <PlayerCube uniform={uniform} row={row} facing={Math.PI / 2} down={p.down} label={p.artNum != null && p.artNum !== p.num ? p.num : null} labelColors={colors}
         onClick={onPick ? (e) => { e.stopPropagation(); onPick(p.pid); } : undefined} />
       {active && <TurnMarker colors={colors} />}
+      {skilled && !active && !p.down && <AbilityGem />}
       {ring && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
           <ringGeometry args={[0.5, 0.6, 32]} />
@@ -137,6 +138,18 @@ function TurnMarker({ colors = ['#39ff6a', '#ffffff'] }) {
       </mesh>
       <pointLight color={colors[0]} intensity={1.6} distance={2.2} decay={2} />
     </group>
+  );
+}
+
+// a small gold gem over a player with a special ability (rules modes with abilities), so you can see who has one
+function AbilityGem() {
+  const ref = useRef();
+  useFrame(() => { if (ref.current) { const t = performance.now() / 1000; ref.current.rotation.y = t * 1.2; ref.current.position.y = 1.08 + Math.sin(t * 2.2) * 0.03; } });
+  return (
+    <mesh ref={ref} scale={[0.08, 0.13, 0.08]} raycast={() => null}>
+      <octahedronGeometry args={[1, 0]} />
+      <meshStandardMaterial color="#ffb000" emissive="#ffb000" emissiveIntensity={0.8} roughness={0.3} flatShading toneMapped={false} />
+    </mesh>
   );
 }
 
@@ -797,7 +810,8 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
       {!intro && players.map((p) => (
         <Mover key={p.pid} p={p} uniform={unis[p.side]} row={rows[p.side][p.num]} path={paths[p.pid]} positions={positions}
           ring={rings[p.pid]} onPick={onPlayer} onHover={onHoverPlayer} lunge={lunges[p.pid]} active={s.active?.pid === p.pid && s.phase === 'play'} colors={tcolors[p.side]}
-          jump={fx.jump[p.pid]} orbit={fx.orbit[p.pid]} pile={fx.pile[p.pid]} />
+          jump={fx.jump[p.pid]} orbit={fx.orbit[p.pid]} pile={fx.pile[p.pid]}
+          skilled={!!s.skills && (p.abilities?.some((a) => s.inferno || !a.startsWith('INFERNO')) || !!p.fuego)} />
       ))}
       <Ball ball={s.ball} positions={positions} slowmo={!settings().calm} snapFrom={s.log.findLast?.((e) => e.kind === 'snap')?.from} />
       {shot?.kind === 'hit' && <Burst key={shot.id} at={sq(...shot.at, 0)} colors={['#c9c9c9', '#7a5a3a', '#3f6b2a', '#ffffff']} count={shot.big ? 46 : 26} />}

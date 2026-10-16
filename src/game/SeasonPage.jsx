@@ -7,6 +7,7 @@ import { MODES, MODE_INFO } from './TeamPicker';
 import { altSlots } from '../data/abilities';
 import { loadSeason, newSeason, endSeason, nextGame, standings, oppUniform } from './season';
 import { useConfirm } from './ui';
+import { loadResume, resumeMatch } from './useGame';
 
 const name = (id) => teamById(id)?.name ?? id;
 function Helmet({ id, size = 40, flip }) {
@@ -22,6 +23,9 @@ export default function SeasonPage({ onPlay }) {
   const table = standings(season);
   const me = season.table[season.team];
   const [c0] = teamColors(season.team, season.uni);
+  // a season game you backed out of: pick it up where you left it (the game is saved as you play)
+  const saved = loadResume();
+  const unfinished = saved?.match?.season && saved.match.you?.team === season.team && next && saved.match.cpu?.team === next.opp ? saved : null;
   const play = () => onPlay({
     you: { team: season.team, uni: season.uni, picks: season.picks }, cpu: { team: next.opp, uni: oppUniform(season, next.opp), picks: {} },
     level: season.level, mode: season.mode ?? 'techno', seed: Date.now(), season: { round: next.round, label: next.label },
@@ -39,7 +43,11 @@ export default function SeasonPage({ onPlay }) {
         <div className="season-next">
           {season.champion && <p className="led big-ish">{season.champion === season.team ? 'TECHNO BOWL CHAMPIONS!' : `${name(season.champion).toUpperCase()} WIN THE TECHNO BOWL`}</p>}
           {season.missed && !season.champion && <p className="warn">You missed the playoffs. The bracket plays on without you.</p>}
-          {next && <Button kind="primary" size="big" onClick={play}>{next.label}: vs {name(next.opp)}</Button>}
+          {next && unfinished && <Button kind="primary" size="big" onClick={() => onPlay(resumeMatch(unfinished))}>Continue {next.label} vs {name(next.opp)}</Button>}
+          {next && <Button kind={unfinished ? undefined : 'primary'} size={unfinished ? 'small' : 'big'} onClick={async () => {
+            if (unfinished && !await confirmIt({ title: 'Start this game over?', body: 'The game you left will be lost.', yes: 'Start over', danger: true })) return;
+            play();
+          }}>{unfinished ? 'Start it over' : `${next.label}: vs ${name(next.opp)}`}</Button>}
           <Button size="small" onClick={async () => { if (await confirmIt({ title: 'End this season?', body: 'Its schedule and standings will be lost.', yes: 'End season', danger: true })) { endSeason(); setSeason(null); } }}>{season.champion ? 'New season' : 'Abandon season'}</Button>
         </div>
       </Panel>

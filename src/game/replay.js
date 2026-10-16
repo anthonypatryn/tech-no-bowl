@@ -69,7 +69,8 @@ export function useReplay(s, play, onDone) {
   const [st, setSt] = useState(null);
   const timer = useRef(null);
   useEffect(() => {
-    if (!play) return undefined;
+    // no replay (or it was skipped): drop the last frame too, or the board stays frozen on it
+    if (!play) { setSt(null); return undefined; }
     let cur = startState(s, play);
     setSt(cur);
     let i = 0;

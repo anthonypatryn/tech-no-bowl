@@ -1,7 +1,7 @@
 // The game screen: the 3D board plus everything you need to coach — the scoreboard, your cards, the play log, dice,
 // and a prompt for whatever the engine is asking you right now. The engine validates every answer; this screen
 // only offers what the open request lists.
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Stage } from '../three/Stage';
 import { Board, VIEWS } from '../three/Board';
 import { Button, Chips, Kbd, useConfirm, toggleFullscreen } from './ui';
@@ -19,11 +19,15 @@ import { skillOf, losRows, COLS, adjacent as adj, halfOf, key as sqKey } from '.
 import { moveReach } from '../engine/rules.js';
 import { checkDefense, checkOffense, sideRows, distance } from '../engine/rules.js';
 import { contactOdds, passOdds, odds, pct } from './odds';
+import { moveWhy, contactWhy } from './why';
 import { contactMods, netModifier } from '../engine/rules.js';
+import { depthFor, saveDepth, hasDepth, lastSetFor, rememberSet } from '../data/playbook';
 import { OFFENSE_SETS, DEFENSE_SETS, buildOffense, buildDefense, savedFor, saveFormation, applySaved, deleteSaved, savePlay, rememberLast, rememberCall, lastFor } from '../data/playbook';
 import { autoDefense, autoOffense } from '../engine/formations.js';
 import RulesDrawer from './RulesDrawer.jsx';
-import TeamDrawer, { playerSkills, PlayerTag } from './TeamDrawer.jsx';
+import TeamDrawer, { playerSkills, PlayerTag, PlayerCard } from './TeamDrawer.jsx';
+// the play cards' player info: hover (computers) shows his tag, the ✦ opens his full card
+const InfoCtx = createContext(null);
 import BugReport from './BugReport.jsx';
 import CoachTips from './CoachTips';
 import { HELP_FOR } from '../data/rulesText';
@@ -121,9 +125,12 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
   const endReel = () => { replayQueue.current = []; setReel(null); setReplay(null); };
   const shown = rs ?? s;
   const lastTd = s.log.findLast?.((e) => e.kind === 'td');
+  // the automatic replay after a touchdown: once the runner is in and the touchdown shot is over
   useEffect(() => {
-    if (!lastTd || settings().calm) return;
-    const t = setTimeout(() => setReplay(lastPlay(game.state)), 3000);
+    if (!lastTd || lastTd.old || settings().calm) return;
+    const i = s.log.indexOf(lastTd);
+    const play = lastPlay(game.state);
+    const t = setTimeout(() => { if (play) setReplay(play); }, (delayFor(s.log, i) + 3.4 + 0.8) * 1000 / (isTurbo() ? 4 : 1));
     return () => clearTimeout(t);
   }, [lastTd?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const shot = useShot(shown.log, shown.players);
@@ -147,6 +154,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
   const [rules, setRules] = useState(false);
   const [team, setTeam] = useState(false);       // the Players drawer
   const [spot, setSpot] = useState(null);        // a player picked in it: ringed on the field
+  const [cardOf, setCardOf] = useState(null);    // a player's full card, opened from a play card's ✦
   const [bug, setBug] = useState(false);
   const [tips, setTips] = useState(!!match.tutorial);
   const [paused, setPaused] = useState(false);
@@ -195,8 +203,8 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
       if (list.includes(q.target)) { game.answer({ kind: q.kind, pid: q.target }, req.id); return; }
     }
     if (req?.type === 'formation') {
-      const ctx = { line: req.line, dir: req.dir, col: req.col };
-      setEdit(req.role === 'offense' ? autoOffense(req.roster, ctx) : autoDefense(req.roster, req.offense, ctx));
+      const ctx = { line: req.line, dir: req.dir, col: req.col, count: req.roster.length };
+      setEdit(chartedEdit(s.teams[ME].id, req, ctx) ?? (req.role === 'offense' ? autoOffense(req.roster, ctx) : autoDefense(req.roster, req.offense, ctx)));
     } else setEdit(null);
     if (req?.type === 'call') setStack([]);
   }, [reqId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -369,11 +377,27 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
     const near = []; for (let dc = -1; dc <= 1; dc++) for (let dr = -1; dr <= 1; dr++) if (dc || dr) near.push(sqKey(c + dc, r + dr));
     return threatReach.filter((t) => near.some((k) => t.sqs.has(k))).map((t) => t.pid);
   }, [threatReach, hover]);
-  const rings = useMemo(() => (danger.length ? { ...board.rings, ...Object.fromEntries(danger.map((pid) => [pid, '#ff2b2b'])) } : board.rings), [board.rings, danger]);
+  // why: what a hovered move costs and why, or what goes into a hovered block / tackle; those players get rings
+  const why = useMemo(() => {
+    if (req?.type !== 'act') return null;
+    const me = P(req.pid);
+    // phones: the square tapped once (gold) shows its cost before the second tap
+    const tapped = tap && req.moves.find((m) => m.to[0] === tap[0] && m.to[1] === tap[1]);
+    if (hover?.move || tapped) return moveWhy(s, me, (hover?.move ?? tapped).to, req.left, req.parity ?? 0);
+    if (!hover) return null;
+    const kind = hover.pid && (req.tackles.includes(hover.pid) ? 'tackle' : req.dirty.includes(hover.pid) ? 'dirty' : req.jukes.includes(hover.pid) ? 'juke'
+      : req.shakes.includes(hover.pid) ? 'shake' : req.blocks.includes(hover.pid) || req.shoves.includes(hover.pid) ? (hover.shove ? 'shove' : 'block') : board.reach?.[hover.pid]?.kind);
+    return kind ? contactWhy(s, me, P(hover.pid), kind) : null;
+  }, [hover, tap, req?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const rings = useMemo(() => {
+    const r = { ...board.rings, ...Object.fromEntries(danger.map((pid) => [pid, '#ff2b2b'])) };
+    if (why) { for (const pid of why.help) r[pid] = '#3ce0ff'; for (const pid of why.against) r[pid] = '#ff7a1a'; }
+    return r;
+  }, [board.rings, danger, why]);
 
-  // ---------- auto-finish: he's moved and has nothing left to do but walk: end his turn ----------
+  // ---------- auto-finish: he's moved and can do nothing more at all (no movement left either): end his turn ----------
   useEffect(() => {
-    if (!prefsNow.autoEnd || req?.type !== 'act' || !req.spent || req.canStand) return undefined;
+    if (!prefsNow.autoEnd || req?.type !== 'act' || !req.spent || req.canStand || req.moves.length) return undefined;
     const any = req.tackles.length + req.blocks.length + req.passes.length + req.handoffs.length + req.jukes.length + req.shakes.length + req.dirty.length;
     if (any || req.moves.some((m) => m.end === 'ball' || m.end === 'td') || (req.fire?.tokens ?? 0) > 0) return undefined;
     const t = setTimeout(() => game.answer({ kind: 'end' }, req.id), 450);
@@ -428,6 +452,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
   const leave = async () => { if (s.phase === 'over' || await confirmIt({ title: 'Leave this game?', body: 'It stays saved: Resume it from Home.', yes: 'Leave', danger: true })) onExit(); };
 
   return (
+    <InfoCtx.Provider value={{ hover: (pid) => setHover(pid ? { pid } : null), open: setCardOf }}>
     <div ref={rootRef} className={`game ${shot || intro || rs ? 'cine' : ''} ${intro ? 'intro' : ''} ${rs ? 'replaying' : ''}`}>
       <Stage className="game-stage">
         <Board game={rs ? { state: rs } : game} view={rs ? 'follow' : view} setup={!rs && ['formation', 'call', 'motion'].includes(s.phase)} onFree={() => setView('free')} shot={shot} intro={intro} tiles={rs ? [] : board.tiles} rings={rs ? {} : rings} onTile={rs ? null : board.onTile} onHover={setHover} onHoverPlayer={(pid) => setHover(pid ? { pid } : null)} outlines={rs ? [] : board.outlines} onPlayer={rs ? null : board.onPlayer}
@@ -465,7 +490,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
           )}
           {suggest && <p className="suggest">Coach: {describe(suggest, P)}</p>}
           {game.crashed ? <p className="warn">Something broke: {game.crashed.split('\n')[0]}</p>
-            : req ? <>{left != null && <span className={`play-clock led ${left <= 10 ? 'low' : ''}`}>0:{String(left).padStart(2, '0')}</span>}<Prompt {...{ game, req, answer, s, P, mode, setMode, edit, setEdit, sel, stack, setStack, motion, setMotion, discard, setDiscard, primary, hover, rows: myRows, askCoach, reach: board.reach, danger, tap }} /></>
+            : req ? <>{left != null && <span className={`play-clock led ${left <= 10 ? 'low' : ''}`}>0:{String(left).padStart(2, '0')}</span>}<Prompt {...{ game, req, answer, s, P, mode, setMode, edit, setEdit, sel, stack, setStack, motion, setMotion, discard, setDiscard, primary, hover, setHover, why, rows: myRows, askCoach, reach: board.reach, danger, tap }} /></>
               : <Waiting s={s} online={online} spectating={spectating} />}
           {flag && <p className="warn">{flag}</p>}
         </div>
@@ -517,8 +542,10 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
       {s.inferno && <FireHud s={s} opp={oppName} />}
       {online && <OnlineBar net={net} host={!!match.online} />}
       {s.phase === 'over' && !rs && <EndScreen s={s} onExit={onExit} onRematch={onRematch} match={match} online={online} highlights={highlights.current} onWatch={watchAll} />}
+      {cardOf && s.players[cardOf] && <PlayerCard s={s} p={s.players[cardOf]} onClose={() => setCardOf(null)} onFind={setSpot} />}
       {dialog}
     </div>
+    </InfoCtx.Provider>
   );
 }
 
@@ -608,7 +635,8 @@ function Prompt(props) {
   }
 }
 
-function ActPrompt({ req, answer, P, mode, setMode, primary, hover, s, reach, danger, tap }) {
+function ActPrompt({ req, answer, P, mode, setMode, primary, hover, setHover, why, s, reach, danger, tap }) {
+  const hv = (pid, extra) => ({ onMouseEnter: () => setHover?.({ pid, ...extra }), onMouseLeave: () => setHover?.(null) });
   const p = P(req.pid);
   const [fuego, setFuego] = useState(false);
   const canAct = req.blocks.length || req.passes.length || req.tackles.length || req.dirty.length;
@@ -650,22 +678,29 @@ function ActPrompt({ req, answer, P, mode, setMode, primary, hover, s, reach, da
       )}
       <p className="hint">{tip ?? (mode === 'pass' ? 'Pick a square or a teammate to throw to. Green = good odds, red = covered.'
         : `Bright green = move and still act, teal = move only.${req.passes.length ? ' Yellow outline = throwing range, green = +1 short zone.' : ''} Hover a target for the odds.${req.tackles.length ? ' Red ring = TACKLE.' : ''}${req.blocks.length ? ' Orange ring = block.' : ''}${req.handoffs.length ? ' Cyan ring = hand-off.' : ''}${!canAct && req.spent && (req.mode === 'card' || req.mode === 'full') ? ' Moved too far to block, tackle or throw now.' : ''}`)}</p>
+      {why && (
+        <div className="why">
+          <b>{why.kind === 'move' ? `Costs ${why.total} of ${why.left}` : `Modifier ${why.net > 0 ? '+' : ''}${why.net}`}</b>
+          <ul>{why.lines.map(([l, v]) => <li key={l}><span>{l}</span><em className={v.startsWith('-') ? 'bad' : ''}>{v}</em></li>)}</ul>
+          {(why.help.length > 0 || why.against.length > 0) && <small>{why.help.length > 0 && <i className="why-help">blue ring = helps you</i>}{why.against.length > 0 && <i className="why-hurt">{why.kind === 'move' ? 'orange ring = his zone costs you' : 'orange ring = hurts you'}</i>}</small>}
+        </div>
+      )}
       {/* every action open to him right now, as its own button (with the odds); or click the ringed player */}
       {(req.tackles.length > 0 || req.blocks.length > 0 || req.handoffs.length > 0 || req.passes.length > 0 || req.canStand || req.dirty.length > 0 || req.jukes.length > 0 || req.shakes.length > 0) && (
         <div className="act-btns">
-          {req.tackles.map((pid) => <Button key={`t${pid}`} className="act-tackle" onClick={() => answer({ kind: 'tackle', pid })}>{req.asMove.includes('tackle') ? 'Diving tackle' : 'Tackle'} #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'tackle')}</span></Button>)}
-          {req.blocks.filter((pid) => !req.tackles.includes(pid)).map((pid) => <Button key={`b${pid}`} className="act-block" onClick={() => answer({ kind: 'block', pid })}>{blockWord} #{P(pid).num} <span className="odds">{chance(s, p, P(pid))}</span></Button>)}
-          {req.shoves.map((pid) => <Button key={`s${pid}`} className="act-skill" onClick={() => answer({ kind: 'shove', pid })}>Shove #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'shove')}</span></Button>)}
-          {req.jukes.map((pid) => <Button key={`j${pid}`} className="act-skill" onClick={() => answer({ kind: 'juke', pid })}>Juke #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'juke')}</span></Button>)}
-          {req.shakes.map((pid) => <Button key={`k${pid}`} className="act-skill" onClick={() => answer({ kind: 'shake', pid })}>Shake #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'shake')}</span></Button>)}
-          {req.dirty.map((pid) => <Button key={`d${pid}`} className="act-dirty" onClick={() => answer({ kind: 'dirty', pid })}>Dirty hit #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'dirty')}</span></Button>)}
+          {req.tackles.map((pid) => <Button key={`t${pid}`} className="act-tackle" {...hv(pid)} onClick={() => answer({ kind: 'tackle', pid })}>{req.asMove.includes('tackle') ? 'Diving tackle' : 'Tackle'} #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'tackle')}</span></Button>)}
+          {req.blocks.filter((pid) => !req.tackles.includes(pid)).map((pid) => <Button key={`b${pid}`} className="act-block" {...hv(pid)} onClick={() => answer({ kind: 'block', pid })}>{blockWord} #{P(pid).num} <span className="odds">{chance(s, p, P(pid))}</span></Button>)}
+          {req.shoves.map((pid) => <Button key={`s${pid}`} className="act-skill" {...hv(pid, { shove: true })} onClick={() => answer({ kind: 'shove', pid })}>Shove #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'shove')}</span></Button>)}
+          {req.jukes.map((pid) => <Button key={`j${pid}`} className="act-skill" {...hv(pid)} onClick={() => answer({ kind: 'juke', pid })}>Juke #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'juke')}</span></Button>)}
+          {req.shakes.map((pid) => <Button key={`k${pid}`} className="act-skill" {...hv(pid)} onClick={() => answer({ kind: 'shake', pid })}>Shake #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'shake')}</span></Button>)}
+          {req.dirty.map((pid) => <Button key={`d${pid}`} className="act-dirty" {...hv(pid)} onClick={() => answer({ kind: 'dirty', pid })}>Dirty hit #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'dirty')}</span></Button>)}
           {req.handoffs.map((pid) => { const far = Math.max(Math.abs(P(pid).col - p.col), Math.abs(P(pid).row - p.row)) > 1; return <Button key={`h${pid}`} className="act-hand" onClick={() => answer({ kind: 'handoff', pid })}>{s.ball.pid === p.pid ? `${far ? 'Pitch' : 'Hand off'} to #${P(pid).num}` : `Take ${far ? 'the pitch' : 'hand-off'} from #${P(pid).num}`}</Button>; })}
           {req.passes.length > 0 && <button className={`btn ${mode === 'pass' ? 'on' : 'primary'}`} onClick={() => setMode(mode === 'pass' ? 'move' : 'pass')}>{mode === 'pass' ? 'Cancel throw' : 'Throw'} <Kbd a="throw" /></button>}
           {req.canStand && <Button kind="primary" onClick={() => answer({ kind: 'stand' })}>Stand up (costs 3)</Button>}
         </div>
       )}
       <div className="btns">
-        <Button onClick={() => answer({ kind: 'end' })}>{req.spent || req.mode === 'half' ? 'Done' : 'Do nothing'} <Kbd a="primary" /></Button>
+        <Button onClick={() => answer({ kind: 'end' })}>{req.spent || req.mode === 'half' ? (req.moves.length ? `Done (skip the ${req.left} left)` : 'Done') : 'Do nothing'} <Kbd a="primary" /></Button>
         {req.canAdjust && <Button onClick={() => answer({ kind: 'adjust' })}>Adjustment</Button>}
       </div>
       {req.fire && req.fire.tokens > 0 && (
@@ -734,15 +769,94 @@ function OnFirePrompt({ req, answer, P, primary }) {
   );
 }
 
+// a set built with the team's depth chart (the last set used, else the first): null if there's no chart or it's not legal
+function chartedEdit(teamId, req, ctx) {
+  if (!hasDepth(teamId, req.role)) return null;
+  const sets = req.role === 'offense' ? OFFENSE_SETS : DEFENSE_SETS;
+  const set = sets.find((x) => x.id === lastSetFor(teamId, req.role)) ?? sets[0];
+  const chart = depthFor(teamId)[req.role];
+  const spots = req.role === 'offense' ? buildOffense(set, req.roster, ctx, chart) : buildDefense(set, req.roster, req.offense, ctx, chart);
+  const ok = spots.length === req.roster.length && (req.role === 'offense' ? checkOffense(spots, ctx) : checkDefense(spots, req.offense, ctx)).ok;
+  return ok ? spots : null;
+}
+// who takes the snap in a formation: the first player behind the hiker, within the hiker's rating
+function snapTaker(edit, req) {
+  const { off, back } = losRows(req.line, req.dir);
+  const hiker = edit.find((e) => e.col === req.col && e.row === off);
+  if (!hiker) return null;
+  for (let i = 1; i <= skillOf(hiker.num); i++) { const q = edit.find((e) => e.col === req.col && e.row === off + back * i); if (q) return q; }
+  return null;
+}
+const PASSING = ['POCKET PASSER', 'ROUTE PASSER', 'SCREEN PASSER', 'QB READ'];
+
+const OFF_ROLES = [['Q', 'QB'], ['C', 'Center'], ['W', 'Receiver'], ['L', 'Line'], ['B', 'Back'], ['', 'Auto']];
+const DEF_ROLES = [['L', 'Line'], ['B', 'Back'], ['', 'Auto']];
+// the depth chart: each player's spot in the playbook sets (saved per team on this device)
+function DepthChart({ s, req, onClose }) {
+  const teamId = s.teams[ME].id;
+  const [depth, setDepth] = useState(() => depthFor(teamId));
+  const rows = useMemo(() => artRows(s, ME), [s.teams]); // eslint-disable-line react-hooks/exhaustive-deps
+  const set = (role, num, v) => {
+    const chart = { ...depth[role] };
+    if (v) { if (v === 'Q' || v === 'C') for (const k of Object.keys(chart)) if (chart[k] === v) delete chart[k]; chart[num] = v; } else delete chart[num];
+    const next = { ...depth, [role]: chart };
+    setDepth(next); saveDepth(teamId, next);
+  };
+  useEffect(() => {
+    const key = (e) => { if (e.key === 'Escape') { e.stopPropagation(); onClose(); } };
+    window.addEventListener('keydown', key, true);
+    return () => window.removeEventListener('keydown', key, true);
+  }, [onClose]);
+  return (
+    <div className="modal" onClick={onClose}>
+      <div className="modal-card glass depth-card" onClick={(e) => e.stopPropagation()}>
+        <h2>{s.teams[ME].name}: depth chart</h2>
+        <p className="hint">Who plays where when you pick a set from the playbook (and at the start of each down). Auto = the set decides. One QB, one center.</p>
+        {['offense', 'defense'].map((role) => (
+          <section key={role} className={`depth-side ${req.role === role ? 'now' : ''}`}>
+            <h3>{role === 'offense' ? 'Offense' : 'Defense'}</h3>
+            {[...req.roster].sort((a, b) => a.num - b.num).map((p) => (
+              <div key={p.num} className="depth-row">
+                <Sprite team={s.teams[ME].id} uni={s.teams[ME].uniform} row={rows[p.num] ?? 0} />
+                <span className="depth-name"><b>#{p.num} {p.name ?? ''}</b><small>Skill {p.skill}{p.abilities?.length ? ` · ${p.abilities.filter((a) => !a.startsWith('INFERNO')).join(', ')}` : ''}</small></span>
+                <Chips small value={depth[role][p.num] ?? ''} onChange={(v) => set(role, p.num, v)} options={role === 'offense' ? OFF_ROLES : DEF_ROLES} />
+              </div>
+            ))}
+          </section>
+        ))}
+        <div className="btns"><Button kind="primary" onClick={onClose}>Done</Button></div>
+      </div>
+    </div>
+  );
+}
+
 function FormationPrompt({ req, answer, edit, setEdit, sel, primary, hover, s }) {
   const [saving, setSaving] = useState(null);
+  const [depthOpen, setDepthOpen] = useState(false);
   const [, bump] = useState(0);
   if (!edit) return null;
   const ctx = { line: req.line, dir: req.dir, col: req.col, count: req.roster.length };
   const teamId = s.teams[ME].id;
   const mine = savedFor(teamId)[req.role];
   const sets = req.role === 'offense' ? OFFENSE_SETS : DEFENSE_SETS;
-  const useSet = (set) => setEdit(req.role === 'offense' ? buildOffense(set, req.roster, ctx) : buildDefense(set, req.roster, req.offense, ctx));
+  const useSet = (set) => {
+    rememberSet(teamId, req.role, set.id);
+    const chart = depthFor(teamId)[req.role];
+    setEdit(req.role === 'offense' ? buildOffense(set, req.roster, ctx, chart) : buildDefense(set, req.roster, req.offense, ctx, chart));
+  };
+  // offense: pick who takes the snap; he swaps spots with whoever is there now, and goes on the depth chart as QB
+  const qb = req.role === 'offense' ? snapTaker(edit, req) : null;
+  const pickQb = (num) => {
+    const d = depthFor(teamId);
+    const chart = { ...d.offense };
+    for (const k of Object.keys(chart)) if (chart[k] === 'Q') delete chart[k];
+    chart[num] = 'Q';
+    saveDepth(teamId, { ...d, offense: chart });
+    if (qb && qb.num !== num) {
+      const other = edit.find((e) => e.num === num);
+      setEdit(edit.map((e) => (e.num === num ? { ...e, col: qb.col, row: qb.row } : e.num === qb.num ? { ...e, col: other.col, row: other.row } : e)));
+    } else bump((x) => x + 1);
+  };
   const res = req.role === 'offense' ? checkOffense(edit, ctx) : checkDefense(edit, req.offense, ctx);
   const reroll = () => setEdit(req.role === 'offense' ? autoOffense(req.roster, ctx) : autoDefense(req.roster, req.offense, ctx));
   const last = lastFor(teamId, req.role);
@@ -764,9 +878,20 @@ function FormationPrompt({ req, answer, edit, setEdit, sel, primary, hover, s })
           </span>
         ))}
       </div>
+      {req.role === 'offense' && (
+        <div className="playbook qb-row">
+          <span className="pb-label">QB</span>
+          {[...req.roster].sort((a, b) => b.skill - a.skill).map((p) => {
+            const pass = (p.abilities ?? []).filter((a) => PASSING.includes(a));
+            return <button key={p.num} className={`chipbtn ${qb?.num === p.num ? 'on' : ''}`} title={pass.join(', ') || `Skill ${p.skill}`} onClick={() => pickQb(p.num)}>#{p.num}{pass.length ? ' ✦' : ''}</button>;
+          })}
+          {!qb && <span className="hint">Nobody behind the hiker takes the snap yet.</span>}
+        </div>
+      )}
       {!res.ok && <ul className="errors">{res.errors.map((e) => <li key={e}>{e}</li>)}</ul>}
       <div className="btns">
         <Button kind="primary" disabled={!res.ok} onClick={ready}>Ready <Kbd a="primary" /></Button>
+        <Button onClick={() => setDepthOpen(true)}>Depth chart</Button>
         {lastOk && <Button onClick={() => setEdit(lastSpots)}>Same as last down</Button>}
         <Button onClick={reroll}>Reroll</Button>
         {saving == null
@@ -775,6 +900,7 @@ function FormationPrompt({ req, answer, edit, setEdit, sel, primary, hover, s })
               onKeyDown={(e) => { if (e.key === 'Enter') { saveFormation(teamId, req.role, saving.trim() || 'Mine', edit, ctx); setSaving(null); } e.stopPropagation(); }} />
             <Button kind="primary" size="small" onClick={() => { saveFormation(teamId, req.role, saving.trim() || 'Mine', edit, ctx); setSaving(null); }}>Save</Button></span>}
       </div>
+      {depthOpen && <DepthChart s={s} req={req} onClose={() => { setDepthOpen(false); const e = chartedEdit(teamId, req, ctx); if (e) setEdit(e); }} />}
     </>
   );
 }
@@ -881,29 +1007,47 @@ function OnlineBar({ net, host }) {
 // ---------- cards ----------
 function CardFace({ num, rows, s, side = ME }) {
   const t = s.teams[side];
-  const p = s.skills ? Object.values(s.players).find((x) => x.side === side && x.num === num) : null;
-  const sk = p ? playerSkills(s, p) : [];
-  return (<><Sprite team={t.id} uni={t.uniform} row={rows?.[num] ?? 0} /><b className="led">{num}</b>{sk.length > 0 && <i className="card-star" title={sk.join(', ')}>✦</i>}</>);
+  const info = useContext(InfoCtx);
+  const p = Object.values(s.players).find((x) => x.side === side && x.num === num);
+  const sk = p && s.skills ? playerSkills(s, p) : [];
+  return (<>
+    <Sprite team={t.id} uni={t.uniform} row={rows?.[num] ?? 0} /><b className="led">{num}</b>
+    {sk.length > 0 && <i className="card-star" role="button" aria-label={`#${num}'s card`} title={sk.join(', ')}
+      onClick={(e) => { e.stopPropagation(); info?.open(p.pid); }}>✦</i>}
+  </>);
+}
+function CardButton({ n, rows, s, onPick }) {
+  const info = useContext(InfoCtx);
+  const pid = Object.values(s.players).find((x) => x.side === ME && x.num === n)?.pid;
+  return (
+    <button className="card" onClick={() => onPick(n)} onMouseEnter={() => info?.hover(pid)} onMouseLeave={() => info?.hover(null)}>
+      <CardFace num={n} rows={rows} s={s} />
+    </button>
+  );
 }
 function CardRow({ nums, rows, s, onPick }) {
   return (
     <div className="card-row">
-      {nums.map((n, i) => <button key={`${n}-${i}`} className="card" onClick={() => onPick(n)}><CardFace num={n} rows={rows} s={s} /></button>)}
+      {nums.map((n, i) => <CardButton key={`${n}-${i}`} n={n} rows={rows} s={s} onPick={onPick} />)}
     </div>
   );
 }
 
 function Cards({ s, rows, opp = 'CPU' }) {
   const [open, setOpen] = useState(false); // phones: the deck details fold away
+  // computers: fold the panel down to the two face-up cards (remembered)
+  const [min, setMinState] = useState(() => { try { return localStorage.getItem('tb-cards-min') === '1'; } catch { return false; } });
+  const setMin = (v) => { setMinState(v); try { localStorage.setItem('tb-cards-min', v ? '1' : '0'); } catch { /* not kept */ } };
   const mine = s.cards[ME], theirs = s.cards[1 - ME];
   const oppRows = useMemo(() => artRows(s, 1 - ME), [s.teams]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <div className={`cards glass ${open ? 'open' : ''}`} onClick={() => setOpen(!open)}>
+    <div className={`cards glass ${open ? 'open' : ''} ${min ? 'min' : ''}`} onClick={() => setOpen(!open)}>
+      <Button size="small" className="cards-min" onClick={(e) => { e.stopPropagation(); setMin(!min); }} aria-label={min ? 'Show the decks' : 'Fold the decks'} title={min ? 'Show your play and bench' : 'Fold away'}>{min ? '+' : '-'}</Button>
       <div className="faceup">
         <div className="fu"><small>You</small>{s.faceUp[ME] != null ? <span className="card big"><CardFace num={s.faceUp[ME]} rows={rows} s={s} /></span> : <span className="card big empty" />}</div>
         <div className="fu"><small>{opp}</small>{s.faceUp[1 - ME] != null ? <span className="card big"><CardFace num={s.faceUp[1 - ME]} rows={oppRows} s={s} side={1 - ME} /></span> : <span className="card big empty" />}</div>
       </div>
-      <span className="cards-sum">Bench {mine.bench.length} · {opp} {theirs.bench.length} <em>{open ? '▴' : '▾'}</em></span>
+      <span className="cards-sum">Bench {mine.bench.length} · {opp} {theirs.bench.length} <em>{open ? '-' : '+'}</em></span>
       <div className="decks">
         <div><small>Your play</small><span className="mini">{mine.stack.map((n, i) => <i key={i}>#{n}</i>)}{!mine.stack.length && <em>—</em>}</span></div>
         <div><small>Your bench ({mine.bench.length})</small><span className="mini">{group(mine.bench).map(([n, k]) => <i key={n}>#{n}{k > 1 ? '×2' : ''}</i>)}</span></div>

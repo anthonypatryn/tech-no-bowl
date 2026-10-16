@@ -9,10 +9,14 @@ import { lineUp } from './formation';
 import { settings } from './prefs';
 import { loadResume, resumeMatch, clearResume } from './useGame';
 import { teamById } from '../data/art';
+import { loadSeason, nextGame } from './season';
 
 // Home: a slow fly-around of two random teams lined up at the 20, with the menu over it.
 export default function Home({ go, onResume }) {
   const saved = useMemo(loadResume, []);
+  const season = useMemo(loadSeason, []);
+  const sNext = season && nextGame(season);
+  const rec = season?.table?.[season.team];
   const [a, b] = useMemo(() => {
     const i = Math.floor(Math.random() * TEAMS.length);
     const j = (i + 1 + Math.floor(Math.random() * (TEAMS.length - 1))) % TEAMS.length;
@@ -42,7 +46,8 @@ export default function Home({ go, onResume }) {
             <b>Play vs Computer</b><span>Pick your team, your uniform and the opponent</span>
           </button>
           <button className="menu-card glass" onClick={() => go('season')}>
-            <b>Season</b><span>A schedule, standings and the playoffs</span>
+            <b>{season && !season.champion ? 'Continue season' : 'Season'}</b>
+            <span>{season && !season.champion && rec ? `${teamById(season.team)?.name} ${rec.w}-${rec.l}${rec.t ? `-${rec.t}` : ''}${sNext ? ` · next: ${sNext.label} vs ${teamById(sNext.opp)?.name}` : ''}` : 'A schedule, standings and the playoffs'}</span>
           </button>
           <button className="menu-card glass" onClick={() => go('online')}>
             <b>Play Online</b><span>Host a room or join a friend's with a code</span>

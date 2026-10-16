@@ -134,8 +134,8 @@ export function Wipe({ s }) {
     const side = last.side ?? s.offense;
     setW({ id: last.id, word, side });
     synth('whoosh'); setTimeout(() => synth('whooshOut'), 1250);
-    const t = setTimeout(() => setW((x) => (x?.id === last.id ? null : x)), 1700);
-    return () => clearTimeout(t);
+    // not cleared when the next log line arrives (that used to leave the wipe stuck on screen)
+    setTimeout(() => setW((x) => (x?.id === last.id ? null : x)), 1700);
   }, [last?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!w) return null;
   const [c0, c1] = colors(s, w.side);

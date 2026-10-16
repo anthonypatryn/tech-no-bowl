@@ -474,7 +474,9 @@ button.card:hover { border-color: var(--led); }
 .wipe { position: absolute; inset: 0; z-index: 40; pointer-events: none; overflow: hidden; }
 .wipe i { position: absolute; top: -20%; bottom: -20%; width: 70%; transform: skewX(-18deg) translateX(-160%); animation: wipeGo 1.6s cubic-bezier(.7, 0, .3, 1) forwards; }
 .wipe .w1 { background: var(--c0); }
-.wipe .w2 { background: var(--c1); animation-delay: .07s; width: 18%; }
+.wipe .w2 { background: var(--c1); animation-delay: .07s; width: 18%; animation-name: wipeGoThin; }
+/* the thin stripe travels in its own (narrow) widths, so it needs a longer run to clear the screen */
+@keyframes wipeGoThin { 0% { transform: skewX(-18deg) translateX(-160%); } 40%, 60% { transform: skewX(-18deg) translateX(220%); } 100% { transform: skewX(-18deg) translateX(900%); } }
 .wipe .w3 { background: var(--d0); animation-delay: .14s; }
 @keyframes wipeGo { 0% { transform: skewX(-18deg) translateX(-160%); } 40%, 60% { transform: skewX(-18deg) translateX(30%); } 100% { transform: skewX(-18deg) translateX(260%); } }
 .wipe-mid { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s3); animation: wipeMid 1.6s ease forwards; }
@@ -804,22 +806,10 @@ html.calm *, html.calm *::before { transition: none !important; animation: none 
 .team-chooser .ts-card { width: 100%; }
 
 /* the Players drawer: both rosters, abilities spelled out */
-.roster { list-style: none; margin: 0; padding: 0; flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--s2); }
-.roster-row { width: 100%; display: flex; gap: var(--s3); align-items: flex-start; text-align: left; padding: var(--s2); background: rgba(255, 255, 255, .04);
-  border: var(--px) solid var(--line); border-radius: var(--r1); }
-.roster-row:hover { border-color: rgba(255, 255, 255, .35); }
-.roster-row.on { border-color: #fff; background: rgba(255, 255, 255, .1); }
-.roster-row.off { opacity: .6; }
-.roster-main { display: flex; flex-direction: column; gap: var(--s1); min-width: 0; }
-.roster-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s1) var(--s2); }
-.roster-name b { font-family: var(--pixel); font-size: var(--t2); font-weight: 400; line-height: 1.5; }
-.roster-name small { color: var(--muted); }
 .roster-tag { font: normal 400 var(--t1) var(--pixel); padding: 2px var(--s1); border: var(--px) solid var(--line); border-radius: var(--r1); color: var(--muted); }
 .roster-tag.ball { color: var(--ink); background: var(--led); border-color: var(--led); }
 .roster-tag.up { color: var(--led); border-color: var(--led); }
 .roster-tag.fire { color: #ffb36b; border-color: var(--fire); }
-.roster-ab { line-height: 1.35; }
-.roster-ab b { display: block; font: 400 var(--t1) var(--pixel); color: #ffb000; margin-bottom: 2px; }
 /* hovering a cube: who he is */
 .player-tag { position: absolute; z-index: 25; top: 64px; left: 50%; transform: translateX(-50%); max-width: min(420px, 90vw); padding: var(--s2) var(--s3);
   display: flex; flex-direction: column; gap: 2px; pointer-events: none; font-size: var(--small); }
@@ -829,7 +819,10 @@ html.calm *, html.calm *::before { transition: none !important; animation: none 
 @media (hover: none) { .player-tag { display: none; } }
 /* a play card for a player with abilities */
 .card { position: relative; }
-.card-star { position: absolute; top: 1px; right: 3px; font-style: normal; color: #ffb000; font-size: var(--t2); text-shadow: 0 1px 0 #000; }
+.card-star { position: absolute; top: -6px; right: -6px; display: grid; place-items: center; width: 22px; height: 22px; font-style: normal; color: #1f1400; background: #ffb000;
+  border: var(--px) solid #ffe08a; border-radius: 50%; font-size: var(--t2); box-shadow: 0 2px 0 rgba(0, 0, 0, .5); cursor: pointer; z-index: 1; }
+.card:has(.card-star) { border-color: #ffb000; box-shadow: 0 0 0 1px #ffb000, 0 0 12px rgba(255, 176, 0, .35); }
+
 /* style guide (?view=styleguide) */
 .styleguide h2 { margin-top: var(--s6); font-size: var(--t5); color: var(--led); }
 .sg-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--s3); }
@@ -900,3 +893,51 @@ html.calm *, html.calm *::before { transition: none !important; animation: none 
   .chyron { display: none; }
   .prompt-corner { max-width: 45%; }
 }
+/* Players drawer: cards in a grid (the team select's look); a gold edge = special ability */
+.pc-scroll { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--s2); }
+.pc-scroll h3 { margin: var(--s2) 0 0; color: var(--led); }
+.pc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: var(--s2); }
+.pc-card { width: 100%; text-align: center; color: #fff; border: var(--px) solid transparent; }
+.pc-card.skilled { border-color: #ffb000; box-shadow: 0 0 0 1px #ffb000, 0 4px 14px rgba(0, 0, 0, .35); }
+.pc-card.on { outline: 2px solid #fff; outline-offset: 2px; }
+.pc-card.off { opacity: .6; }
+.pc-card .ts-card-skill { color: #ffd36b; }
+.pc-star { position: absolute; top: 1px; right: 5px; color: #ffb000; font-size: var(--t3); text-shadow: 0 1px 0 #000; }
+.pc-tags { display: flex; flex-wrap: wrap; gap: var(--s1); justify-content: center; padding: var(--s1); }
+.pc-head { display: flex; gap: var(--s3); align-items: center; }
+.pc-head .sprite { width: 64px; height: 64px; }
+.pc-head h2 { margin: 0; }
+/* phones: the drawer slides up from the bottom */
+@media (max-width: 760px) {
+  .team-drawer { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 78dvh; border-radius: var(--r2) var(--r2) 0 0; z-index: 35; padding-bottom: max(var(--s3), env(safe-area-inset-bottom)); }
+  .pc-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+}
+/* why: a hovered move's cost, a hovered block's modifiers */
+.why { margin: var(--s2) 0; padding: var(--s2) var(--s3); background: rgba(0, 0, 0, .35); border-left: 3px solid var(--led); font-size: var(--small); }
+.why > b { font: 400 var(--t2) var(--pixel); color: var(--led); }
+.why ul { list-style: none; margin: var(--s1) 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.why li { display: flex; justify-content: space-between; gap: var(--s3); }
+.why li em { font-style: normal; font-family: var(--pixel); font-size: var(--t2); color: var(--go); }
+.why li em.bad { color: var(--bad); }
+.why small { display: flex; flex-wrap: wrap; gap: var(--s3); color: var(--muted); }
+.why-help::before, .why-hurt::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #3ce0ff; margin-right: var(--s1); vertical-align: -1px; }
+.why-hurt::before { border-color: #ff7a1a; }
+.why small i { font-style: normal; }
+/* depth chart */
+.depth-card { max-width: 720px; }
+.depth-side { margin-top: var(--s3); }
+.depth-side.now h3 { color: var(--led); }
+.depth-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: var(--s2) var(--s3); align-items: center; padding: var(--s1) 0; border-bottom: 1px solid var(--line); }
+.depth-row .sprite { width: 40px; height: 40px; }
+.depth-name { display: flex; flex-direction: column; min-width: 0; }
+.depth-name b { font: 400 var(--t2) var(--pixel); line-height: 1.5; }
+.depth-name small { color: var(--muted); font-size: var(--tiny); }
+@media (max-width: 560px) { .depth-row { grid-template-columns: 40px minmax(0, 1fr); } .depth-row .chips { grid-column: 1 / -1; } }
+/* the cards panel folds down to the two face-up cards */
+.cards { position: relative; }
+.cards-min { position: absolute; top: var(--s2); right: var(--s2); padding: var(--s1) var(--s2); }
+.cards.min { width: auto; }
+.cards.min .decks { display: none; }
+.cards.min .cards-sum { display: inline; color: var(--muted); font-size: var(--small); }
+.cards.min .cards-sum em { display: none; }
+@media (max-width: 760px), (max-height: 520px) and (orientation: landscape) { .cards-min { display: none; } }

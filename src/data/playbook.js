@@ -34,20 +34,33 @@ function place(wanted, used) {
   return null;
 }
 
-export function buildOffense(set, roster, { line, dir, col }) {
+// how good a passer is on paper: his rating plus the passing abilities
+const PASSING = ['POCKET PASSER', 'ROUTE PASSER', 'SCREEN PASSER', 'QB READ'];
+const passer = (p) => p.skill + 1.5 * (p.abilities ?? []).filter((a) => PASSING.includes(a)).length;
+
+// chart = the team's depth chart for this side ({ [num]: role }): players go to the role they're charted at first
+export function buildOffense(set, roster, { line, dir, col }, chart = {}) {
   const { off, back } = losRows(line, dir);
   const bySkill = [...roster].sort((a, b) => a.skill - b.skill);
   const pool = [...bySkill];
-  const take = (pick) => { const i = pick(); return i >= 0 ? pool.splice(i, 1)[0] : pool.shift(); };
+  const free = (x) => !chart[x.num]; // nobody charted him: the auto picks may use him
+  const take = (role, pick) => {
+    let i = pool.findIndex((x) => chart[x.num] === role);
+    if (i < 0) i = pick(pool.map((x, k) => [x, k]).filter(([x]) => free(x)));
+    if (i < 0) i = pick(pool.map((x, k) => [x, k]));
+    return i >= 0 ? pool.splice(i, 1)[0] : pool.shift();
+  };
+  const lowest = (list) => list[0]?.[1] ?? -1, highest = (list) => list.at(-1)?.[1] ?? -1;
   const roles = set.spots.slice(0, roster.length);
-  // the hiker first (a solid 3/4), the passer next (the best), receivers (fast), then line and backs
+  // the hiker first (a solid 3/4), the passer next (the best passer), receivers (fast), then line and backs
   const order = ['C', 'Q', 'W', 'B', 'L'];
   const assigned = new Map();
   for (const role of order) for (const [i, slot] of roles.entries()) {
     if (slot[0] !== role) continue;
-    const p = role === 'C' ? take(() => pool.findIndex((x) => x.skill <= 4))
-      : role === 'Q' || role === 'W' ? take(() => pool.length - 1)
-        : take(() => 0);
+    const p = role === 'C' ? take('C', (list) => list.find(([x]) => x.skill <= 4)?.[1] ?? -1)
+      : role === 'Q' ? take('Q', (list) => list.reduce((b, e) => (!b || passer(e[0]) > passer(b[0]) ? e : b), null)?.[1] ?? -1)
+        : role === 'W' ? take('W', highest)
+          : take(role, lowest);
     assigned.set(i, p);
   }
   const used = new Set();
@@ -63,7 +76,7 @@ export function buildOffense(set, roster, { line, dir, col }) {
   return out;
 }
 
-export function buildDefense(set, roster, offense, { line, dir, col }) {
+export function buildDefense(set, roster, offense, { line, dir, col }, chart = {}) {
   const { off, def } = losRows(line, dir);
   const deeper = dir; // away from the ball, for the defense
   const offLos = offense.filter((p) => p.row === off).sort((a, b) => Math.abs(a.col - col) - Math.abs(b.col - col));
@@ -85,8 +98,23 @@ export function buildDefense(set, roster, offense, { line, dir, col }) {
   }
   // anyone left over goes a row back from the line
   while (spots.length < roster.length) { const q = place([col + spots.length - 3, def + deeper * 2], used); if (!q) break; spots.push(q); }
-  return bySkill.map((p, i) => (spots[i] ? { num: p.num, col: spots[i][0], row: spots[i][1] } : null)).filter(Boolean);
+  // the depth chart: charted line men take the line spots (they come first), charted backs the deep ones (last)
+  const rank = (p) => (chart[p.num] === 'L' ? 0 : chart[p.num] === 'B' ? 2 : 1);
+  const order = [...bySkill].sort((a, b) => rank(a) - rank(b) || a.skill - b.skill);
+  return order.map((p, i) => (spots[i] ? { num: p.num, col: spots[i][0], row: spots[i][1] } : null)).filter(Boolean);
 }
+
+// ---------- the depth chart: who plays where, per team on this device ----------
+// offense roles: C center (hikes), Q quarterback (takes the snap), W receiver, L line, B back. defense: L line, B back
+const DKEY = 'tb-depth';
+const readD = () => { try { return JSON.parse(localStorage.getItem(DKEY) || '{}'); } catch { return {}; } };
+export const depthFor = (teamId) => ({ offense: {}, defense: {}, ...readD()[teamId] });
+export function saveDepth(teamId, depth) { try { const all = readD(); all[teamId] = depth; localStorage.setItem(DKEY, JSON.stringify(all)); } catch { /* not saved */ } }
+export const hasDepth = (teamId, role) => Object.keys(depthFor(teamId)[role] ?? {}).length > 0;
+// the set you used last, per team and side (the depth chart lines up in it at the next down)
+const SKEY = 'tb-lastset';
+export const lastSetFor = (teamId, role) => { try { return JSON.parse(localStorage.getItem(SKEY) || '{}')[`${teamId}:${role}`] ?? null; } catch { return null; } };
+export function rememberSet(teamId, role, id) { try { const all = JSON.parse(localStorage.getItem(SKEY) || '{}'); all[`${teamId}:${role}`] = id; localStorage.setItem(SKEY, JSON.stringify(all)); } catch { /* not saved */ } }
 
 // ---------- your own: saved per team on this device ----------
 const KEY = 'tb-playbook';
