@@ -61,6 +61,15 @@ export function apply(st, e) {
   return { ...st, players, ball, log: [...st.log, e] };
 }
 
+// the touchdown replay: from where the scorer got the ball (snap, hand-off, catch, pickup) to the end zone
+export function scorerCut(play, pid) {
+  if (!play) return play;
+  let from = -1;
+  play.events.forEach((e, i) => { if ((e.kind === 'snap' || e.kind === 'handoff') && e.to === pid) from = i; else if ((e.kind === 'catch' || (e.kind === 'sport' && e.ok)) && e.pid === pid) from = i; });
+  if (from < 0) from = Math.max(0, play.events.length - 4);
+  return from > 0 ? { ...play, from } : play;
+}
+
 // how long each replayed moment holds (slow motion)
 const HOLD = { move: (e) => 260 + 230 * (e.path?.length ?? 1), push: 650, check: 1500, sport: 900, scatter: 1100, catch: 900, inflight: 1300, tackle: 1600, sack: 1700, knockdown: 900, fumble: 800, td: 2600, snap: 700 };
 
@@ -72,8 +81,12 @@ export function useReplay(s, play, onDone) {
     // no replay (or it was skipped): drop the last frame too, or the board stays frozen on it
     if (!play) { setSt(null); return undefined; }
     let cur = startState(s, play);
-    setSt(cur);
+    // play.from: start part-way in (the touchdown replay opens where the scorer got the ball): the earlier events are
+    // applied at once, off the log, so nothing animates from the snap
     let i = 0;
+    for (; i < (play.from ?? 0); i++) cur = apply(cur, play.events[i]);
+    cur = { ...cur, log: [] };
+    setSt(cur);
     const next = () => {
       if (i >= play.events.length) { timer.current = setTimeout(() => { setSt(null); onDone(); }, 900); return; }
       const e = play.events[i++];

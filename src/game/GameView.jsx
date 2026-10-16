@@ -35,7 +35,7 @@ import { useGameSounds } from './useGameSounds';
 import { useShot, calloutFor, delayFor, skipShot } from './shots';
 import { ScoreBug, Chyrons, StatCard, Wipe } from './Broadcast';
 import OpeningShow, { SHOW } from './OpeningShow';
-import { lastPlay, useReplay } from './replay';
+import { lastPlay, useReplay, scorerCut } from './replay';
 import CoinToss from './CoinToss';
 import { recordResult } from './records';
 import { loadSeason, reportResult } from './season';
@@ -129,7 +129,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
   useEffect(() => {
     if (!lastTd || lastTd.old || settings().calm) return;
     const i = s.log.indexOf(lastTd);
-    const play = lastPlay(game.state);
+    const play = scorerCut(lastPlay(game.state), lastTd.pid);
     const t = setTimeout(() => { if (play) setReplay(play); }, (delayFor(s.log, i) + 3.4 + 0.8) * 1000 / (isTurbo() ? 4 : 1));
     return () => clearTimeout(t);
   }, [lastTd?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -377,6 +377,19 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
     const near = []; for (let dc = -1; dc <= 1; dc++) for (let dr = -1; dr <= 1; dr++) if (dc || dr) near.push(sqKey(c + dc, r + dr));
     return threatReach.filter((t) => near.some((k) => t.sqs.has(k))).map((t) => t.pid);
   }, [threatReach, hover]);
+  // clicking / tapping a cube: the open question uses him if it can (a target, a player to place...), else his card
+  const usable = (pid) => {
+    if (!req || !board.onPlayer) return false;
+    const pl = P(pid);
+    switch (req.type) {
+      case 'act': return (mode === 'pass' && req.passes.some((x) => x.target === pid)) || req.tackles.includes(pid) || req.blocks.includes(pid) || req.handoffs.includes(pid) || !!board.reach?.[pid];
+      case 'formation': return pl?.side === ME;
+      case 'motion': case 'bonus': case 'adjustPartner': case 'onFire': return (req.options ?? []).some((o) => (o.pid ?? o) === pid);
+      case 'option': return (req.targets ?? []).includes(pid);
+      default: return true;
+    }
+  };
+  const pickPlayer = (pid) => { if (usable(pid)) board.onPlayer(pid); else setCardOf(pid); };
   // why: what a hovered move costs and why, or what goes into a hovered block / tackle; those players get rings
   const why = useMemo(() => {
     if (req?.type !== 'act') return null;
@@ -455,7 +468,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
     <InfoCtx.Provider value={{ hover: (pid) => setHover(pid ? { pid } : null), open: setCardOf }}>
     <div ref={rootRef} className={`game ${shot || intro || rs ? 'cine' : ''} ${intro ? 'intro' : ''} ${rs ? 'replaying' : ''}`}>
       <Stage className="game-stage">
-        <Board game={rs ? { state: rs } : game} view={rs ? 'follow' : view} setup={!rs && ['formation', 'call', 'motion'].includes(s.phase)} onFree={() => setView('free')} shot={shot} intro={intro} tiles={rs ? [] : board.tiles} rings={rs ? {} : rings} onTile={rs ? null : board.onTile} onHover={setHover} onHoverPlayer={(pid) => setHover(pid ? { pid } : null)} outlines={rs ? [] : board.outlines} onPlayer={rs ? null : board.onPlayer}
+        <Board game={rs ? { state: rs } : game} view={rs ? 'follow' : view} setup={!rs && ['formation', 'call', 'motion'].includes(s.phase)} onFree={() => setView('free')} shot={shot} intro={intro} tiles={rs ? [] : board.tiles} rings={rs ? {} : rings} onTile={rs ? null : board.onTile} onHover={setHover} onHoverPlayer={(pid) => setHover(pid ? { pid } : null)} outlines={rs ? [] : board.outlines} onPlayer={rs ? null : pickPlayer}
           edit={edit && req?.type === 'formation' ? { side: ME, spots: edit } : null}
           focusSq={spot != null && P(spot)?.col != null ? [P(spot).col, P(spot).row] : null} />
       </Stage>

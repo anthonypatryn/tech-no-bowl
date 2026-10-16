@@ -24,8 +24,8 @@ answers ──▶ │ Game: async down loop · ask(side, req) · validate  │ �
 - **The log is the source of truth for the screen.** Each entry carries data (who, from, to, path, dice, result).
   The 3D board walks cubes along logged paths, the sound hook plays cues, the shot director picks cinematics, and
   replays rebuild plays, all from the log.
-- **Pacing:** `pace(entry)` gives each entry screen time; the next `ask` waits for it. The simulator passes no pace and
-  runs flat out.
+- **Pacing:** `pace(entry)` gives each entry screen time; the next `ask` waits for it, and so does clearing the field
+  for the next down (`catchUp()`), so the end of a play is always seen. The simulator passes no pace and runs flat out.
 - **Determinism:** dice come from a seeded `mulberry32`. The same seed plus the same answers rebuild the same game,
   which powers resume, undo and an online host reloading mid-game.
 - **Modes** are flags (`skills`, `pro`, `fieldGoals`, `inferno`); `hasSkill(state, player, name)` gates abilities.

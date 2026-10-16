@@ -27,4 +27,5 @@ export function artRows(state, side) {
   return Object.fromEntries(Object.values(state.players).filter((p) => p.side === side).map((p) => [p.num, byNum[p.artNum ?? p.num] ?? 0]));
 }
 // the team's helmet + logo from the team guide (transparent webp)
-export const helmetUrl = (id) => (ART.helmets?.[id] ? artUrl(ART.helmets[id]) : null);
+// small = the 160px copy (helmets/sm/) for grids, schedules and standings
+export const helmetUrl = (id, small) => (ART.helmets?.[id] ? artUrl(small ? ART.helmets[id].replace('helmets/', 'helmets/sm/') : ART.helmets[id]) : null);

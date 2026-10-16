@@ -331,6 +331,10 @@ def do_helmets():
         im.thumbnail((640, 640), Image.LANCZOS)
         name = f"helmets/{k}.webp"
         im.save(os.path.join(OUT, name), 'WEBP', quality=88, method=6)
+        # a small copy for team grids, schedules and standings (full-size helmets in a 32-team grid cost a phone a lot
+        # of memory)
+        os.makedirs(os.path.join(OUT, 'helmets', 'sm'), exist_ok=True)
+        im.resize((160, round(im.height * 160 / im.width)), Image.LANCZOS).save(os.path.join(OUT, f"helmets/sm/{k}.webp"), 'WEBP', quality=85, method=6)
         out[k] = name
     print('helmets:', len(out))
     return out

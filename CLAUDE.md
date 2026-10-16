@@ -37,6 +37,10 @@ the owner pastes their "copy for Claude" output. The owner often asks for a plan
 - The 3D canvas rebuilds itself if the browser drops the WebGL context (Stage.jsx); in dev `window.__gl` is the
   renderer (`gl.info.memory`). A 2-minute fast-forward game showed no GPU leak (textures level off at 30).
 - Rules: a Glossary tab (30 terms) and the Adjustment rule.
+- Clicking / tapping a cube the open question can't use opens his card (`pickPlayer` in GameView). The touchdown's
+  auto replay opens where the scorer got the ball (`scorerCut` in replay.js, `play.from`).
+- Helmet thumbnails (`public/art/helmets/sm/`, `helmetUrl(id, true)`; made by extract_art.py) for grids, schedules,
+  standings and the score bug. New home-screen / app icons from the helmet (`?v=2` so phones re-fetch).
 
 ### Earlier
 - Dice colours: scatter / order rolls log `sides` (whose die is whose) as they're rolled; Dice.jsx uses that, never
@@ -101,7 +105,8 @@ the owner pastes their "copy for Claude" output. The owner often asks for a plan
 | `src/game/TeamPicker.jsx` | Head-to-head team select: helmets, ability players (`AbilityCard`), Random, `TeamGrid`, `LineupPicker` (alternates), rules mode (`MODES`, `MODE_INFO`) |
 | `src/game/GameView.jsx` | The game screen: board, score bug, cards, play log (rolls open `RollDetail`), dice toast, callouts, a prompt per request type, pause menu, sound chip, end screen + highlights. `me` prop / module `ME` = the side this screen coaches |
 | `src/game/useGame.js` | Builds the `Game` for a match (CPU think time, `BEATS` pacing, speed, fast-forward), resume / undo (`resumeMatch`, `canUndo`), online hosting |
-| `src/game/TeamDrawer.jsx` | In-game Players drawer (`playerSkills`), the hover `PlayerTag` |
+| `src/game/TeamDrawer.jsx` | In-game Players drawer (card grid), `PlayerCard` pop-up, `playerSkills`, the hover `PlayerTag` |
+| `src/game/why.js` | Move cost and contact-roll breakdowns with the players causing them (`moveWhy`, `contactWhy`) |
 | `src/game/StyleGuide.jsx` | `?view=styleguide`: every token and control, live |
 | `src/game/MomentReview.jsx` | `?view=review`: each cinematic on a staged board, run through the real engine; judge, next, copy for Claude. Add a moment = one `REVIEW` entry (bump `v` when reworked) |
 | `src/game/Lab.jsx` | `?view=moments`: Moment Lab, fire any cinematic freely |
@@ -111,7 +116,7 @@ the owner pastes their "copy for Claude" output. The owner often asks for a plan
 | `src/game/SeasonPage.jsx`, `season.js` | Season: schedule, standings, top-8 bracket (`tb-season`) |
 | `src/game/RulesDrawer.jsx`, `src/data/rulesText.js` | Tabbed, searchable rules (drawer in game, `?view=rules`); `HELP_FOR` maps prompts to sections |
 | `src/game/CoachTips.jsx` | Tutorial coach cards |
-| `src/data/playbook.js` | Preset formations, saved formations / plays, "same as last" |
+| `src/data/playbook.js` | Preset formations (follow the depth chart), saved formations / plays, "same as last", depth chart (`depthFor`) |
 | `src/game/Broadcast.jsx`, `OpeningShow.jsx`, `CoinToss.jsx` | Score bug, chyrons, stat cards, wipes; the opening show; the coin flip |
 | `src/game/shots.js` | Shot director: `useShot(log)` picks the cinematic (throw / hit / sack / td / onfire / skill / kick), callouts, skip |
 | `src/game/replay.js` | `lastPlay(state)` rebuilds a play from the log; `useReplay` plays it back |

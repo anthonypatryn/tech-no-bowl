@@ -17,7 +17,7 @@ export function ScoreBug({ s }) {
     const [c0, c1] = colors(s, side);
     return (
       <div className={`bug-team ${s.offense === side && s.phase !== 'setup' ? 'ball' : ''}`} style={{ '--c0': c0, '--c1': c1 }}>
-        {helmetUrl(s.teams[side].id) && <img src={helmetUrl(s.teams[side].id)} alt="" className={side ? 'flip' : ''} />}
+        {helmetUrl(s.teams[side].id) && <img src={helmetUrl(s.teams[side].id, true)} alt="" className={side ? 'flip' : ''} />}
         <span className="bug-abbr">{abbr(s.teams[side].name)}</span>
         <b className="bug-score">{s.score[side]}</b>
         <span className="bug-tos">{[0, 1].map((i) => <i key={i} className={i < s.timeouts[side] ? 'on' : ''} />)}</span>

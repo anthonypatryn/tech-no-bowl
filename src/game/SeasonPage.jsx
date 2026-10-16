@@ -11,7 +11,7 @@ import { loadResume, resumeMatch } from './useGame';
 
 const name = (id) => teamById(id)?.name ?? id;
 function Helmet({ id, size = 40, flip }) {
-  const u = helmetUrl(id);
+  const u = helmetUrl(id, size <= 60);
   return u ? <img className="season-helmet" src={u} alt="" style={{ height: size, transform: flip ? 'scaleX(-1)' : undefined }} /> : null;
 }
 

@@ -138,7 +138,7 @@ export function TeamGrid({ current, onPick, onClose }) {
             const [c0] = teamColors(t.id, 'home');
             return (
               <button key={t.id} className={`ts-grid-tile ${t.id === current ? 'on' : ''}`} style={{ '--c0': c0 }} onClick={() => onPick(t.id)}>
-                {helmetUrl(t.id) ? <img src={helmetUrl(t.id)} alt="" /> : <Sprite team={t.id} uni="home" />}
+                {helmetUrl(t.id) ? <img src={helmetUrl(t.id, true)} alt="" loading="lazy" decoding="async" /> : <Sprite team={t.id} uni="home" />}
                 <small>{t.name}</small>
               </button>
             );
