@@ -281,54 +281,71 @@ function GoalPosts() {
       <mesh position={[0, 0.55, 0]}><cylinderGeometry args={[0.06, 0.06, 1.1, 10]} /><meshStandardMaterial color={y} /></mesh>
       <mesh position={[0, 1.1, 0]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.05, 0.05, 1.9, 10]} /><meshStandardMaterial color={y} /></mesh>
       {[-0.95, 0.95].map((x) => <mesh key={x} position={[x, 2.1, 0]}><cylinderGeometry args={[0.045, 0.045, 2, 10]} /><meshStandardMaterial color={y} /></mesh>)}
+      {/* the kicking net behind the posts */}
+      <mesh position={[0, 2.1, d * 1.6]} raycast={() => null}><planeGeometry args={[5, 4.2, 10, 8]} /><meshBasicMaterial color="#d8dde6" wireframe transparent opacity={0.22} /></mesh>
     </group>
   ));
 }
 
-// ---------- a field goal: the ball end over end from the kick spot. Good: through the posts and on into the stands'
-// direction, landing and bouncing. No good: wide of an upright and gone, or (at random) off the post: DOINK.
+// ---------- a field goal: the ball end over end from the kick spot, one smooth flight under gravity. Good: over the
+// bar between the uprights into the net behind the posts. Wide: past an upright into the net. DOINK (at random on a
+// miss): off the upright, back onto the grass with a couple of hops. Never on into the stands.
 const POST_Z = ROWS / 2 + 0.35, POST_X = 0.95, BAR_Y = 1.1;
+const NET_BACK = 1.6, NET_H = 4.2, GRAV = 9;
 function kickPath(shot) {
   const a = new THREE.Vector3(...sq(...shot.from)).setY(0.15);
   const dz = shot.dir * POST_Z;
   const r = hash(`kick${shot.id}`);
   const doink = !shot.good && r < 0.45;
-  const sideX = shot.good ? (r - 0.5) * 0.9 : (r < 0.72 ? 1 : -1) * (doink ? POST_X : POST_X + 0.7 + r * 0.8);
-  const atPost = new THREE.Vector3(sideX, doink ? BAR_Y + 0.6 + r : 2.6, dz);
-  return { a, atPost, doink, out: new THREE.Vector3(sideX * (doink ? 1 : 1.5), 0.12, dz + shot.dir * 7) };
+  const sideX = shot.good ? (r - 0.5) * 0.9 : (r < 0.72 ? 1 : -1) * (doink ? POST_X : POST_X + 0.55 + r * 0.6);
+  const cross = doink ? BAR_Y + 0.7 + r * 0.9 : shot.good ? BAR_Y + 1.2 + r * 0.8 : 2.2 + r; // height at the posts
+  const T = 1.4; // seconds from the boot to the posts
+  const v = new THREE.Vector3((sideX - a.x) / T, (cross - a.y + 0.5 * GRAV * T * T) / T, (dz - a.z) / T);
+  return { a, v, T, doink, netZ: dz + shot.dir * NET_BACK, dir: shot.dir };
 }
 function KickBall({ shot }) {
   const g = useRef();
   const tum = useRef();
   const path = useMemo(() => kickPath(shot), [shot]);
-  const bounceBack = useMemo(() => path.atPost.clone().add(new THREE.Vector3(Math.sign(path.atPost.x || 1) * 1.6, -path.atPost.y + 0.12, -shot.dir * 2.6)), [path, shot]);
-  useFrame(() => {
+  // the after-flight (net or bounce) is stepped frame by frame from where the arc left off
+  const st = useRef(null);
+  useFrame((_, dt) => {
     if (!g.current) return;
     const t = (performance.now() - shot.t0) / 1000 - 0.5; // the kick: half a second in
     g.current.visible = t >= 0;
     if (t < 0) return;
-    const { a, atPost, out, doink } = path;
-    const T1 = 1.5; // kick to the posts
+    const { a, v, T, doink, netZ, dir } = path;
     const pos = g.current.position;
     let spinning = true;
-    if (t < T1) {
-      const u = t / T1;
-      pos.lerpVectors(a, atPost, u);
-      pos.y = a.y + (atPost.y - a.y) * u + Math.sin(u * Math.PI * 0.82) * 3.4;
-    } else if (!doink) {
-      // through (or past) and on, coming down and skipping along the ground
-      const u = Math.min(1, (t - T1) / 1.1);
-      pos.lerpVectors(atPost, out, u);
-      pos.y = atPost.y * (1 - u) * (1 - u) + Math.abs(Math.sin(u * Math.PI * 2.2)) * 0.5 * (1 - u) + 0.12;
-      spinning = u < 0.9;
-    } else {
-      // DOINK: off the upright, back towards the field, a couple of bounces
-      const u = Math.min(1, (t - T1) / 1.2);
-      pos.lerpVectors(atPost, bounceBack, u);
-      pos.y = Math.max(0.12, atPost.y * (1 - u) + Math.abs(Math.sin(u * Math.PI * 2.5)) * 0.7 * (1 - u));
-      spinning = u < 0.85;
+    const flying = !st.current;
+    if (flying) {
+      // the arc: straight lines across the ground, gravity up and down
+      pos.set(a.x + v.x * t, a.y + v.y * t - 0.5 * GRAV * t * t, a.z + v.z * t);
+      if (doink && t >= T) {
+        // off the upright: bounce back towards the field, losing most of its pace
+        st.current = { mode: 'bounce', p: pos.clone(), vel: new THREE.Vector3(-v.x * 0.25 + Math.sign(pos.x || 1) * 1.1, Math.min(1.5, v.y - GRAV * t) * -0.35 + 1, -v.z * 0.32) };
+      } else if (!doink && (pos.z - netZ) * dir >= 0) {
+        // into the net behind the posts: it stops dead and drops down the net
+        st.current = { mode: 'net', p: new THREE.Vector3(pos.x, Math.min(pos.y, NET_H), netZ), vy: 0 };
+      } else if (pos.y < 0.12) {
+        st.current = { mode: 'bounce', p: pos.clone().setY(0.12), vel: new THREE.Vector3(v.x * 0.5, 2, v.z * 0.4) };
+      }
     }
-    if (tum.current && spinning) tum.current.rotation.x += doink && t > T1 ? -0.5 : 0.35;
+    if (!flying) {
+      const S = st.current;
+      if (S.mode === 'net') {
+        S.vy -= 6 * dt;
+        S.p.y = Math.max(0.15, S.p.y + S.vy * dt);
+        spinning = S.p.y > 0.3;
+      } else {
+        S.vel.y -= GRAV * dt;
+        S.p.addScaledVector(S.vel, dt);
+        if (S.p.y < 0.12) { S.p.y = 0.12; S.vel.y = Math.abs(S.vel.y) * 0.45; S.vel.x *= 0.7; S.vel.z *= 0.7; if (S.vel.y < 0.4) S.vel.set(0, 0, 0); }
+        spinning = S.vel.lengthSq() > 0.05;
+      }
+      pos.copy(S.p);
+    }
+    if (tum.current && spinning) tum.current.rotation.x += doink && !flying ? -0.4 : 0.35;
     shot.ball = pos;
   });
   return (
@@ -341,7 +358,7 @@ function KickBall({ shot }) {
 }
 
 // ---------- the ball ----------
-function Ball({ ball, positions, slowmo, snapFrom }) {
+function Ball({ ball, positions, slowmo, snapFrom, fire = false }) {
   const g = useRef();
   const from = useRef(null), to = useRef(new THREE.Vector3()), t = useRef(1), arc = useRef(0), long = useRef(false);
   const spin = useRef(), roll = useRef();
@@ -396,6 +413,8 @@ function Ball({ ball, positions, slowmo, snapFrom }) {
   return (
     <>
       <group ref={g}>
+        {/* a FIRE BOMB flies on fire */}
+        {fire && <group position={[0, -0.25, 0]} scale={0.45}><Flames n={18} size={0.9} height={0.9} /></group>}
         <group ref={spin}>
           <group ref={roll}>
             <mesh castShadow scale={[0.17, 0.17, 0.27]}>
@@ -817,7 +836,8 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
           jump={fx.jump[p.pid]} orbit={fx.orbit[p.pid]} pile={fx.pile[p.pid]}
           skilled={!!s.skills && (p.abilities?.some((a) => s.inferno || !a.startsWith('INFERNO')) || !!p.fuego)} solid={!pickable || pickable.has(p.pid)} tag={tags[p.pid] ?? null} />
       ))}
-      <Ball key={epoch} ball={s.ball} positions={positions} slowmo={!settings().calm} snapFrom={s.log.findLast?.((e) => e.kind === 'snap')?.from} />
+      <Ball key={epoch} ball={s.ball} positions={positions} slowmo={!settings().calm} snapFrom={s.log.findLast?.((e) => e.kind === 'snap')?.from}
+        fire={s.log.slice(-4).some((e) => e.kind === 'firebomb' || (e.kind === 'check' && e.action === 'pass' && e.bomb))} />
       {shot?.kind === 'hit' && <Burst key={shot.id} at={sq(...shot.at, 0)} colors={['#c9c9c9', '#7a5a3a', '#3f6b2a', '#ffffff']} count={shot.big ? 46 : 26} />}
       {shot?.kind === 'sack' && <Dust key={shot.id} at={sq(...shot.at, 0)} />}
       {(s.mode === 'pro' || s.mode === 'allpro') && <GoalPosts />}

@@ -19,6 +19,10 @@ messages, the bug list (`?view=bugs`, PIN), the Art Review Board (`?view=art`) a
 the owner pastes their "copy for Claude" output. The owner often asks for a plan first: give one, then build it.
 
 ### Latest round (all pushed, live)
+- Moment review fixes: field goals are one smooth gravity arc (`kickPath` / `KickBall`) into a net behind the posts
+  (or off the upright with hops), never into the stands. The ball is no longer cleared at the end of a play (endPlay),
+  only at the next down, so a touchdown catch's flight is drawn; a FIRE BOMB ball flies with flames. Sack moment text
+  says the rule (2 bench cards, sack only with fewer than 2).
 - **Replays are exact now** (BUG-7 / BUG-8): the engine records every player's square and the ball after each log
   entry of a play (`game.frames`, screen games only, not in the state); `lastPlay(s, frames)` plays those back
   (`play.exact`). The old event-guessing rebuild is only the fallback for an online friend's screen. A walk logged after

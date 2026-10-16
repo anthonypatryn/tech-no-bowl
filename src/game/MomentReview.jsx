@@ -114,7 +114,7 @@ export const REVIEW = [
       script(g, { [o.pid]: [{ kind: 'block', pid: d.pid }] }, { followUp: () => false });
       return { g, focus: [6, 9], run: () => act(g, o.pid) };
     } },
-  { key: 'sack', v: 2, title: 'Sack', expect: 'A defender steps in next to the passer behind the line with his bench too thin: low slow push-in, ring of dust, boom, and the defense piles on.',
+  { key: 'sack', v: 3, title: 'Sack', expect: 'Rulebook: a defender stepping next to the ball carrier behind the line costs the offense 2 random bench cards; only if they have fewer than 2 left is it a SACK. Here the bench is down to 1 card, so: low slow push-in, ring of dust, boom, and the defense piles on.',
     build(on) {
       const { g, s, qb, put, clear, D } = scene({}, on);
       s.cards[0].bench = [qb.num];
@@ -190,7 +190,7 @@ export const REVIEW = [
       script(g, { [qb.pid]: [{ kind: 'fuego', skill: 'JUKE' }, { kind: 'juke', pid: d.pid }] }, { followUp: () => false });
       return { g, focus: [qb.col, qb.row - 1], run: () => act(g, qb.pid) };
     } },
-  { key: 'firebomb', v: 2, title: 'Fire bomb', expect: 'INFERNO: a throw past normal range (3 tokens): FIRE BOMB! callout, then the ball really flies, long-throw camera, and the receiver leaps for it.',
+  { key: 'firebomb', v: 3, title: 'Fire bomb', expect: 'INFERNO: a throw past normal range (3 tokens): FIRE BOMB! callout, then the ball flies like a long throw but on fire, long-throw camera, the receiver leaps for it (a touchdown catch here).',
     build(on) {
       const { g, s, qb, put, clear, O } = scene({ mode: 'inferno', dice: [6, 5] }, on);
       s.fire[0] = 3;
@@ -207,13 +207,13 @@ export const REVIEW = [
       script(g, { [d.pid]: [{ kind: 'tackle', pid: qb.pid }], [d2.pid]: [{ kind: 'dirty', pid: qb.pid }] }, { bonus: (r) => (r.kind === 'dogpile' && r.options.includes(d2.pid) ? d2.pid : null) });
       return { g, focus: [qb.col, qb.row], run: () => act(g, d.pid) };
     } },
-  { key: 'fg', v: 2, title: 'Field goal: good', expect: 'PRO: low behind the kicker, the ball end over end through the posts and on past them, coming down and skipping away. Confetti, FIELD GOAL!',
+  { key: 'fg', v: 3, title: 'Field goal: good', expect: 'PRO: low behind the kicker, the ball end over end in one smooth arc over the bar between the uprights, into the net behind the posts, and down the net. Confetti, FIELD GOAL!',
     build(on) {
       const { g } = scene({ mode: 'pro', dice: [6, 5, 4], line: 10 }, on);
       script(g, {});
       return { g, focus: [6, 6], run: () => g.maybeKick() };
     } },
-  { key: 'fgmiss', v: 2, title: 'Field goal: no good', expect: 'PRO: at random, the kick either sails wide of an upright and keeps going, or DOINKS off the post and bounces back. NO GOOD!',
+  { key: 'fgmiss', v: 3, title: 'Field goal: no good', expect: 'PRO: at random, the kick either sails wide of an upright into the net, or DOINKS off the upright and bounces back onto the grass with a couple of hops. One smooth flight, nothing crazy near the posts. NO GOOD!',
     build(on) {
       const { g } = scene({ mode: 'pro', dice: [1, 2, 2], line: 10 }, on);
       script(g, {});

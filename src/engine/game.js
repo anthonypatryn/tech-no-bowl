@@ -1339,7 +1339,8 @@ export class Game {
     const info = e?.info ?? {};
     // the clock: a running play (no pass, nobody out of bounds) uses a second minute, but never a timeout cube
     if (!s.overtime && !play.passThrown && reason !== 'out' && play.cube === 'y' && s.pile[0] === 'y') s.pile.shift();
-    s.ball = { at: 'dead' };
+    // the ball stays where the play left it until the next down (playDown clears it once the screen has caught up):
+    // clearing it here made a touchdown catch vanish before its flight was ever drawn
     if (reason === 'td') {
       s.score[info.side] += 7;
       if (info.pid) this.stat(info.pid, 'tds');
