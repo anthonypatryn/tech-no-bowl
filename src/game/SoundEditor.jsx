@@ -90,7 +90,6 @@ export default function SoundEditor() {
             <div className="btns">
               <Button kind="primary" disabled={busy || !pin} onClick={save}>Save for everyone</Button>
               <Button onClick={copy}>Copy for Claude</Button>
-              <a className="btn" href="/">Back to the game</a>
             </div>
             {msg && <p className="warn">{msg}</p>}
             <p className="hint">{changed.length ? `${changed.length} slot(s) differ from the built-in sounds.` : 'Everything matches the built-in sounds.'} New audio files: send them over and they get added to the list.</p>

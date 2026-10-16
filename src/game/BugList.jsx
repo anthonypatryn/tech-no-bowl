@@ -68,7 +68,7 @@ export default function BugList() {
           <label className="field"><span>PIN</span><input className="pin-input" type="text" inputMode="numeric" name="tb-bug-pin-entry" autoComplete="off" data-lpignore="true" data-1p-ignore spellCheck={false} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} autoFocus /></label>
           {LOCAL && <p className="note">This is the local test copy on this computer: it has its own bug list (PIN 1234). Your real bug reports are on the live site.</p>}
           {err && <p className="err">{err}</p>}
-          <div className="btns"><a className="btn" href="/">Back to the game</a><button className="btn primary" type="submit">Open</button></div>
+          <div className="btns"><button className="btn primary" type="submit">Open</button></div>
         </form>
       </div>
     );
@@ -100,7 +100,7 @@ export default function BugList() {
     <div className="page buglist">
       <header className="bug-head">
         <h1 className="page-title">Bug reports · {open.length} open</h1>
-        <div className="btns"><button className="btn" onClick={() => load()}>Refresh</button><a className="btn" href="/">Game</a></div>
+        <div className="btns"><button className="btn" onClick={() => load()}>Refresh</button></div>
       </header>
       <main>
         <div className="btns bug-bulk">

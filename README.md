@@ -14,7 +14,7 @@ the rulebook.
 - **Online:** host a room, send the 5-letter code (or the invite link), play a friend. Others can watch. Games are
   saved: the host resumes and the friend rejoins later. Quick chat and reactions.
 - **Season** with standings and an 8-team playoff to the Techno Bowl. **Tutorial**, searchable **rules**, a
-  **playbook** of preset formations, odds on every action, undo, a coach's suggestion, quick play, fast-forward.
+  **playbook** of preset formations, odds on every action, undo, a coach's suggestion, quick play, fast-forward, and a **Players** drawer (key P) with every ability on both teams.
 - **TV presentation:** a stadium, opening show, score bug, chyrons, a LIVE commentary line, cinematic cameras for big
   throws, hits, sacks, touchdowns and specials, pile-ups, instant replays and half-time highlights, crowd, whistles
   and real dice sounds, NFL TV themes, and a jukebox of 24 ESPN Primetime tracks with a full player.
@@ -35,6 +35,7 @@ the rulebook.
 | `?view=moments` | Moment Lab: fire any cinematic |
 | `?view=sounds` | Sound editor |
 | `?view=bugs` | Bug list (PIN) |
+| `?view=styleguide` | Style guide: every token and control |
 
 ## Run it locally
 ```
@@ -61,5 +62,6 @@ verdicts, sound editor saves, the online relay). Environment variables: see `CLA
 - `docs/ARCHITECTURE.md`: how the engine, screen, 3D board, sound and online play fit together
 - `docs/CONTENT.md`: art, sound and music pipelines, and the review and bug workflows
 - `docs/PLAN.md`: the build plan and what each batch delivered
+- `docs/STYLEGUIDE.md`: design tokens, components, navigation, the UI audit
 - `docs/rules-and-rosters.md`: the rules and all 32 rosters, transcribed
 - `CLAUDE.md`: working notes for Claude (code map, rulings, hard-won rules, checklist)

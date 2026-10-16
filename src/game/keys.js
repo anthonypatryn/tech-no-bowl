@@ -7,6 +7,7 @@ export const KEY_ACTIONS = [
   ['throw', 'Throw mode on / off', 't'],
   ['camera', 'Next camera', 'c'],
   ['rules', 'Quick rules', 'r'],
+  ['team', 'Players and their abilities', 'p'],
   ['bug', 'Report a bug', 'b'],
   ['fullscreen', 'Full screen', 'f'],
   ['back', 'Back / cancel / leave', 'Escape'],

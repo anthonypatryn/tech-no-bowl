@@ -62,8 +62,8 @@ export default function RulesDrawer({ onClose, focus }) {
     return () => window.removeEventListener('keydown', key, true);
   }, [onClose]);
   return (
-    <aside className="rules-drawer glass" role="dialog" aria-label="Rules">
-      <header><h2>Rules</h2><button className="btn small" onClick={onClose}>Close</button></header>
+    <aside className="drawer rules-drawer glass" role="dialog" aria-label="Rules">
+      <header className="drawer-head"><h2>Rules</h2><button className="btn small" onClick={onClose}>Close</button></header>
       <RulesBrowser focus={focus} />
     </aside>
   );

@@ -7,7 +7,8 @@ and cinematics) and **Escape Order 66** (sound editor, kits), both siblings on t
 - Repo: github.com/anthonypatryn/tech-no-bowl (private). Vercel deploys on push to `main`. Site: tech-no-bowl.vercel.app
   (open, no password; the link is private to the owner and friends, so the real NFL TV themes are fine to ship).
 - `README.md`: what it is and how to run it. `docs/ARCHITECTURE.md`: how the pieces fit. `docs/CONTENT.md`: art, sound,
-  music and the review / bug workflows. `docs/PLAN.md`: batches and history. `docs/rules-and-rosters.md`: the
+  music and the review / bug workflows. `docs/PLAN.md`: batches and history. `docs/STYLEGUIDE.md`: tokens, components, nav rules (live at
+  `?view=styleguide`). `docs/rules-and-rosters.md`: the
   transcribed rules and all 32 rosters.
 
 ## Status
@@ -18,6 +19,16 @@ messages, the bug list (`?view=bugs`, PIN), the Art Review Board (`?view=art`) a
 the owner pastes their "copy for Claude" output. The owner often asks for a plan first: give one, then build it.
 
 ### Latest round (all pushed, live)
+- UI audit (see `docs/STYLEGUIDE.md`): every font size / space / corner / repeated colour is now a token in index.css;
+  pixel text follows Settings → Text size. One central nav (`TopBar`: Play · Season · Online · Rules + More with the
+  owner tools; Menu under 860px). Style guide page `?view=styleguide`. Game toolbar is one row under 1100px; Report a
+  bug and full screen moved to the pause menu; prompt corner buttons float; score bug no longer squeezed.
+- **Players drawer** in the game (`TeamDrawer.jsx`, key P, "Players" button): both rosters, ability players first,
+  every ability spelled out, status (ball, up now, down, on fire, en fuego); tap one to ring him and aim the camera.
+  Hovering a cube shows a tag with his abilities; play cards of ability players get a ✦.
+- Not yet checked by the owner: the new nav and toolbar on iPad, the Players drawer in a real game.
+
+### Previous round
 - Fumble-scatter crash fixed (touch "tap again" tile kept no data; `same()` now never matches a missing square).
 - Cube numbers read up the screen from the camera's own up vector (any view); overhead leans slightly.
 - Timeouts by the rulebook: a Timeout button on every dead-ball prompt, sent as an answer (`{ timeout: true }`).
@@ -34,7 +45,9 @@ the owner pastes their "copy for Claude" output. The owner often asks for a plan
 - Push in batches the owner can play-test. Say plainly what's verified and what isn't (e.g. "I can't hear audio here").
 - **Rulebook as written, no house rules.** Disputes: check the rulebook (PDF in the project root), cite the page.
 - Branded controls only: never `confirm` / `alert` / `<select>` / a raw checkbox. Use `src/game/ui.jsx` (`useConfirm`,
-  `Toggle`, `Chips`, `Kbd`, `Panel`, `Row`, `Button`).
+  `Toggle`, `Chips`, `Slider`, `Kbd`, `Panel`, `Row`, `Button`).
+- **Tokens only** in CSS: `--t1..--t6` pixel sizes, `--small` / `--tiny`, `--s1..--s6`, `--r1` / `--r2`, colour tokens.
+  No one-off px for type, space or corners (see `docs/STYLEGUIDE.md`).
 - 8-bit everywhere: Press Start 2P (`--pixel`) for titles / buttons / labels, Pixelify Sans (`--body`) for text.
   Spacing tokens `--s1`..`--s6`, the pixel `--px`. Dark see-through glass panels, keyboard labels on buttons.
 - Local play is vs the computer; people play each other online. Play clocks are off by default offline.
@@ -44,11 +57,13 @@ the owner pastes their "copy for Claude" output. The owner often asks for a plan
 ## Code map
 | Path | What |
 |---|---|
-| `src/main.jsx`, `src/App.jsx` | Entry; no router: `?view=` home / teams / game / tutorial / season / online / rules / settings / art / review / moments / sounds / bugs. Top bar with the ♪ player and full screen |
+| `src/main.jsx`, `src/App.jsx` | Entry; no router: `?view=` home / teams / game / tutorial / season / online / rules / settings / art / review / moments / sounds / bugs / styleguide. `TopBar` = the one nav (main links + More menu), ♪ player, full screen |
 | `src/game/Home.jsx` | Title screen over a 3D fly-around (`formation.js` lines the cubes up), menu cards, Resume |
 | `src/game/TeamPicker.jsx` | Head-to-head team select: helmets, ability players (`AbilityCard`), Random, `TeamGrid`, `LineupPicker` (alternates), rules mode (`MODES`, `MODE_INFO`) |
 | `src/game/GameView.jsx` | The game screen: board, score bug, cards, play log (rolls open `RollDetail`), dice toast, callouts, a prompt per request type, pause menu, sound chip, end screen + highlights. `me` prop / module `ME` = the side this screen coaches |
 | `src/game/useGame.js` | Builds the `Game` for a match (CPU think time, `BEATS` pacing, speed, fast-forward), resume / undo (`resumeMatch`, `canUndo`), online hosting |
+| `src/game/TeamDrawer.jsx` | In-game Players drawer (`playerSkills`), the hover `PlayerTag` |
+| `src/game/StyleGuide.jsx` | `?view=styleguide`: every token and control, live |
 | `src/game/MomentReview.jsx` | `?view=review`: each cinematic on a staged board, run through the real engine; judge, next, copy for Claude. Add a moment = one `REVIEW` entry (bump `v` when reworked) |
 | `src/game/Lab.jsx` | `?view=moments`: Moment Lab, fire any cinematic freely |
 | `src/game/ArtReview.jsx` | `?view=art`: Teams, Helmets, Down marker, Field, Scoreboard, Moments, Checks, Review. `Verdict`s saved to `/api/reviews` (PIN) |
@@ -127,7 +142,7 @@ the owner pastes their "copy for Claude" output. The owner often asks for a plan
 ```
 npx oxlint src tools
 npx vite build
-npm test                                   # 59 rules tests
+npm test                                   # 63 rules tests
 npm run sim -- 300                         # must print errors: 0
 node tools/simulate.mjs 60 1 passive       # side 0 never acts: games must still end
 node tools/simulate.mjs 100 1 allpro:starter

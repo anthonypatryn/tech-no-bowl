@@ -23,6 +23,7 @@ import { contactMods, netModifier } from '../engine/rules.js';
 import { OFFENSE_SETS, DEFENSE_SETS, buildOffense, buildDefense, savedFor, saveFormation, applySaved, deleteSaved, savePlay, rememberLast, rememberCall, lastFor } from '../data/playbook';
 import { autoDefense, autoOffense } from '../engine/formations.js';
 import RulesDrawer from './RulesDrawer.jsx';
+import TeamDrawer, { playerSkills, PlayerTag } from './TeamDrawer.jsx';
 import BugReport from './BugReport.jsx';
 import CoachTips from './CoachTips';
 import { HELP_FOR } from '../data/rulesText';
@@ -132,6 +133,8 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
   const [motion, setMotion] = useState(null);    // { pid, to } waiting for discards
   const [discard, setDiscard] = useState([]);
   const [rules, setRules] = useState(false);
+  const [team, setTeam] = useState(false);       // the Players drawer
+  const [spot, setSpot] = useState(null);        // a player picked in it: ringed on the field
   const [bug, setBug] = useState(false);
   const [tips, setTips] = useState(!!match.tutorial);
   const [paused, setPaused] = useState(false);
@@ -321,6 +324,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
     }
     if (suggest?.to) tiles.push({ sq: suggest.to, color: '#ffd700' });
     if (suggest?.pid) rings[suggest.pid] = '#ffd700';
+    if (spot != null) rings[spot] = '#ffffff';
     // a passer who can still throw: outlines for his full range and the +1 short zone
     let outlines = [];
     if (req?.type === 'act' && req.passes.length && mode !== 'pass') {
@@ -336,7 +340,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
       if (tap) { const real = tiles.find((t) => t.sq[0] === tap[0] && t.sq[1] === tap[1]); tiles.push({ ...real, sq: tap, color: '#ffd700' }); }
     }
     return { tiles, rings, onTile, onPlayer, outlines, reach };
-  }, [req, s.active, edit, sel, mode, motion, suggest, prefsNow.cb, tap]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [req, s.active, edit, sel, mode, motion, suggest, prefsNow.cb, tap, spot]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---------- danger preview: hovering a square with the ball, who could reach him there and still tackle ----------
   const threatReach = useMemo(() => {
@@ -388,6 +392,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
       if (isKey(e, 'camera')) nextView();
       else if (isKey(e, 'throw') && req?.type === 'act' && req.passes.length) setMode((m) => (m === 'pass' ? 'move' : 'pass'));
       else if (isKey(e, 'rules')) setRules((x) => !x);
+      else if (isKey(e, 'team')) { setTeam((x) => !x); setSpot(null); }
       else if (isKey(e, 'bug')) setBug(true);
       else if (isKey(e, 'fullscreen')) toggleFullscreen();
       else if (isKey(e, 'turbo')) toggleTurbo();
@@ -404,7 +409,8 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
     <div className={`game ${shot || intro || rs ? 'cine' : ''} ${intro ? 'intro' : ''} ${rs ? 'replaying' : ''}`}>
       <Stage className="game-stage">
         <Board game={rs ? { state: rs } : game} view={view} setup={!rs && ['formation', 'call', 'motion'].includes(s.phase)} onFree={() => setView('free')} shot={shot} intro={intro} tiles={rs ? [] : board.tiles} rings={rs ? {} : rings} onTile={rs ? null : board.onTile} onHover={setHover} onHoverPlayer={(pid) => setHover(pid ? { pid } : null)} outlines={rs ? [] : board.outlines} onPlayer={rs ? null : board.onPlayer}
-          edit={edit && req?.type === 'formation' ? { side: ME, spots: edit } : null} />
+          edit={edit && req?.type === 'formation' ? { side: ME, spots: edit } : null}
+          focusSq={spot != null && P(spot)?.col != null ? [P(spot).col, P(spot).row] : null} />
       </Stage>
       <ScoreBug s={s} />
       <Chyrons s={s} />
@@ -415,20 +421,26 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
       <CoachTips s={s} enabled={tips && !intro} fresh={!match.skipIntro} onOff={() => setTips(false)} />
       <LogFeed s={s} canUndo={undoable} onUndo={undo} online={online} onOpen={setDetail} />
       <Moment s={s} />
+      {hover?.pid != null && !shot && <PlayerTag s={s} p={P(hover.pid)} />}
       {shot && !intro && <button className="btn small skip-shot" onClick={skipShot}>Skip ▸ <Kbd a="skip" /></button>}
       {detail && <RollDetail e={detail} onClose={() => setDetail(null)} />}
       <div className="game-bottom">
         <Cards s={s} rows={myRows} opp={oppName} />
         <div className={`prompt glass ${minPrompt ? 'min' : ''}`}>
           <button className="btn small prompt-min" onClick={() => setMinPrompt((x) => !x)} aria-label="Fold the prompt">{minPrompt ? '▴' : '▾'}</button>
-          {req && ['act', 'formation', 'call'].includes(req.type) && <button className="btn small coach-q" onClick={askCoach} title="What would the coach do?">Suggest</button>}
-          {suggest && <p className="suggest">Coach: {describe(suggest, P)}</p>}
-          {req && ['formation', 'call', 'motion', 'kick', 'onFire'].includes(req.type) && !s.overtime && s.pile.length >= 1 && (
-            <button className="btn small timeout-btn" disabled={!s.timeouts[ME]} onClick={() => answer({ timeout: true })} title="Stop the clock: adds one more play to the half (rulebook p.13)">
-              ⏱ Timeout ({s.timeouts[ME]} left)
-            </button>
+          {/* the corner tools float top-right, so the question wraps round them instead of reserving room */}
+          {req && (
+            <div className="prompt-corner">
+              {['formation', 'call', 'motion', 'kick', 'onFire'].includes(req.type) && !s.overtime && s.pile.length >= 1 && (
+                <button className="btn small timeout-btn" disabled={!s.timeouts[ME]} onClick={() => answer({ timeout: true })} title="Stop the clock: adds one more play to the half (rulebook p.13)">
+                  ⏱ Timeout ({s.timeouts[ME]} left)
+                </button>
+              )}
+              {['act', 'formation', 'call'].includes(req.type) && <button className="btn small" onClick={askCoach} title="What would the coach do?">Suggest</button>}
+              {HELP_FOR[req.type] && <button className="btn small" title="What's this rule?" onClick={() => setRules(HELP_FOR[req.type])}>?</button>}
+            </div>
           )}
-          {req && HELP_FOR[req.type] && <button className="btn small help-q" title="What's this rule?" onClick={() => setRules(HELP_FOR[req.type])}>?</button>}
+          {suggest && <p className="suggest">Coach: {describe(suggest, P)}</p>}
           {game.crashed ? <p className="warn">Something broke: {game.crashed.split('\n')[0]}</p>
             : req ? <>{left != null && <span className={`play-clock led ${left <= 10 ? 'low' : ''}`}>0:{String(left).padStart(2, '0')}</span>}<Prompt {...{ game, req, answer, s, P, mode, setMode, edit, setEdit, sel, stack, setStack, motion, setMotion, discard, setDiscard, primary, hover, rows: myRows, askCoach, reach: board.reach, danger, tap }} /></>
               : <Waiting s={s} online={online} spectating={spectating} />}
@@ -439,12 +451,11 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
         <button className="btn small" onClick={() => setPaused(true)}>Menu <Kbd a="back" /></button>
         <span className="cam-chips"><Chips small value={view} onChange={setView} options={VIEWS.map(([k, l], i) => [k, i === 0 ? <>{l} <Kbd a="camera" /></> : l])} /></span>
         <button className="btn small cam-cycle" onClick={nextView}>Camera: {VIEWS.find(([k]) => k === view)[1]}</button>
+        <button className="btn small" onClick={() => { setTeam((x) => !x); setSpot(null); }}>Players <Kbd a="team" /></button>
         <button className="btn small" onClick={() => setRules((r) => !r)}>Rules <Kbd a="rules" /></button>
-        <button className="btn small" onClick={() => setBug(true)}>Report a bug <Kbd a="bug" /></button>
         <button className="btn small" disabled={!lastPlay(s) || !!rs} onClick={() => setReplay(lastPlay(s))}>Replay</button>
         <SoundChip />
         <MusicPlayer small />
-        <FullscreenButton />
         <button className={`btn small ${turbo ? 'on' : ''}`} onClick={toggleTurbo} title="Fast-forward: everything runs 4x">⏩ {turbo ? 'Fast' : 'Normal'} <Kbd a="turbo" /></button>
       </div>
       {rs && (
@@ -467,6 +478,8 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
               <button className="btn" onClick={() => setSettings({ muted: !settings().muted })}>Sound: {prefsNow.muted ? 'OFF (turn on)' : 'ON (turn off)'}</button>
               <Chips small value={prefsNow.speed} onChange={(speed) => setSettings({ speed })} options={[['slow', 'Slow'], ['normal', 'Normal'], ['fast', 'Fast']]} />
               <button className="btn" onClick={() => setSettings({ quick: !prefsNow.quick })}>Quick play: {prefsNow.quick ? 'on' : 'off'}</button>
+              <button className="btn" onClick={() => { setPaused(false); setBug(true); }}>Report a bug <Kbd a="bug" /></button>
+              <span className="pause-fs"><FullscreenButton /></span>
               <button className="btn danger" onClick={() => { setPaused(false); leave(); }}>Quit game</button>
             </div>
             <p className="hint">Your game is saved as you play: quit any time and pick it up from Home.</p>
@@ -474,6 +487,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
         </div>
       )}
       {rules && <RulesDrawer onClose={() => setRules(false)} focus={typeof rules === 'string' ? rules : null} />}
+      {team && <TeamDrawer s={s} me={ME} oppName={oppName} spot={spot} setSpot={setSpot} onClose={() => { setTeam(false); setSpot(null); }} />}
       {intro && <OpeningShow s={s} t0={intro.t0} onDone={() => endIntro.current()} />}
       {s.inferno && <FireHud s={s} opp={oppName} />}
       {online && <OnlineBar net={net} host={!!match.online} />}
@@ -842,7 +856,9 @@ function OnlineBar({ net, host }) {
 // ---------- cards ----------
 function CardFace({ num, rows, s, side = ME }) {
   const t = s.teams[side];
-  return (<><Sprite team={t.id} uni={t.uniform} row={rows?.[num] ?? 0} /><b className="led">{num}</b></>);
+  const p = s.skills ? Object.values(s.players).find((x) => x.side === side && x.num === num) : null;
+  const sk = p ? playerSkills(s, p) : [];
+  return (<><Sprite team={t.id} uni={t.uniform} row={rows?.[num] ?? 0} /><b className="led">{num}</b>{sk.length > 0 && <i className="card-star" title={sk.join(', ')}>✦</i>}</>);
 }
 function CardRow({ nums, rows, s, onPick }) {
   return (
@@ -1129,7 +1145,7 @@ function SoundChip() {
     setSt(audioState());
     playSound('whistle', { vol: 0.6 });
   };
-  const label = { on: '🔊 Sound', muted: '🔇 Muted: click to unmute', off: '🔈 Click to turn sound on' }[st];
+  const label = { on: '🔊', muted: '🔇 Muted: click to unmute', off: '🔈 Click to turn sound on' }[st];
   return <button className={`btn small sound-chip ${st}`} onClick={fix} title="Sound check">{label}</button>;
 }
 

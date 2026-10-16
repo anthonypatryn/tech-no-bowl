@@ -232,6 +232,8 @@ Owner's additions (do first):
 - Third round: the music player (progress, seek, volume slider), the online team select (ability players, lineups),
   motion walks its route.
 
+- UI audit round: design tokens everywhere, one central nav, style guide page, the in-game Players drawer.
+
 ### Next
 - Owner play-testing and more requests (the owner compacts the session, then sends the next list).
 - Ideas not started: a highlight reel across a season, achievements, an online spectator chat.

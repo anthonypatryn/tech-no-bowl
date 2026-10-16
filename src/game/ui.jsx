@@ -87,9 +87,9 @@ export const Kbd = ({ k, a }) => <kbd className="kh" aria-hidden="true">{a ? lab
 export function Panel({ as: As = 'section', className = '', children, ...rest }) {
   return <As className={`glass ${className}`} {...rest}>{children}</As>;
 }
-// Row: a label and its control, on the shared label | control grid
-export function Row({ label, children }) {
-  return <div className="opt"><span>{label}</span><div className="opt-ctl">{children}</div></div>;
+// Row: a label and its control, on the shared label | control grid. stack = several controls, one per line
+export function Row({ label, stack, children }) {
+  return <div className="opt"><span>{label}</span><div className={`opt-ctl ${stack ? 'stack' : ''}`}>{children}</div></div>;
 }
 // Button: kind = primary | danger | (plain); size = small | big; keyAction = a rebindable key to show on it
 export function Button({ kind, size, keyAction, className = '', children, ...rest }) {

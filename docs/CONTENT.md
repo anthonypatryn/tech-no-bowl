@@ -40,6 +40,6 @@ under `public/art/` and writes `src/data/art.json` and `teams.json` (don't hand-
 - **Moment Lab** (`?view=moments`): fire any cinematic freely.
 
 ## Bugs
-- **Report a bug** is in the top bar and the game's tools (key B): what happened, what you expected, optional photos.
+- **Report a bug** is in the top bar's More menu and the game's pause menu (key B): what happened, what you expected, optional photos.
   It attaches the game's state (seed, score, last log lines, device).
 - **Bug list** (`?view=bugs`, PIN): read, fix notes, reopen. Claude reads it with the PIN and marks fixes with a note.

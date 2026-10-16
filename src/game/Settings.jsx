@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Chips, Panel, Row, Toggle } from './ui';
+import { Button, Chips, Panel, Row, Slider, Toggle } from './ui';
 import { setSettings, useSettings } from './prefs';
 import { nudgeAudio, play as playSound } from './sound';
 import { DEFAULT_KEYS, KEY_ACTIONS, RESERVED, keyLabel, rebind } from './keys';
@@ -41,7 +41,7 @@ export default function Settings() {
         <Row label="Menu sounds">
           <Toggle checked={s.menuSounds !== false} onChange={(v) => setSettings({ menuSounds: v })}>8-bit blips on buttons and menus</Toggle>
         </Row>
-        <Row label="Music player">
+        <Row label="Music player" stack>
           <Toggle checked={s.musicMenus !== false} onChange={(v) => setSettings({ musicMenus: v })}>Menu music</Toggle>
           <Toggle checked={s.musicBreaks !== false} onChange={(v) => setSettings({ musicBreaks: v })}>At half time and the final whistle</Toggle>
           <Toggle checked={!!s.musicGame} onChange={(v) => setSettings({ musicGame: v })}>During games</Toggle>
@@ -49,7 +49,7 @@ export default function Settings() {
         </Row>
         {[['fx', 'Effects'], ['crowd', 'Crowd'], ['music', 'Music']].map(([k, label]) => (
           <Row key={k} label={label}>
-            <Chips small value={s.mix[k]} onChange={(v) => setSettings({ mix: { [k]: v } })} options={[[0, 'Off'], [0.25, '25%'], [0.5, '50%'], [0.75, '75%'], [1, '100%']]} />
+            <span className="vol-row"><Slider value={s.mix[k] ?? 0} onChange={(v) => setSettings({ mix: { [k]: Math.round(v * 20) / 20 } })} label={`${label} volume`} /><small>{s.mix[k] ? `${Math.round(s.mix[k] * 100)}%` : 'Off'}</small></span>
           </Row>
         ))}
       </Panel>
