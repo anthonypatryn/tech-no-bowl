@@ -38,6 +38,8 @@ export const MODES = {
   inferno: { pro: false, skills: true, fieldGoals: false, inferno: true },
 };
 const CONTACT = ['block', 'shove', 'juke', 'shake'];
+// the questions asked while the ball is dead: a coach may call a timeout from any of them
+const DEAD_BALL = ['formation', 'call', 'motion', 'kick', 'onFire'];
 export const HALF_CUBES = 6;
 const MAX_ACTIVATIONS = 400; // per down: a safety net, never reached in a real game
 
@@ -170,6 +172,13 @@ export class Game {
   async askValid(side, req, check, fallback) {
     for (let i = 0; i < 3; i++) {
       const v = await this.ask(side, i ? { ...req, error: this._lastErr } : req);
+      // a timeout can be called from any question asked while the ball is dead (rulebook p.13); then the same
+      // question comes back. It's an answer like any other, so it's checked, saved for resume / undo, and sent online.
+      if (v && v.timeout === true && DEAD_BALL.includes(req.type)) {
+        if (this.canTimeout(side)) this.callTimeout(side); else this._lastErr = 'no timeout available';
+        i--;
+        continue;
+      }
       const err = check(v);
       if (!err) return v;
       this._lastErr = err;
@@ -440,17 +449,27 @@ export class Game {
     this.log(`${this.name(p)} goes in motion.`, 'motion', { pid: p.pid, from, to: v.to, cost });
   }
 
+  // Timeouts (rulebook p.13): 2 per coach per game; only while the ball isn't in play and there's at least one time
+  // cube left in the half; a timeout adds a red cube to the half pile (one more play). None in overtime (p.14).
+  canTimeout(side) {
+    const s = this.s;
+    return !s.overtime && s.timeouts[side] > 0 && s.pile.length >= 1 && s.phase !== 'play';
+  }
+  callTimeout(side) {
+    const s = this.s;
+    s.timeouts[side]--;
+    s.pile.push('r');
+    this.log(`TIMEOUT, ${this.team(side).name} (${s.timeouts[side]} left).`, 'timeout', { side, left: s.timeouts[side] });
+  }
+  // a person calls theirs with the Timeout button (an answer to any dead-ball question: askValid); the computer is
+  // asked in the last minute of the half
   async timeouts() {
     const s = this.s;
-    if (s.pile.length !== 1) return; // the last minute: a timeout buys one more play
+    if (s.pile.length !== 1) return;
     for (const side of [s.offense, this.defense]) {
-      if (!s.timeouts[side]) continue;
+      if (!this.agents[side] || !this.canTimeout(side)) continue;
       const v = await this.askValid(side, { type: 'timeout', left: s.timeouts[side], score: s.score }, (x) => (typeof x === 'boolean' ? null : 'yes or no'), () => false);
-      if (v) {
-        s.timeouts[side]--;
-        s.pile.push('r');
-        this.log(`Timeout, ${this.team(side).name}.`, 'timeout', { side });
-      }
+      if (v) this.callTimeout(side);
     }
   }
 

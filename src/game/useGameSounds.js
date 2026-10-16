@@ -2,25 +2,11 @@
 // engine's log (each new entry may play something).
 import { useEffect, useRef } from 'react';
 import { audioContext, crowd, play, playTheme, preload, startCrowd, stopCrowd, stopTheme } from './sound';
+
+// the dice: the real recording (Long Shot's), a touch faster or slower each time
+const diceRoll = () => play('dice', { rate: 0.92 + Math.random() * 0.16 });
 import { settings } from './prefs';
 
-// a dice rattle: quick synthesized clicks (no recording for it)
-function rattle() {
-  const vol = settings().muted ? 0 : settings().mix?.fx ?? 1;
-  if (!vol) return;
-  try {
-    const ctx = audioContext();
-    const t0 = ctx.currentTime;
-    for (let i = 0; i < 6; i++) {
-      const t = t0 + i * (0.05 + Math.random() * 0.05);
-      const b = ctx.createBuffer(1, 600, ctx.sampleRate), d = b.getChannelData(0);
-      for (let k = 0; k < d.length; k++) d[k] = (Math.random() * 2 - 1) * Math.exp(-k / 90);
-      const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
-      s.buffer = b; f.type = 'bandpass'; f.frequency.value = 2200 + Math.random() * 1800; g.gain.value = 0.18 * vol * (1 - i / 7);
-      s.connect(f).connect(g).connect(ctx.destination); s.start(t);
-    }
-  } catch { /* no audio */ }
-}
 
 // low boom (a sack) and a sharp crack (a big hit): synthesized so the two sound different from the plain hits
 function thump(kind) {
@@ -57,29 +43,11 @@ function whoosh(kind = 'fire') {
   } catch { /* no audio */ }
 }
 
-// a coin flipping (a run of bright tinks as it turns over) and landing (a duller clink)
-function coin() {
-  const vol = settings().muted ? 0 : settings().mix?.fx ?? 1;
-  const ctx = vol && audioContext();
-  if (!ctx) return;
-  try {
-    const t0 = ctx.currentTime;
-    const tink = (t, f, v, d) => {
-      const o = ctx.createOscillator(), o2 = ctx.createOscillator(), g = ctx.createGain();
-      o.type = 'sine'; o2.type = 'sine'; o.frequency.value = f; o2.frequency.value = f * 2.76; // a coin's inharmonic ring
-      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v * vol, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
-      o.connect(g); o2.connect(g); g.connect(ctx.destination); o.start(t); o2.start(t); o.stop(t + d + 0.05); o2.stop(t + d + 0.05);
-    };
-    tink(t0, 2400, 0.25, 0.5); // the flick off the thumb
-    for (let i = 0; i < 7; i++) tink(t0 + 0.12 + i * 0.13, 3100 + (i % 2) * 380, 0.05, 0.08);
-    tink(t0 + 1.25, 1700, 0.3, 0.35); tink(t0 + 1.42, 1900, 0.12, 0.2); tink(t0 + 1.52, 1800, 0.05, 0.12); // the landing
-  } catch { /* no audio */ }
-}
 
 export function useGameSounds(game, { theme = true } = {}) {
   const seen = useRef(0);
   useEffect(() => {
-    preload(['crowd', 'whistle', 'whistleStart', 'whistleFinal', 'grunt', 'hit', 'step', 'theme']);
+    preload(['crowd', 'whistle', 'whistleStart', 'whistleFinal', 'grunt', 'hit', 'step', 'dice', 'coin', 'coinLand', 'card', 'fanfare']);
     startCrowd();
     if (theme) playTheme(26).then(() => crowd(0.45, 22, 0.5)); // duck the crowd under the theme
     return () => { stopTheme(0.6); stopCrowd(0.8); };
@@ -102,12 +70,12 @@ function cue(e) {
     case 'whistle': play('whistle'); break;
     case 'final': play('whistleFinal'); crowd(2, 4); break;
     case 'check':
-      rattle();
+      diceRoll();
       if (['block', 'shove', 'juke', 'shake', 'tackle', 'dirty'].includes(e.action)) setTimeout(() => play('grunt', { vol: 0.9 }), 650);
       if (e.action === 'tackle' && e.success) setTimeout(() => { play('hit'); crowd(1.6, 1.2); }, 700);
       if (e.action === 'pass') crowd(1.3, 1.2);
       break;
-    case 'sport': case 'scatter': case 'dice': rattle(); break;
+    case 'sport': case 'scatter': case 'dice': diceRoll(); break;
     case 'push': play('hit', { vol: 0.7 }); break;
     // running on the turf: as long as the cube's walk (6.5 squares a second on the board), quieter for a follow-up
     case 'move': case 'motion': {
@@ -122,12 +90,13 @@ function cue(e) {
     case 'turnover': crowd(2, 2); break;
     case 'td': crowd(2.6, 4.5); break;
     case 'safety': crowd(2.2, 3); break;
-    case 'cointoss': coin(); break;
+    case 'cointoss': play('coin'); setTimeout(() => play('coinLand'), 1200); break;
+    case 'timeout': play('whistle'); crowd(0.6, 2); break;
     case 'onfire': case 'heat': case 'firebomb': case 'fuego': whoosh(); crowd(2, 2); break;
     case 'stiffarm': play('hit'); thump('hit'); crowd(1.8, 1.4); break;
     case 'spin': case 'dodge': case 'intercept': crowd(1.8, 1.4); break;
     case 'dogpile': play('grunt'); setTimeout(() => play('hit'), 200); crowd(2, 2); break;
-    case 'kick': whoosh('kick'); rattle(); crowd(1.4, 2); break;
+    case 'kick': whoosh('kick'); diceRoll(); crowd(1.4, 2); break;
     case 'fieldgoal': crowd(2.4, 3); break;
     default:
   }

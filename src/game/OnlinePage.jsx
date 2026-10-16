@@ -7,7 +7,7 @@ import { Button, Chips, Panel, Row, Toggle } from './ui';
 import { TEAMS, teamById, uniformsFor, teamColors, helmetUrl } from '../data/art';
 import { altSlots } from '../data/abilities';
 import { MODES, MODE_INFO, TeamGrid, LineupPicker } from './TeamPicker';
-import { loadOnlineResume, clearOnlineResume } from './useGame';
+import { onlineGames, forgetOnlineGame } from './useGame';
 import GameView from './GameView.jsx';
 
 const nameKey = 'tb-name';
@@ -19,7 +19,7 @@ export default function OnlinePage({ go }) {
   const [room, setRoom] = useState(null); // HostRoom (we host) | JoinClient (we joined)
   const [match, setMatch] = useState(null); // the host's running game
   const [, bump] = useReducer((x) => x + 1, 0);
-  const resume = useMemo(loadOnlineResume, []);
+  const [saved, setSaved] = useState(onlineGames);
   useEffect(() => { loadIce(); }, []);
   useEffect(() => (room ? room.on(bump) : undefined), [room]);
   useEffect(() => () => room?.close(), [room]);
@@ -31,10 +31,12 @@ export default function OnlinePage({ go }) {
   const leave = () => { room?.close(); setRoom(null); setMatch(null); };
   const host = () => setRoom(new HostRoom(name.trim() || 'Coach'));
   const join = () => { if (cleanCode(code).length === 5) setRoom(new JoinClient(code, name.trim() || 'Coach')); };
-  const resumeHost = () => {
-    const r = new HostRoom(name.trim() || 'Coach', resume.room);
+  // a saved game: the host reopens the same room code and rebuilds the game from its answers; the friend rejoins
+  const resumeGame = (g) => {
+    if (g.role === 'friend') { setRoom(new JoinClient(g.code, g.name || name.trim() || 'Coach')); return; }
+    const r = new HostRoom(name.trim() || 'Coach', g.room);
     setRoom(r);
-    setMatch({ ...resume.match, replay: resume.trail, skipIntro: true, key: Date.now(), online: { room: r } });
+    setMatch({ ...g.match, replay: g.trail, skipIntro: true, key: Date.now(), online: { room: r } });
   };
 
   // ---------- in a game ----------
@@ -54,12 +56,27 @@ export default function OnlinePage({ go }) {
           <Panel>
             <Row label="Your name"><input className="text-in" value={name} maxLength={14} onChange={(e) => setName(e.target.value)} /></Row>
           </Panel>
+          {saved.length > 0 && (
+            <Panel className="saved-games">
+              <h3>Your online games</h3>
+              <p className="hint">Unfinished games are saved. The host resumes (same room code) and the other coach rejoins; either can go first.</p>
+              {saved.map((g) => (
+                <div key={g.role + g.code} className="saved-game">
+                  <span><b className="led">{g.code}</b> {g.teams ? `${g.teams[0]} ${g.score?.[0] ?? 0} - ${g.score?.[1] ?? 0} ${g.teams[1]}` : ''}{g.half ? ` · ${g.half === 1 ? '1st' : '2nd'} half` : ''}</span>
+                  <small className="muted">{g.role === 'host' ? `You hosted${g.opp ? ` · vs ${g.opp}` : ''}` : `You joined${g.opp ? ` ${g.opp}'s room` : ''}`} · {new Date(g.at).toLocaleString()}</small>
+                  <span className="btns">
+                    <button className="btn small primary" onClick={() => resumeGame(g)}>{g.role === 'host' ? 'Resume' : 'Rejoin'}</button>
+                    <button className="btn small" onClick={() => { forgetOnlineGame(g.code, g.role); setSaved(onlineGames()); }}>Forget</button>
+                  </span>
+                </div>
+              ))}
+            </Panel>
+          )}
           <div className="online-grid">
             <Panel>
               <h3>Host a game</h3>
               <p className="hint">You get a 5-letter code to send to your friend. Your browser runs the game, so keep this tab open.</p>
               <Button kind="primary" size="big" onClick={host}>Create a room</Button>
-              {resume && <p className="hint">Your last online game (room {resume.room?.code}) didn't finish. <button className="btn small" onClick={resumeHost}>Resume it</button> <button className="btn small" onClick={() => { clearOnlineResume(); bump(); }}>Forget it</button></p>}
             </Panel>
             <Panel>
               <h3>Join a friend</h3>

@@ -584,3 +584,36 @@ test('an adjustment can be called off before a partner is picked (owner bug #2):
   assert.equal(acts, 2); // asked again after cancelling
   assert.equal(g.s.play.adjustUsed[0], false);
 });
+
+test('an empty / broken answer to a square prompt never crashes the game (owner bug: the fumble scatter)', async () => {
+  // a critical tackle fumbles; the offense's scatter pick comes back empty, then as junk: the engine asks again and
+  // falls back to a legal square instead of throwing
+  const g = scenario([[0, 6, 6, 10], [1, 45, 6, 9]], '0:6', [5, 5, 6, 2]);
+  g.agents[1] = scripted({ act: (req) => ({ kind: 'tackle', pid: req.tackles[0] }), scatter: () => undefined, bonus: () => null });
+  g.agents[0] = scripted({ scatter: () => ({ sq: [1, 1] }), bonus: () => null, push: () => undefined });
+  await g.runActivation('1:45', 'card');
+  assert.ok(g.s.ball.at === 'ground' || g.s.ball.at === 'held');
+});
+
+test('p.13: a timeout from a dead-ball question adds a play to the half and comes back to the same question', async () => {
+  const g = skillGame([[0, 42, 6, 10], [1, 45, 6, 9]], null);
+  g.s.pile = ['y']; g.s.phase = 'formation';
+  let asked = 0;
+  g.agents[0] = (game, side, req) => (req.type === 'call' ? (asked++ === 0 ? { timeout: true } : req.bench.slice(0, req.count)) : null);
+  g.agents[1] = (game, side, req) => (req.type === 'call' ? req.bench.slice(0, req.count) : null);
+  g.s.cards = [{ bench: [42, 42], stack: [], discard: [] }, { bench: [45, 45], stack: [], discard: [] }];
+  await g.callPlays();
+  assert.equal(asked, 2);
+  assert.equal(g.s.timeouts[0], 1);
+  assert.deepEqual(g.s.pile, ['y', 'r']);
+});
+
+test('p.13-14: no timeout while the ball is live, with none left, with no time left, or in overtime', () => {
+  const g = skillGame([[0, 42, 6, 10], [1, 45, 6, 9]], null);
+  g.s.pile = ['y']; g.s.phase = 'formation';
+  assert.equal(g.canTimeout(0), true);
+  g.s.phase = 'play'; assert.equal(g.canTimeout(0), false); g.s.phase = 'formation';
+  g.s.timeouts[0] = 0; assert.equal(g.canTimeout(0), false); g.s.timeouts[0] = 2;
+  g.s.pile = []; assert.equal(g.canTimeout(0), false); g.s.pile = ['y'];
+  g.s.overtime = true; assert.equal(g.canTimeout(0), false);
+});

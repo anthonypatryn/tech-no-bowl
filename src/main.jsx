@@ -5,9 +5,10 @@ import '@fontsource/pixelify-sans/400.css'
 import '@fontsource/pixelify-sans/600.css'
 import './index.css'
 import App from './App.jsx'
-import { unlockAudioOnFirstTap, loadSoundOverrides } from './game/sound'
+import { unlockAudioOnFirstTap, loadSoundOverrides, menuSounds } from './game/sound'
 
 unlockAudioOnFirstTap()
+menuSounds()
 loadSoundOverrides()
 
 // canvas-painted textures (later: scoreboard, labels) need the fonts ready first

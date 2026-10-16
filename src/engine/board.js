@@ -8,7 +8,7 @@ export const START_LINE = { '-1': 18, '1': 6 }; // each team's own 20-yard line
 
 export const key = (c, r) => `${c},${r}`;
 export const inBounds = (c, r) => c >= 0 && c < COLS && r >= 0 && r < ROWS;
-export const same = (a, b) => a[0] === b[0] && a[1] === b[1];
+export const same = (a, b) => !!a && !!b && a[0] === b[0] && a[1] === b[1]; // a missing square is never a match (bad answers fail, never crash)
 export const DIRS = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
 export const neighbours = ([c, r]) => DIRS.map(([dc, dr]) => [c + dc, r + dr]);
 export const adjacent = (a, b) => Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1])) === 1;

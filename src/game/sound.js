@@ -34,6 +34,59 @@ export function audioState() {
   return ctx && ctx.state === 'running' ? 'on' : 'off';
 }
 export function nudgeAudio() { const c = wake(); applyMute(); return c?.resume?.().catch(() => {}); }
+// ---------- synthesized effects: whoosh (wipes, cards flying in), bash (helmets crashing), menu blips ----------
+const fxLevel = () => (settings().muted ? 0 : settings().mix?.fx ?? 1);
+function noiseBuffer(ac, secs) {
+  const b = ac.createBuffer(1, Math.max(1, Math.floor(ac.sampleRate * secs)), ac.sampleRate), d = b.getChannelData(0);
+  for (let k = 0; k < d.length; k++) d[k] = Math.random() * 2 - 1;
+  return b;
+}
+function env(ac, node, t, peak, attack, len) {
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+  node.connect(g).connect(out());
+  return g;
+}
+export function synth(kind) {
+  const ac = wake(), v = fxLevel();
+  if (!ac || !v || ac.state !== 'running') return;
+  const t = ac.currentTime;
+  try {
+    if (kind === 'whoosh' || kind === 'whooshOut') {
+      const src = ac.createBufferSource(), f = ac.createBiquadFilter();
+      src.buffer = noiseBuffer(ac, 0.7); f.type = 'bandpass'; f.Q.value = 1.4;
+      const [a, b] = kind === 'whoosh' ? [260, 2800] : [2600, 300];
+      f.frequency.setValueAtTime(a, t); f.frequency.exponentialRampToValueAtTime(b, t + 0.45);
+      src.connect(f); env(ac, f, t, 0.5 * v, 0.12, 0.6); src.start(t); src.stop(t + 0.7);
+    } else if (kind === 'bash') {
+      // a helmet crash: a thump, a burst of crunch, and a metallic ring
+      const o = ac.createOscillator(); o.type = 'square'; o.frequency.setValueAtTime(190, t); o.frequency.exponentialRampToValueAtTime(48, t + 0.25);
+      env(ac, o, t, 0.5 * v, 0.004, 0.3); o.start(t); o.stop(t + 0.35);
+      const n = ac.createBufferSource(), lp = ac.createBiquadFilter(); n.buffer = noiseBuffer(ac, 0.35); lp.type = 'lowpass'; lp.frequency.value = 2200;
+      n.connect(lp); env(ac, lp, t, 0.9 * v, 0.003, 0.28); n.start(t);
+      for (const [fq, d, g] of [[523, 0.9, 0.12], [1337, 0.6, 0.08], [2213, 0.45, 0.05]]) {
+        const r = ac.createOscillator(); r.type = 'sine'; r.frequency.value = fq; env(ac, r, t, g * v, 0.002, d); r.start(t); r.stop(t + d + 0.05);
+      }
+    } else {
+      // 8-bit menu blips: blip (a click), select (going forward), back
+      const [a, b, len] = { blip: [660, 660, 0.045], select: [880, 1320, 0.09], back: [700, 440, 0.08] }[kind] ?? [660, 660, 0.045];
+      const o = ac.createOscillator(); o.type = 'square'; o.frequency.setValueAtTime(a, t); o.frequency.linearRampToValueAtTime(b, t + len * 0.8);
+      env(ac, o, t, 0.05 * v, 0.004, len); o.start(t); o.stop(t + len + 0.02);
+    }
+  } catch { /* no audio */ }
+}
+// menu sounds: a blip on every button, chip and nav link (Settings: Menu sounds)
+export function menuSounds() {
+  if (typeof document === 'undefined') return;
+  document.addEventListener('click', (e) => {
+    if (settings().menuSounds === false) return;
+    const el = e.target.closest?.('button, a, .chipbtn, [role=switch], .toggle');
+    if (!el || el.disabled) return;
+    const txt = el.textContent || '';
+    synth(el.classList.contains('primary') || el.classList.contains('menu-card') ? 'select' : /^(◀|Back|Close|Cancel|No|Leave|Quit)/.test(txt.trim()) ? 'back' : 'blip');
+  }, true);
+}
+
 // an <audio> element played through the mixer (the jukebox): its own gain, into the master (so the mute applies)
 const mediaNodes = new WeakMap();
 export function connectMedia(el) {

@@ -717,3 +717,12 @@ html.calm *, html.calm *::before { transition: none !important; animation: none 
 .jb-list li.on { background: var(--led); color: #15130a; }
 .jb-switches { display: flex; flex-direction: column; gap: 4px; }
 @media (pointer: coarse) { .fs-btn { display: none; } }
+.timeout-btn { position: absolute; top: var(--s2); right: 150px; padding: 4px 8px; border-color: var(--mfl-red); color: #ff8a80; }
+.prompt h3 { padding-right: 300px; }
+@media (max-width: 760px) { .timeout-btn { position: static; margin: 0 0 var(--s2); } .prompt h3 { padding-right: 90px; } }
+
+.saved-games { display: flex; flex-direction: column; gap: var(--s2); }
+.saved-game { display: grid; grid-template-columns: 1fr auto; gap: 2px var(--s3); padding: var(--s2); border: var(--px) solid var(--line); align-items: center; }
+.saved-game small { grid-column: 1; }
+.saved-game .btns { grid-row: 1 / span 2; grid-column: 2; }
+.reconnect .away { max-width: 520px; text-align: center; font-family: var(--body); line-height: 1.5; padding: var(--s4); background: rgba(0,0,0,.6); }

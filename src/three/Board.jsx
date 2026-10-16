@@ -611,7 +611,7 @@ const VIEW = {
   free: (f) => ({ pos: [f.x + 12.5, 9, f.z + 0.5], target: [f.x - 0.5, 0, f.z - 0.3] }), // only used if 'free' has no controls yet
   broadcast: (f) => ({ pos: [f.x + 12.5, 9, f.z + 0.5], target: [f.x - 0.5, 0, f.z - 0.3] }),
   endzone: (f, dir) => ({ pos: [f.x, 7.5, f.z - dir * 11], target: [f.x, 0, f.z + dir * 2] }),
-  overhead: (f) => ({ pos: [f.x + 0.01, 25, f.z], target: [f.x, 0, f.z] }),
+  overhead: (f) => ({ pos: [f.x + 2.4, 25, f.z], target: [f.x, 0, f.z] }), // a slight lean from the broadcast side
   low: (f) => ({ pos: [f.x + 6, 1.2, f.z + 2.5], target: [f.x - 1, 0.6, f.z - 0.5] }),
   follow: (f) => ({ pos: [f.x + 7.5, 6, f.z + 1.5], target: [f.x - 0.3, 0, f.z - 0.2] }), // close on whoever's turn it is
 };

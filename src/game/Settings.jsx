@@ -38,6 +38,9 @@ export default function Settings() {
           <Toggle checked={!s.muted} onChange={(on) => setSettings({ muted: !on })}>Sound on</Toggle>
           <button className="btn small" onClick={async () => { await nudgeAudio(); playSound('whistle'); setTimeout(() => playSound('step', { len: 0.8 }), 900); }}>Test sound</button>
         </Row>
+        <Row label="Menu sounds">
+          <Toggle checked={s.menuSounds !== false} onChange={(v) => setSettings({ menuSounds: v })}>8-bit blips on buttons and menus</Toggle>
+        </Row>
         <Row label="Music player">
           <Toggle checked={s.musicMenus !== false} onChange={(v) => setSettings({ musicMenus: v })}>Menu music</Toggle>
           <Toggle checked={s.musicBreaks !== false} onChange={(v) => setSettings({ musicBreaks: v })}>At half time and the final whistle</Toggle>

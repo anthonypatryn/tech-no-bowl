@@ -1,5 +1,6 @@
 // The TV package over the game: score bug, lower-third chyrons, halftime / final stat cards, and the MFL-shield wipe
 // between possessions, scores and halves. Everything is driven by the engine's log and box score.
+import { synth } from './sound';
 import { useEffect, useRef, useState } from 'react';
 import { teamColors, helmetUrl, artUrl } from '../data/art';
 import { yardLabel } from '../engine/board.js';
@@ -131,6 +132,7 @@ export function Wipe({ s }) {
     const word = last.kind === 'half' ? (last.half === 3 ? 'OVERTIME' : last.half === 2 ? 'SECOND HALF' : 'KICK-OFF') : WIPE_ON[last.kind];
     const side = last.side ?? s.offense;
     setW({ id: last.id, word, side });
+    synth('whoosh'); setTimeout(() => synth('whooshOut'), 1250);
     const t = setTimeout(() => setW((x) => (x?.id === last.id ? null : x)), 1700);
     return () => clearTimeout(t);
   }, [last?.id]); // eslint-disable-line react-hooks/exhaustive-deps

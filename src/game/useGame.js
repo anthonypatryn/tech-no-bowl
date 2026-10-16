@@ -49,7 +49,7 @@ export function useGame(match) {
     const g = new Game({ teams: [teamSetup(match.you), teamSetup(match.cpu)], seed: match.seed ?? Date.now(), mode: match.mode, agents: [null, match.online ? null : cpu], replay: match.replay ?? null }, {
       onChange: () => {
         // keep the game saved for Resume: every new answer of yours
-        if (g.trail.length !== savedLen) { savedLen = g.trail.length; saveResume(match, g.trail); }
+        if (g.trail.length !== savedLen) { savedLen = g.trail.length; saveResume(match, g.trail, g.state); }
         // redraw on the next frame, or after 120 ms if no frame comes (a background tab: an online host who switched
         // away still sees the game when they come back, and the friend's game never waits on it)
         if (!raf) {
@@ -78,17 +78,29 @@ const speed = () => (SPEEDS[settings().speed] ?? 1) * (turbo ? 4 : 1);
 
 // ---------- resume / undo ----------
 const RESUME = 'tb-resume';
-function saveResume(match, trail) {
+function saveResume(match, trail, state) {
   if (match.tutorial) return;
   const t = trail.map(({ type, value, logAt }) => ({ type, value, logAt }));
-  // an online game is kept apart (the Online page offers it back, with the same room code)
-  if (match.online) { saveOnlineResume({ match: { ...match, online: undefined, replay: undefined }, trail: t, room: match.online.room.snapshot(), at: Date.now() }); return; }
+  // an online game is kept apart: the Online page lists it, and Resume reopens the same room code
+  if (match.online) {
+    const room = match.online.room.snapshot();
+    saveOnlineGame({ role: 'host', code: room.code, match: { ...match, online: undefined, replay: undefined }, trail: t, room,
+      teams: state?.teams.map((x) => x.name), score: state?.score, half: state?.half, opp: room.friend?.name, at: Date.now() });
+    return;
+  }
   try { localStorage.setItem(RESUME, JSON.stringify({ match: { ...match, replay: undefined }, trail: t, at: Date.now() })); } catch { /* not saved */ }
 }
-const ONLINE = 'tb-online-resume';
-function saveOnlineResume(v) { try { localStorage.setItem(ONLINE, JSON.stringify(v)); } catch { /* not saved */ } }
-export const loadOnlineResume = () => { try { return JSON.parse(localStorage.getItem(ONLINE) || 'null'); } catch { return null; } };
-export const clearOnlineResume = () => { try { localStorage.removeItem(ONLINE); } catch { /* ignore */ } };
+// "Your online games": hosted games (with everything needed to resume them) and joined ones (the code to rejoin),
+// newest first, a few kept. The host's entry is rewritten after every answer; a finished game drops off.
+const ONLINE = 'tb-online-games';
+export const onlineGames = () => { try { const v = JSON.parse(localStorage.getItem(ONLINE) || '[]'); return Array.isArray(v) ? v : []; } catch { return []; } };
+export function saveOnlineGame(v) {
+  try { localStorage.setItem(ONLINE, JSON.stringify([v, ...onlineGames().filter((x) => !(x.code === v.code && x.role === v.role))].slice(0, 8))); } catch { /* not saved */ }
+}
+export function forgetOnlineGame(code, role) {
+  try { localStorage.setItem(ONLINE, JSON.stringify(onlineGames().filter((x) => !(x.code === code && (!role || x.role === role))))); } catch { /* ignore */ }
+}
+export const clearOnlineResume = (code) => forgetOnlineGame(code);
 export const loadResume = () => { try { return JSON.parse(localStorage.getItem(RESUME) || 'null'); } catch { return null; } };
 export const clearResume = () => { try { localStorage.removeItem(RESUME); } catch { /* ignore */ } };
 // a game rebuilt from its saved answers (resume), or with the last one taken back (undo)

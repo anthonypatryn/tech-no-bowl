@@ -10,6 +10,7 @@
 // A host who reloads mid-game resumes with the same code (the game is rebuilt from both coaches' answers) and the
 // friend's browser keeps retrying until it's back. Both sides ping every few seconds; quiet for 10 s = gone.
 import Peer from 'peerjs';
+import { saveOnlineGame, forgetOnlineGame } from '../game/useGame';
 
 const PREFIX = 'technobowl-';
 const PING_MS = 3000, LOST_MS = 10000;
@@ -212,7 +213,7 @@ export class HostRoom extends Emitter {
       queued = true;
       setTimeout(() => { queued = false; this.pushState(); }, 30);
     };
-    if (this.friend && !this.friend.connected) this.takeOver();
+    // a friend not here yet (a resumed game) gets time to rejoin: the host can hand their side to the computer by hand
     this.broadcastLobby(); this.pushState(); this.emit();
   }
   pushState() {
@@ -310,11 +311,15 @@ export class JoinClient extends Emitter {
     conn.on('data', (m) => this.onMessage(m));
     conn.on('close', () => { if (this.conn === conn && !['ended', 'error'].includes(this.status)) { this.status = 'reconnecting'; this.emit(); this.retry(); } });
   }
+  // keep trying. Mid-game, never give up: the game is saved on the host's side, so when they come back (resume, same
+  // code) we rejoin. After ~90 s it says the host is away and tries every 8 s.
   retry() {
-    if (!document.hidden && this.retries++ > 45) return this.fail('Lost the connection to the host.');
+    this.retries++;
+    if (!this.state && !document.hidden && this.retries > 45) return this.fail('Lost the connection to the host.');
+    this.away = !!this.state && this.retries > 45;
     if (this.peer.disconnected && !this.peer.destroyed) { try { this.peer.reconnect(); } catch { /* below */ } }
     clearTimeout(this.retryT);
-    this.retryT = setTimeout(() => { if (!this.peer.destroyed) this.connect(); }, 2000);
+    this.retryT = setTimeout(() => { if (!this.peer.destroyed) this.connect(); }, this.away ? 8000 : 2000);
   }
 
   onMessage(m) {
@@ -331,11 +336,18 @@ export class JoinClient extends Emitter {
       this.lobby = m; this.you = m.you;
       if (!m.started) { this.state = null; this.status = 'lobby'; } else if (this.state) this.status = 'game';
     } else if (m.t === 'state') {
-      this.state = m.state; this.you = m.you; this.status = 'game';
+      this.state = m.state; this.you = m.you; this.status = 'game'; this.away = false;
+      // remember this game so "Your online games" can rejoin it (a few times a minute is plenty)
+      if (m.you >= 0 && Date.now() - (this.savedAt ?? 0) > 15000) {
+        this.savedAt = Date.now();
+        if (m.state.phase === 'over') forgetOnlineGame(this.code, 'friend');
+        else saveOnlineGame({ role: 'friend', code: this.code, name: this.name, teams: m.state.teams.map((x) => x.name), score: m.state.score, half: m.state.half, opp: this.lobby?.seats?.[0]?.name, at: Date.now() });
+      }
     } else if (m.t === 'react') {
       this.reactions = [...this.reactions.slice(-9), { id: Math.random(), side: m.side, k: m.k, at: Date.now() }];
     } else if (m.t === 'ended') {
       this.status = 'ended'; this.error = m.reason || 'The room closed.';
+      forgetOnlineGame(this.code, 'friend');
       this.peer.destroy();
     }
     this.emit();

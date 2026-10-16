@@ -24,6 +24,7 @@ export function calloutFor(e) {
   if (SKILL_FX[e.kind]) return SKILL_FX[e.kind][0];
   if (e.kind === 'onfire') return 'ON FIRE!';
   if (e.kind === 'fieldgoal') return 'FIELD GOAL!';
+  if (e.kind === 'timeout') return 'TIMEOUT!';
   if (e.kind === 'kick' && !e.good) return 'NO GOOD!';
   if (e.kind === 'check' && e.success && CHECK_FX[e.action]) return CHECK_FX[e.action][0];
   if (e.kind === 'check' && e.success && e.action === 'block' && e.asMove) return 'BLITZ!';

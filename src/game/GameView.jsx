@@ -90,7 +90,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
   useEffect(() => { if (s.phase === 'over') musicScene('break'); }, [s.phase]);
   useEffect(() => {
     if (s.phase !== 'over') return;
-    if (online) { clearOnlineResume(); return; }
+    if (online) { if (net?.code) clearOnlineResume(net.code); return; }
     recordResult([s.teams[0].id, s.teams[1].id], s.winner, match.seed);
     clearResume();
     // a season game: report it (once) and move the season on
@@ -329,7 +329,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
     if (coarse && onTile) {
       const commit = onTile;
       onTile = (t) => { if (tap && tap[0] === t.sq[0] && tap[1] === t.sq[1]) commit(t); else setTap(t.sq); };
-      if (tap) tiles.push({ sq: tap, color: '#ffd700' });
+      if (tap) { const real = tiles.find((t) => t.sq[0] === tap[0] && t.sq[1] === tap[1]); tiles.push({ ...real, sq: tap, color: '#ffd700' }); }
     }
     return { tiles, rings, onTile, onPlayer, outlines, reach };
   }, [req, s.active, edit, sel, mode, motion, suggest, prefsNow.cb, tap]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -418,6 +418,11 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
           <button className="btn small prompt-min" onClick={() => setMinPrompt((x) => !x)} aria-label="Fold the prompt">{minPrompt ? '▴' : '▾'}</button>
           {req && ['act', 'formation', 'call'].includes(req.type) && <button className="btn small coach-q" onClick={askCoach} title="What would the coach do?">Suggest</button>}
           {suggest && <p className="suggest">Coach: {describe(suggest, P)}</p>}
+          {req && ['formation', 'call', 'motion', 'kick', 'onFire'].includes(req.type) && !s.overtime && s.pile.length >= 1 && (
+            <button className="btn small timeout-btn" disabled={!s.timeouts[ME]} onClick={() => answer({ timeout: true })} title="Stop the clock: adds one more play to the half (rulebook p.13)">
+              ⏱ Timeout ({s.timeouts[ME]} left)
+            </button>
+          )}
           {req && HELP_FOR[req.type] && <button className="btn small help-q" title="What's this rule?" onClick={() => setRules(HELP_FOR[req.type])}>?</button>}
           {game.crashed ? <p className="warn">Something broke: {game.crashed.split('\n')[0]}</p>
             : req ? <>{left != null && <span className={`play-clock led ${left <= 10 ? 'low' : ''}`}>0:{String(left).padStart(2, '0')}</span>}<Prompt {...{ game, req, answer, s, P, mode, setMode, edit, setEdit, sel, stack, setStack, motion, setMotion, discard, setDiscard, primary, hover, rows: myRows, askCoach, reach: board.reach, danger, tap }} /></>
@@ -753,7 +758,7 @@ function CallPrompt({ req, answer, stack, setStack, rows, s, primary, askCoach }
           </button>
         ))}
       </div>
-      <CardRow nums={left} rows={rows} s={s} onPick={(n) => stack.length < req.count && setStack([...stack, n])} />
+      <CardRow nums={left} rows={rows} s={s} onPick={(n) => { if (stack.length < req.count) { setStack([...stack, n]); playSound('card'); } }} />
       <div className="btns">
         <button className="btn primary" disabled={!ready} onClick={() => call(stack)}>Call it <Kbd a="primary" /></button>
         <button className="btn" onClick={askCoach} title="The All-Pro coach's five, in order">Coach's call</button>
@@ -814,7 +819,13 @@ function OnlineBar({ net, host }) {
         <span className="reacts">{REACTIONS.map((e, k) => <button key={k} className="chipbtn" onClick={() => (host ? net.react(0, k) : net.react(k))}>{e}</button>)}</span>
       </div>
       <div className="react-float">{recent.map((r) => <span key={r.id} className={`rf side${r.side}`}>{REACTIONS[r.k]}</span>)}</div>
-      {!host && net.status === 'reconnecting' && <div className="reconnect"><span className="led">RECONNECTING…</span></div>}
+      {!host && net.status === 'reconnecting' && (
+        <div className="reconnect">
+          {net.away
+            ? <span className="away"><b className="led">THE HOST IS AWAY</b><br />The game is saved on their side. You'll be back in as soon as they resume it (Online → Your online games). You can close this and Rejoin later too.</span>
+            : <span className="led">RECONNECTING…</span>}
+        </div>
+      )}
       {!host && net.status === 'ended' && <div className="reconnect"><span>{net.error || 'The room closed.'}</span></div>}
     </>
   );
@@ -955,6 +966,7 @@ function EndScreen({ s, onExit, onRematch, match, online, highlights = [], onWat
   const [a, b] = s.score;
   const won = s.winner === ME;
   const top = [...highlights].sort((x, y) => y.score - x.score || x.play.id - y.play.id).slice(0, 3);
+  useEffect(() => { if (won) setTimeout(() => playSound('fanfare'), 600); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [copied, setCopied] = useState(false);
   const share = () => {
     const best = Object.entries(s.box).map(([pid, b]) => ({ p: s.players[pid], b, v: b.tds * 6 + (b.rushYds + b.recYds + b.passYds) / 10 + b.tackles + b.sacks * 2 }))

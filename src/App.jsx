@@ -80,7 +80,7 @@ function TopBar({ view, go }) {
   return (
     <header className="topbar">
       <a className="brand" href="/" onClick={(e) => { e.preventDefault(); go('home'); }}><span className="led">TECHNO BOWL</span></a>
-      <nav>{link('home', 'Home')}{link('teams', 'Play')}{link('season', 'Season')}{link('online', 'Online')}{link('rules', 'Rules')}{link('art', 'Art Review')}{link('settings', 'Settings')}
+      <nav>{link('home', 'Home')}{link('teams', 'Play')}{link('season', 'Season')}{link('online', 'Online')}{link('rules', 'Rules')}{link('art', 'Art Review')}{link('review', 'Moments')}{link('bugs', 'Bug list')}{link('settings', 'Settings')}
         <a href="#bug" onClick={(e) => { e.preventDefault(); setBug(true); }}>Report a bug</a></nav>
       <span className="topbar-tools"><MusicPlayer small /><FullscreenButton /></span>
       {bug && <BugReport onClose={() => setBug(false)} />}

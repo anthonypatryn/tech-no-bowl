@@ -425,5 +425,103 @@
    "fade": 0.06,
    "name": "run d13"
   }
+ ],
+ "dice": [
+  {
+   "file": "dice",
+   "start": 0.0,
+   "len": 1.0,
+   "vol": 0.9,
+   "fade": 0.08,
+   "name": "dice roll"
+  }
+ ],
+ "coin": [
+  {
+   "file": "coin-flip-a",
+   "start": 0.0,
+   "len": 1.0,
+   "vol": 0.9,
+   "fade": 0.05,
+   "name": "coin flip a"
+  },
+  {
+   "file": "coin-flip-b",
+   "start": 0.0,
+   "len": 0.75,
+   "vol": 0.9,
+   "fade": 0.05,
+   "name": "coin flip b"
+  }
+ ],
+ "coinLand": [
+  {
+   "file": "chip-land-a",
+   "start": 0.0,
+   "len": 0.7,
+   "vol": 0.8,
+   "fade": 0.05,
+   "name": "coin lands"
+  }
+ ],
+ "card": [
+  {
+   "file": "deal",
+   "start": 1.16,
+   "len": 0.35,
+   "vol": 1.1,
+   "fade": 0.04,
+   "name": "card 1"
+  },
+  {
+   "file": "deal",
+   "start": 1.89,
+   "len": 0.35,
+   "vol": 1.1,
+   "fade": 0.04,
+   "name": "card 2"
+  },
+  {
+   "file": "deal",
+   "start": 3.07,
+   "len": 0.35,
+   "vol": 1.1,
+   "fade": 0.04,
+   "name": "card 3"
+  },
+  {
+   "file": "deal",
+   "start": 4.35,
+   "len": 0.35,
+   "vol": 1.1,
+   "fade": 0.04,
+   "name": "card 4"
+  },
+  {
+   "file": "deal",
+   "start": 5.33,
+   "len": 0.35,
+   "vol": 1.1,
+   "fade": 0.04,
+   "name": "card 5"
+  },
+  {
+   "file": "deal",
+   "start": 8.32,
+   "len": 0.35,
+   "vol": 1.1,
+   "fade": 0.04,
+   "name": "card 6"
+  }
+ ],
+ "fanfare": [
+  {
+   "file": "fanfare",
+   "start": 0.0,
+   "len": 5.8,
+   "vol": 0.8,
+   "fade": 0.3,
+   "name": "victory fanfare"
+  }
  ]
 }

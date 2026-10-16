@@ -37,13 +37,21 @@ export function PlayerCube({ uniform, row, position = [0, 0, 0], facing = 0, dow
   const tip = useRef(down ? 1 : 0);
   const quarter = useRef(0);
   const local = useMemo(() => new THREE.Vector3(), []);
+  const up = useMemo(() => new THREE.Vector3(), []);
+  const origin = useMemo(() => new THREE.Vector3(), []);
   useFrame(({ camera }, dt) => {
     const g = ref.current;
     if (!g) return;
-    // keep the number readable: turn the top face in quarter steps so it's upright from the camera
-    local.copy(camera.position);
+    // keep the number readable: turn the top face in quarter steps so its top points up the screen. "Up the screen"
+    // comes from the camera's own up direction, laid flat on the field, so it holds straight overhead too (where the
+    // camera's position gives no direction and the numbers used to land any which way)
+    up.set(0, 1, 0).applyQuaternion(camera.quaternion);
+    up.y = 0;
+    if (up.lengthSq() < 1e-6) { camera.getWorldDirection(up); up.y = 0; }
+    g.getWorldPosition(origin);
+    local.copy(origin).add(up.normalize());
     g.worldToLocal(local);
-    const q = ((Math.round(Math.atan2(-local.x, local.z) / (Math.PI / 2)) % 4) + 4) % 4;
+    const q = ((Math.round(Math.atan2(local.x, -local.z) / (Math.PI / 2)) % 4) + 4) % 4;
     if (q !== quarter.current) { quarter.current = q; mats[2].map.rotation = -q * (Math.PI / 2); }
     tip.current = damp(tip.current, down ? 1 : 0, 9, dt);
     const t = tip.current;
