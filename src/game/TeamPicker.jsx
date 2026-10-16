@@ -150,7 +150,7 @@ export function TeamGrid({ current, onPick, onClose }) {
   );
 }
 
-function AbilityCard({ p, onClose }) {
+export function AbilityCard({ p, onClose }) {
   useEscape(onClose);
   return (
     <div className="modal" onClick={onClose}>

@@ -42,6 +42,23 @@ export function Toggle({ checked, onChange, children, label }) {
   );
 }
 
+// an 8-bit slider (0..1): click or drag along it, or arrow keys. In place of a raw <input type=range>.
+export function Slider({ value, onChange, label, step = 0.05 }) {
+  const set = (e, el) => {
+    const r = el.getBoundingClientRect();
+    onChange(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)));
+  };
+  return (
+    <div className="slider" role="slider" tabIndex={0} aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value * 100)}
+      onPointerDown={(e) => { const el = e.currentTarget; el.setPointerCapture(e.pointerId); set(e, el); }}
+      onPointerMove={(e) => { if (e.buttons) set(e, e.currentTarget); }}
+      onKeyDown={(e) => { if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { e.preventDefault(); onChange(Math.min(1, value + step)); } if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { e.preventDefault(); onChange(Math.max(0, value - step)); } }}>
+      <span className="slider-fill" style={{ width: `${value * 100}%` }} />
+      <span className="slider-knob" style={{ left: `${value * 100}%` }} />
+    </div>
+  );
+}
+
 // a row of chips in place of a drop-down: options = [value, label, disabled?][]
 export function Chips({ value, onChange, options, small }) {
   return (

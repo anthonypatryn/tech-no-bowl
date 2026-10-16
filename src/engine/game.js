@@ -445,8 +445,10 @@ export class Game {
     s.cards[side].discard.push(...v.discard);
     const p = s.players[v.pid];
     const from = sqOf(p);
+    // the route he runs (the board walks it): the same reach the options came from
+    const path = moveReach(s, p, p.skill, 0, { stopRows: [losRow] }).get(key(...v.to))?.path ?? [v.to];
     p.col = v.to[0]; p.row = v.to[1];
-    this.log(`${this.name(p)} goes in motion.`, 'motion', { pid: p.pid, from, to: v.to, cost });
+    this.log(`${this.name(p)} goes in motion.`, 'motion', { pid: p.pid, from, to: v.to, cost, path });
   }
 
   // Timeouts (rulebook p.13): 2 per coach per game; only while the ball isn't in play and there's at least one time

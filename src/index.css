@@ -741,3 +741,21 @@ html.calm *, html.calm *::before { transition: none !important; animation: none 
 .leader { display: flex; flex-direction: column; gap: 2px; padding: var(--s2); border: var(--px) solid var(--line); }
 .chat-menu { position: absolute; top: calc(100% + 4px); right: 0; display: flex; flex-direction: column; gap: 3px; padding: 6px; z-index: 20; white-space: nowrap; }
 .react-float .rf.phrase { font-size: 16px; font-family: var(--pixel); background: rgba(0,0,0,.7); padding: 6px 10px; border-radius: 6px; }
+
+/* the slider (kit) and the player's progress / volume */
+.slider { position: relative; flex: 1; height: 14px; min-width: 90px; background: rgba(0,0,0,.45); border: var(--px) solid var(--line); cursor: pointer; touch-action: none; }
+.slider:focus-visible { outline: 2px solid var(--led); }
+.slider-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--led); }
+.slider-knob { position: absolute; top: 50%; width: 10px; height: 20px; transform: translate(-50%, -50%); background: #fff; border: 2px solid #15130a; box-shadow: 0 2px 0 rgba(0,0,0,.5); }
+.jb-progress, .jb-vol { display: flex; align-items: center; gap: 8px; }
+.jb-time { font-family: var(--pixel); font-size: 8px; min-width: 38px; text-align: center; color: var(--muted); }
+.jb-line { position: relative; flex: 1; height: 8px; background: rgba(255,255,255,.12); cursor: pointer; }
+.jb-line span { position: absolute; left: 0; top: 0; bottom: 0; background: var(--go); }
+.jb-line:hover { height: 10px; }
+/* the online team chooser */
+.online-grid { grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); }
+.tc-head { display: flex; align-items: center; gap: var(--s3); }
+.tc-head img { height: 110px; }
+.tc-head > div { display: flex; flex-direction: column; gap: 4px; }
+.tc-stars { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; width: 100%; }
+.team-chooser .ts-card { width: 100%; }

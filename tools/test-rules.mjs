@@ -617,3 +617,16 @@ test('p.13-14: no timeout while the ball is live, with none left, with no time l
   g.s.pile = []; assert.equal(g.canTimeout(0), false); g.s.pile = ['y'];
   g.s.overtime = true; assert.equal(g.canTimeout(0), false);
 });
+
+test('motion logs the route he runs (the board walks it instead of teleporting)', async () => {
+  const g = skillGame([[0, 6, 6, 20], [0, 42, 6, 18], [0, 33, 5, 18], [0, 44, 7, 18], [0, 7, 6, 19], [1, 45, 6, 17]], null);
+  g.s.line = 18;
+  g.s.cards[0].bench = [6, 6, 42, 42];
+  let opt = null;
+  g.agents[0] = (game, side, req) => { if (req.type !== 'motion') return null; opt = req.options.find((o) => o.pid === '0:6'); const to = opt.reach.find((q) => Math.abs(q[0] - 6) >= 2) ?? opt.reach[0]; return { pid: '0:6', to, discard: [req.bench[0]] }; };
+  let entry = null;
+  g.onChange = (st) => { const l = st.log.at(-1); if (l?.kind === 'motion') entry = l; };
+  await g.motion(0, 1);
+  assert.ok(entry && entry.path.length >= 1);
+  assert.deepEqual(entry.path.at(-1), entry.to);
+});

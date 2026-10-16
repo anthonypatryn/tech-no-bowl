@@ -4,9 +4,9 @@
 import { useEffect, useMemo, useReducer, useState } from 'react';
 import { HostRoom, JoinClient, RemoteGame, cleanCode, loadIce } from '../net/room';
 import { Button, Chips, Panel, Row, Toggle } from './ui';
-import { TEAMS, teamById, uniformsFor, teamColors, helmetUrl } from '../data/art';
-import { altSlots } from '../data/abilities';
-import { MODES, MODE_INFO, TeamGrid, LineupPicker } from './TeamPicker';
+import { TEAMS, teamById, uniformsFor, teamColors, helmetUrl, rosterFor } from '../data/art';
+import { altSlots, lineup as lineupOf } from '../data/abilities';
+import { MODES, MODE_INFO, TeamGrid, LineupPicker, AbilityCard, Sprite } from './TeamPicker';
 import { onlineGames, forgetOnlineGame } from './useGame';
 import GameView from './GameView.jsx';
 
@@ -106,17 +106,42 @@ function CodeBox({ code }) {
   );
 }
 
-function TeamChooser({ sel, onChange, disabled }) {
+// a team, the way the team-select screen shows it: helmet, name, uniform, the special-ability players (tap one to
+// read his abilities), the alternate lineup. disabled = the other coach's pick (look, don't touch)
+function TeamChooser({ sel, onChange, disabled, mode }) {
   const [grid, setGrid] = useState(false);
   const [lineup, setLineup] = useState(false);
+  const [info, setInfo] = useState(null);
   const t = teamById(sel.team);
-  const [c0] = teamColors(sel.team, sel.uni);
+  const [c0, c1] = teamColors(sel.team, sel.uni);
   const i = TEAMS.findIndex((x) => x.id === sel.team);
   const pick = (id) => onChange({ team: id, uni: 'home', picks: {} });
+  const stars = lineupOf(t, sel.picks).filter((p) => p.abilities?.length);
+  const rows = Object.fromEntries(rosterFor(sel.team, sel.uni).map((p) => [p.num, p.row]));
+  const alt = altSlots(t).length > 0;
+  const usingAlt = Object.values(sel.picks ?? {}).includes('alt');
   return (
-    <div className="team-chooser" style={{ '--c0': c0 }}>
-      {helmetUrl(sel.team) && <img src={helmetUrl(sel.team)} alt="" />}
-      <b className="led">{t.name.toUpperCase()}</b>
+    <div className="team-chooser" style={{ '--c0': c0, '--c1': c1 }}>
+      <div className="tc-head">
+        {helmetUrl(sel.team) && <img src={helmetUrl(sel.team)} alt="" />}
+        <div>
+          <b className="led">{t.name.toUpperCase()}</b>
+          <small className="muted">{uniformsFor(sel.team).find((u) => u.id === sel.uni)?.label} uniform{usingAlt ? ' · alternate lineup' : ''}</small>
+        </div>
+      </div>
+      {stars.length > 0 && (
+        <div className="tc-stars">
+          {stars.map((p) => (
+            <button key={`${p.num}${p.name}`} className="ts-card" onClick={() => setInfo({ ...p, team: t.name, c0, c1 })} title="Read his abilities">
+              <span className="ts-card-name">{p.name}</span>
+              <span className="ts-card-art"><i>#{p.num}</i><Sprite team={sel.team} uni={sel.uni} row={rows[p.artNum ?? p.num] ?? 0} /></span>
+              <span className="ts-card-skill">{p.abilities.join(' · ')}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {(mode === 'techno' || mode === 'pro') && stars.length > 0 && <small className="hint">Special abilities are off in {mode === 'pro' ? 'Pro' : 'Techno'} rules (they count in All Techno, All Pro and Inferno).</small>}
+      {alt && disabled && <small className="hint">{usingAlt ? 'Playing the alternate lineup.' : 'Regular lineup.'}</small>}
       {!disabled && (
         <>
           <div className="btns">
@@ -126,12 +151,12 @@ function TeamChooser({ sel, onChange, disabled }) {
             <button className="btn small" onClick={() => pick(TEAMS[Math.floor(Math.random() * TEAMS.length)].id)}>Random</button>
           </div>
           <Chips small value={sel.uni} onChange={(uni) => onChange({ ...sel, uni })} options={uniformsFor(sel.team).map((u) => [u.id, u.label])} />
-          {altSlots(t).length > 0 && <button className="btn small" onClick={() => setLineup(true)}>Lineup{Object.values(sel.picks ?? {}).includes('alt') ? ' (alternate)' : ''}</button>}
+          {alt && <button className="btn small primary" onClick={() => setLineup(true)}>Choose lineup{usingAlt ? ' (alternate)' : ''}</button>}
         </>
       )}
-      {disabled && <small className="muted">{uniformsFor(sel.team).find((u) => u.id === sel.uni)?.label}</small>}
-      {grid && <TeamGrid current={sel.team} onPick={(id) => { pick(id); setGrid(false); }} onClose={() => setGrid(false)} />}
+      {grid && <TeamGrid current={sel.team} onPick={(id) => { pick(id); setGrid(false); if (altSlots(teamById(id)).length) setLineup(true); }} onClose={() => setGrid(false)} />}
       {lineup && <LineupPicker sel={sel} set={onChange} onClose={() => setLineup(false)} />}
+      {info && <AbilityCard p={info} onClose={() => setInfo(null)} />}
     </div>
   );
 }
@@ -152,11 +177,11 @@ function HostLobby({ room, onStart, onLeave }) {
       <div className="online-grid">
         <Panel>
           <h3>{room.seats[0].name} (you, home)</h3>
-          <TeamChooser sel={setup.teams[0]} onChange={(sel) => room.pick(sel)} />
+          <TeamChooser sel={setup.teams[0]} onChange={(sel) => room.pick(sel)} mode={setup.mode} />
         </Panel>
         <Panel>
           <h3>{f ? `${f.name} (away)` : 'Waiting for your friend…'}{f && !f.connected ? ' · disconnected' : ''}</h3>
-          {f ? <TeamChooser sel={setup.teams[1]} disabled /> : <p className="hint">They pick their own team once they're in.</p>}
+          {f ? <TeamChooser sel={setup.teams[1]} disabled mode={setup.mode} /> : <p className="hint">They pick their own team once they're in.</p>}
           {f && <button className="btn small" onClick={() => room.kick()}>Remove</button>}
           {room.watchers.size > 0 && <p className="hint">{room.watchers.size} watching</p>}
         </Panel>
@@ -188,8 +213,8 @@ function JoinLobby({ client, onLeave }) {
     <>
       <Panel className="lobby-head"><p>Room <b className="led">{L.code}</b>{watching ? ': the seats are full, so you are watching.' : `: ${L.seats[0]?.name} is hosting. They'll kick off when you're both ready.`}</p></Panel>
       <div className="online-grid">
-        <Panel><h3>{L.seats[0]?.name} (home)</h3><TeamChooser sel={L.setup.teams[0]} disabled /></Panel>
-        <Panel><h3>{watching ? `${L.seats[1]?.name ?? '…'} (away)` : 'You (away)'}</h3>{sel && <TeamChooser sel={sel} onChange={choose} disabled={watching} />}</Panel>
+        <Panel><h3>{L.seats[0]?.name} (home)</h3><TeamChooser sel={L.setup.teams[0]} disabled mode={L.setup.mode} /></Panel>
+        <Panel><h3>{watching ? `${L.seats[1]?.name ?? '…'} (away)` : 'You (away)'}</h3>{sel && <TeamChooser sel={sel} onChange={choose} disabled={watching} mode={L.setup.mode} />}</Panel>
       </div>
       <Panel>
         <Row label="Rules"><b>{MODES.find(([k]) => k === L.setup.mode)?.[1]}</b><span className="hint"> {MODE_INFO[L.setup.mode]}</span></Row>

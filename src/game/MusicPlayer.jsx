@@ -1,9 +1,11 @@
 // The ♪ jukebox button and its panel: now playing, play / pause / previous / next / shuffle, the track list, and the
 // three "when does music play" switches. Lives in the top bar and the game's tool row.
-import { useEffect, useReducer, useState } from 'react';
-import { TRACKS, nowPlaying, onMusic, playTrack, toggle, next, prev } from './music';
+import { useEffect, useReducer, useRef, useState } from 'react';
+import { TRACKS, nowPlaying, onMusic, playTrack, toggle, next, prev, position, seek } from './music';
 import { setSettings, useSettings } from './prefs';
-import { Toggle } from './ui';
+import { Toggle, Slider } from './ui';
+
+const clock = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 
 export default function MusicPlayer({ small }) {
   const [open, setOpen] = useState(false);
@@ -11,6 +13,13 @@ export default function MusicPlayer({ small }) {
   useEffect(() => onMusic(bump), []);
   const s = useSettings();
   const { track, index, playing } = nowPlaying();
+  // the progress line ticks while the panel is open
+  const [, tick] = useReducer((x) => x + 1, 0);
+  useEffect(() => { if (!open) return undefined; const t = setInterval(tick, 250); return () => clearInterval(t); }, [open]);
+  const { t, len } = position();
+  const vol = s.mix?.music ?? 0.75;
+  const lastVol = useRef(vol || 0.75);
+  const setVol = (v) => { if (v > 0) lastVol.current = v; setSettings({ mix: { music: Math.round(v * 100) / 100 } }); };
   return (
     <span className="jukebox">
       <button className={`btn small ${playing ? 'on' : ''}`} onClick={() => setOpen(!open)} title="Music">♪{small ? '' : ` ${playing && track ? track.title : 'Music'}`}</button>
@@ -20,11 +29,24 @@ export default function MusicPlayer({ small }) {
             <b>{track ? track.title : 'ESPN NFL Primetime'}</b>
             <small>{track?.by ?? (track ? 'Unknown composer' : `${TRACKS.length} tracks`)}</small>
           </div>
+          {/* where we are: click the line to jump */}
+          <div className="jb-progress">
+            <span className="jb-time">{clock(track ? t : 0)}</span>
+            <div className="jb-line" onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); seek((e.clientX - r.left) / r.width); }} title="Jump to here">
+              <span style={{ width: `${track && len ? Math.min(100, (t / len) * 100) : 0}%` }} />
+            </div>
+            <span className="jb-time">-{clock(track ? Math.max(0, len - t) : 0)}</span>
+          </div>
           <div className="btns jb-ctl">
             <button className="btn small" onClick={prev} aria-label="Previous">⏮</button>
             <button className="btn small primary" onClick={toggle}>{playing ? '⏸ Pause' : '▶ Play'}</button>
             <button className="btn small" onClick={next} aria-label="Next">⏭</button>
             <button className={`btn small ${s.musicShuffle !== false ? 'on' : ''}`} onClick={() => setSettings({ musicShuffle: s.musicShuffle === false })} title="Shuffle">🔀</button>
+          </div>
+          <div className="jb-vol">
+            <button className="btn small" onClick={() => setVol(vol ? 0 : lastVol.current)} title={vol ? 'Mute the music' : 'Music back on'}>{vol ? '🔊' : '🔇'}</button>
+            <Slider value={vol} onChange={setVol} label="Music volume" />
+            <span className="jb-time">{Math.round(vol * 100)}%</span>
           </div>
           <ol className="jb-list">
             {TRACKS.map((t, i) => (

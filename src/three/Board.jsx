@@ -718,7 +718,7 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
   const tcolors = useMemo(() => s.teams.map((t) => { const [a, b] = teamColors(t.id, t.uniform); return [a, b ?? '#ffffff']; }), [s.teams]);
   // the last move of each player, so his cube walks the same path
   const paths = {};
-  for (const e of s.log) if (e.kind === 'move' && e.path) paths[e.pid] = e.path;
+  for (const e of s.log) if ((e.kind === 'move' || e.kind === 'motion') && e.path) paths[e.pid] = e.path; // motion walks too
   // the newest contact: that player lunges at his target (a juke / shake cuts to the side)
   const lunges = {};
   for (let i = s.log.length - 1; i >= Math.max(0, s.log.length - 8); i--) {

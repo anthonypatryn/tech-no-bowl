@@ -14,6 +14,14 @@ const subs = new Set();
 const emit = () => subs.forEach((fn) => fn());
 export const onMusic = (fn) => { subs.add(fn); return () => subs.delete(fn); };
 export const nowPlaying = () => ({ track: TRACKS[cur] ?? null, index: cur, playing });
+// where we are in the track: { t, len } in seconds (the length from the cut list: VBR files report it badly)
+export const position = () => ({ t: el?.currentTime ?? 0, len: TRACKS[cur]?.len ?? (el?.duration || 0) });
+export function seek(frac) {
+  if (!el || cur < 0) return;
+  const len = TRACKS[cur].len;
+  el.currentTime = Math.max(0, Math.min(len - 0.5, frac * len));
+  emit();
+}
 
 // the jukebox's own gain follows the Music level (the mixer's master already handles mute)
 function level(v = 1) { const g = connectMedia(el); if (g) { g.gain.cancelScheduledValues(0); g.gain.value = musicLevel() * v; } return g; }
