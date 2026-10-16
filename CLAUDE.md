@@ -19,6 +19,8 @@ messages, the bug list (`?view=bugs`, PIN), the Art Review Board (`?view=art`) a
 the owner pastes their "copy for Claude" output. The owner often asks for a plan first: give one, then build it.
 
 ### Latest round (all pushed, live; session of 2026-10-15/16)
+- INFERNO fire tokens are the punchboard's pixel fireball (`public/art/fire.png`, 24 x 24, cut from `pb4f` and snapped
+  to its pixel grid), via `FireIcon` in ui.jsx: the fire tracker and every prompt. No emoji for game pieces.
 - **Opening show, bigger** (`src/three/introPlan.js` = one timeline for the field, the cards and the sounds): after
   the helmet smash the away team comes out of its tunnel one by one (grey smoke, boos), then the home team (fireworks
   in team colours, smoke, CO2 jets, cheers, crowd jumping, hard camera cuts: worm's-eye, crane, dollies). Each player

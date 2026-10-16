@@ -4,7 +4,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Stage } from '../three/Stage';
 import { Board, VIEWS } from '../three/Board';
-import { Button, Chips, Kbd, useConfirm, toggleFullscreen } from './ui';
+import { Button, Chips, FireIcon, Kbd, useConfirm, toggleFullscreen } from './ui';
 import { useSettings } from './prefs';
 import { isKey } from './keys';
 import { Sprite } from './TeamPicker';
@@ -712,7 +712,7 @@ function Prompt(props) {
     case 'fireDefend': {
       primary.current = () => answer(0);
       return (<><h3>Burn fire tokens against it? -1 each</h3><p className="hint">{req.label}.</p>
-        <div className="btns">{Array.from({ length: req.max + 1 }, (_, n) => <button key={n} className={`btn ${n === 0 ? 'primary' : ''}`} onClick={() => answer(n)}>{n === 0 ? 'Keep them' : `-${n} 🔥`}{n === 0 && <Kbd a="primary" />}</button>)}</div></>);
+        <div className="btns">{Array.from({ length: req.max + 1 }, (_, n) => <button key={n} className={`btn ${n === 0 ? 'primary' : ''}`} onClick={() => answer(n)}>{n === 0 ? 'Keep them' : <>-{n} <FireIcon /></>}{n === 0 && <Kbd a="primary" />}</button>)}</div></>);
     }
     case 'spin': return yesNo(`SPIN MOVE! #${P(req.pid).num} can spin past #${P(req.with).num}: swap squares?`, 'Spin past', 'Stay put');
     case 'heatCrit': {
@@ -778,7 +778,7 @@ function ActPrompt({ req, answer, P, mode, setMode, primary, hover, setHover, wh
   if (hover?.pass?.bomb) tip = `FIRE BOMB (3 tokens): ${tip}`;
   return (
     <>
-      <h3>#{p.num} is up{modeName}{p.onFire ? ' 🔥 ON FIRE' : ''}. {req.left} movement left.</h3>
+      <h3>#{p.num} is up{modeName}{p.onFire ? <> <FireIcon /> ON FIRE</> : ''}. {req.left} movement left.</h3>
       {mine.length > 0 && (
         <div className="skill-chips">
           {mine.map((a) => <span key={a} className={`skill-chip ${live.has(a) ? 'live' : ''}`} title={abilityText(a)}>{a}{live.has(a) ? ' ✦' : ''}</span>)}
@@ -818,7 +818,7 @@ function ActPrompt({ req, answer, P, mode, setMode, primary, hover, setHover, wh
       </div>
       {req.fire && req.fire.tokens > 0 && (
         <div className="fire-row">
-          <span className="pb-label">🔥 {req.fire.tokens}</span>
+          <span className="pb-label"><FireIcon /> {req.fire.tokens}</span>
           {req.fire.canBuy && Array.from({ length: req.fire.tokens }, (_, i) => i + 1).map((n) => <button key={n} className="chipbtn fire" onClick={() => answer({ kind: 'buy', n })}>+{n} move</button>)}
           {req.fire.canHurdle && <button className="chipbtn fire" onClick={() => answer({ kind: 'hurdle' })}>Hurdle (1)</button>}
           {req.fire.canFuego && <button className={`chipbtn fire ${fuego ? 'on' : ''}`} onClick={() => setFuego(!fuego)}>EN FUEGO (3)</button>}
@@ -850,7 +850,7 @@ function BoostPrompt({ req, answer, P, primary, name }) {
         </div>
       )}
       {f && f.tokens > 0 && (
-        <div className="boost-row"><span className="pb-label">🔥 Tokens</span>
+        <div className="boost-row"><span className="pb-label"><FireIcon /> Tokens</span>
           {Array.from({ length: Math.min(tokensLeft, room) + 1 }, (_, n) => <button key={n} className={`chipbtn fire ${v.fire === n ? 'on' : ''}`} onClick={() => set('fire', n)}>{n ? `+${n}` : 'none'}</button>)}
           {f.heat && <button className={`chipbtn fire ${v.heat ? 'on' : ''}`} disabled={!v.heat && f.tokens - v.fire < 3} onClick={() => set('heat', !v.heat)}>BRING THE HEAT (3)</button>}
         </div>
@@ -872,7 +872,7 @@ function OnFirePrompt({ req, answer, P, primary }) {
   primary.current = () => answer(null);
   return (
     <>
-      <h3>🔥 {req.tokens} fire tokens: set a player ON FIRE? (+3 on every check until he's stopped)</h3>
+      <h3><FireIcon /> {req.tokens} fire tokens: set a player ON FIRE? (+3 on every check until he's stopped)</h3>
       <div className="btns">
         {req.options.map((pid) => <button key={pid} className={`btn ${pick === pid ? 'on' : ''}`} onClick={() => (req.anySkill.includes(pid) ? setPick(pid) : answer({ pid }))}>#{P(pid).num}</button>)}
         <Button kind="primary" onClick={() => answer(null)}>Not now <Kbd a="primary" /></Button>
@@ -1260,7 +1260,7 @@ function FireHud({ s, opp = 'CPU' }) {
       {[ME, 1 - ME].map((side) => (
         <div key={side} className="fire-side">
           <small>{side === ME ? 'You' : opp}</small>
-          <span className="flames">{[0, 1, 2].map((i) => <i key={i} className={i < s.fire[side] ? 'on' : ''}>🔥</i>)}</span>
+          <span className="flames">{[0, 1, 2].map((i) => <FireIcon key={i} off={i >= s.fire[side]} />)}</span>
           <span className="lit">{Object.values(s.players).filter((p) => p.side === side && p.onFire).map((p) => <b key={p.pid}>#{p.num}</b>)}</span>
         </div>
       ))}

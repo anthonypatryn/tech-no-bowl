@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { labelFor } from './keys';
+import { artUrl } from '../data/art';
 
 // On-brand replacements for the browser's own UI: no confirm()/alert() boxes, no native drop-downs or
 // checkboxes anywhere in the game. (Same kit as Long Shot / Escape Order 66.)
+
+// the INFERNO fire token: the pixel fireball from the punchboard (art/fire.png, 24 x 24), never an emoji
+export const FireIcon = ({ off = false }) => <img className={`fire-ico ${off ? 'off' : ''}`} src={artUrl('fire.png')} alt="fire" draggable={false} />;
 
 // const [confirmIt, dialog] = useConfirm();  …  if (await confirmIt({ title, body, yes, no, danger })) …;  render {dialog}
 export function useConfirm() {

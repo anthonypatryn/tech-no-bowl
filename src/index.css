@@ -734,8 +734,11 @@ button.card:hover { border-color: var(--led); }
 .fire-hud { position: absolute; top: 56px; left: 50%; transform: translateX(-50%); display: flex; gap: var(--s4); padding: var(--s2) var(--s3); z-index: 6; }
 .fire-side { display: flex; align-items: center; gap: var(--s2); }
 .fire-side small { font-family: var(--pixel); font-size: var(--t1); color: var(--muted); }
-.flames i { font-style: normal; filter: grayscale(1) opacity(.25); }
-.flames i.on { filter: none; }
+/* the fire token (FireIcon): the punchboard's pixel fireball, sized with the text; a spent token greys out */
+.fire-ico { width: 1.15em; height: 1.15em; vertical-align: -.2em; image-rendering: pixelated; flex: none; }
+.fire-ico.off { filter: grayscale(1) opacity(.25); }
+.flames { display: inline-flex; gap: var(--px); }
+.flames .fire-ico { width: 1.4em; height: 1.4em; }
 .fire-side .lit b { color: var(--fire); font-family: var(--pixel); font-size: var(--t1); margin-left: 2px; }
 .btn.pulse:not(:disabled) { animation: pulse-go 1s ease-in-out infinite alternate; }
 @keyframes pulse-go { from { box-shadow: 0 0 0 0 rgba(47, 208, 107, .7), 0 4px 0 var(--go-edge); } to { box-shadow: 0 0 0 6px rgba(47, 208, 107, 0), 0 4px 0 var(--go-edge); } }
