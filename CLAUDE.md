@@ -19,6 +19,26 @@ messages, the bug list (`?view=bugs`, PIN), the Art Review Board (`?view=art`) a
 the owner pastes their "copy for Claude" output. The owner often asks for a plan first: give one, then build it.
 
 ### Latest round (all pushed, live; session of 2026-10-15/16)
+- **Polish pass** (legibility, ease, hotkeys, navigation, animations):
+  - Prompt titles are Pixelify Sans (sentences), the play log is a size up. Hovering a square: the cost chips plus
+    move chips (grabs the ball / TOUCHDOWN / out, can still act / move only, N can reach you); no repeated sentence.
+    Labels over heads (odds, + / -, number keys) step up a level when a labelled neighbour would cover them (`lifts`).
+  - Phones (≤560px): one row of prompt-corner buttons (Timeout shows its count only, `.wide-only`), a slim card strip,
+    the tool row fades at its edge to show it scrolls; the line-up camera looks down more steeply on tall screens.
+  - The main-button row (any `.btns` with a key label) is a sticky footer of the prompt: Done / Ready / Roll are always
+    in the same place. A card pick with one kind of card left answers itself (the engine already skips a single push /
+    scatter square and a bonus with nothing to spend).
+  - Keys: L = same as last (line-up / play call, `HOT.same`), 1-9 = playbook sets in the formation prompt (`HOT.sets`,
+    numbered chips), Tab / Shift+Tab = step through the players you can act on (or place), Enter = do it, ? = the
+    shortcuts sheet (`KeysSheet`, also in the pause menu). `same` / `keys` are rebindable (keys.js), `FIXED_KEYS` listed.
+  - Browser Back in a game opens the pause menu (App pushes the game URL back and fires `tb-back`; leaves once the game
+    is over). An 8-bit wipe between screens (`.page-wipe`, removed by a 0.6 s timer too: hidden tabs stall CSS).
+  - Animations (Board `moveFx` → Mover): touchdown dance (`cel`: scorer 3 hops with a spin, teammates within 4 squares
+    2 hops), turnover (`turn`: a spin + a ring in his colours), idle bob between downs and a defensive crouch once plays
+    are called (`idleOf`), the line of scrimmage slides and flashes gold on a first down (`LineMarker`, `isFirstDown`) with
+    a FIRST DOWN! flag, a loose ball tumbles and wobbles before settling. All off with calm motion.
+  - Testing in a hidden browser pane: the canvas never sizes until a window `resize` event, and frames only run if
+    pumped with R3F's `advance` (import the app's own `@react-three_fiber.js?v=` from performance entries).
 - **No emoji anywhere but the online chat reactions** (`REACTIONS` in room.js). Buttons use `PixelIcon` (ui.jsx: 8 x 8 pixel
   grids in the text colour, drawn at exactly 2 screen pixels a pixel): play, left, pause, prev, next, ffwd, shuffle, sound,
   soundLow, mute, dice, chat, timer, note, screen, exitScreen. Add an icon = one grid in `PIX`. Text marks (★ ✓ ✦ →) stay.

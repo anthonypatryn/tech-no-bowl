@@ -13,8 +13,12 @@ export const KEY_ACTIONS = [
   ['fullscreen', 'Full screen', 'f'],
   ['back', 'Back / cancel / leave', 'Escape'],
   ['turbo', 'Fast-forward on / off', 'g'],
-  ['skip', 'Skip a cinematic', 'Enter'],
+  ['skip', 'Skip a cinematic / do it to the Tab-picked player', 'Enter'],
+  ['same', 'Same as last down (line-up or play call)', 'l'],
+  ['keys', 'Show the keyboard shortcuts', '?'],
 ];
+// fixed keys (not rebindable), listed on the shortcuts sheet
+export const FIXED_KEYS = [['Tab / Shift+Tab', 'Next / previous player you can act on (or place, setting a formation)'], ['1-9', 'Pick a numbered square or player; setting a formation: playbook set 1, 2, 3...']];
 export const DEFAULT_KEYS = Object.fromEntries(KEY_ACTIONS.map(([a, , k]) => [a, k]));
 
 export const keyFor = (action) => settings().keys?.[action] ?? DEFAULT_KEYS[action];

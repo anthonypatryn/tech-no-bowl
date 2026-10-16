@@ -292,7 +292,7 @@ table.checks tr.bad td { color: var(--warn); }
 .cubes i { width: 10px; height: 10px; background: var(--led); box-shadow: 0 0 6px rgba(245, 224, 74, .7); }
 .cubes i.red { background: #ff3b3b; box-shadow: 0 0 6px rgba(255, 59, 59, .7); }
 
-.logfeed { position: absolute; top: 78px; right: 12px; width: min(330px, 34vw); display: flex; flex-direction: column; gap: var(--s1); pointer-events: none; font-size: var(--tiny); }
+.logfeed { position: absolute; top: 78px; right: 12px; width: min(330px, 34vw); display: flex; flex-direction: column; gap: var(--s1); pointer-events: none; font-size: var(--small); }
 .log-list { display: flex; flex-direction: column; gap: var(--s1); }
 .log-list > div { background: rgba(7, 9, 12, .62); padding: var(--s1) var(--s2); border-radius: var(--r2); color: #cfd8e2; }
 .log-list > div:last-child { color: #fff; background: rgba(7, 9, 12, .85); }
@@ -309,7 +309,7 @@ table.checks tr.bad td { color: var(--warn); }
 .game-bottom { position: absolute; left: 12px; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); display: flex; gap: var(--s3); align-items: flex-end; pointer-events: none; }
 .game-bottom > * { pointer-events: auto; }
 .prompt { flex: 1; min-width: 0; padding: var(--s3) var(--s3); max-height: 46vh; overflow: auto; }
-.prompt h3 { margin: 0 0 var(--s2); color: var(--text); text-transform: none; letter-spacing: 0; font-size: var(--t3); line-height: 1.6; }
+.prompt h3 { margin: 0 0 var(--s2); color: var(--text); text-transform: none; letter-spacing: 0; font: 700 1.05em var(--body); line-height: 1.35; } /* a sentence: the readable pixel font, not Press Start */
 .prompt .btns { display: flex; gap: var(--s2); flex-wrap: wrap; margin-top: var(--s2); }
 .play-clock { float: right; font-size: var(--small); padding: var(--s1) var(--s2); background: #050505; border-radius: var(--r2); margin-left: var(--s2); }
 .play-clock.low { color: #ff4a3a; text-shadow: 0 0 6px rgba(255, 74, 58, .6); }
@@ -927,7 +927,17 @@ html.calm *, html.calm *::before { transition: none !important; animation: none 
 @media (pointer: coarse) { .slider { height: 24px; } .slider-knob { height: 30px; width: 14px; } }
 /* phones: the prompt's corner buttons get their own row above the question */
 @media (max-width: 560px) {
-  .prompt-corner { float: none; max-width: none; justify-content: flex-start; margin: 0 0 var(--s2) 34px; }
+  /* one row: fold, timeout (its count only), suggest, rules; the cards fold to a slim strip; more field shows */
+  .prompt-corner { float: none; max-width: none; justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; margin: 0 0 var(--s2) 34px; }
+  .prompt-corner .btn { flex: none; }
+  .wide-only { display: none; }
+  /* the tool row scrolls sideways: fade its right edge so it's clear there's more */
+  .game-tools { mask-image: linear-gradient(90deg, #000 82%, transparent); -webkit-mask-image: linear-gradient(90deg, #000 82%, transparent); padding-right: var(--s5); }
+  .cards { padding: var(--s1) var(--s2); }
+  .card.big { width: 30px; height: 40px; }
+  .card.big .sprite { width: 24px; height: 24px; }
+  .card.big b { font-size: var(--t1); }
+  .prompt { max-height: 38vh; }
 }
 /* phones held sideways (short and wide): the phone layout, side by side. Cards fold to a strip on the left, the prompt
    takes the rest of the bottom, the log hides (the Players drawer, Rules and the full log are in the tools) */
@@ -1027,6 +1037,30 @@ html.calm *, html.calm *::before { transition: none !important; animation: none 
 .why-chip { font-size: var(--tiny); padding: 2px var(--s2); border: 1px solid var(--line); border-radius: var(--r1); background: rgba(255, 255, 255, .04); }
 .why-chip em { font: normal 400 var(--t1) var(--pixel); color: var(--go); }
 .why-chip.bad em { color: var(--bad); }
+/* what a hovered move does: grabs the ball / touchdown / out, can still act / move only, danger */
+.move-chip { font: 400 var(--t1) var(--pixel); padding: var(--s1) var(--s2); border: var(--px) solid var(--line); border-radius: var(--r1); color: var(--text); text-transform: uppercase; }
+.move-chip.go { border-color: var(--go); color: var(--go); }
+.move-chip.bad { border-color: var(--bad); color: var(--bad); }
+.hint:empty { display: none; }
+/* the main-button row (the one with a key label: Done, Ready, Roll...) sticks to the bottom of the prompt, so it is
+   always in the same place however long the question gets */
+.prompt .btns:has(kbd.kh) { position: sticky; bottom: calc(-1 * var(--s3)); z-index: 1; margin-bottom: calc(-1 * var(--s3)); padding: var(--s2) 0 var(--s3); background: var(--glass-hi); }
+/* playbook set numbers (press 1, 2, 3...) */
+.chip-num { display: inline-block; margin-right: var(--s1); padding: 0 var(--px); color: var(--ink); background: var(--led); font-weight: 400; }
+/* a new screen: a dark panel with a yellow edge slides off in 8 hard steps, 8-bit style */
+.page-wipe { position: fixed; inset: 0; z-index: 200; pointer-events: none; background: var(--bg2); border-left: calc(var(--px) * 4) solid var(--led); animation: pageWipe .42s steps(8) forwards; }
+@keyframes pageWipe { from { transform: translateX(0); } to { transform: translateX(100%); visibility: hidden; } }
+html.calm .page-wipe { display: none; }
+/* FIRST DOWN! flag: drops in under the score bug, holds, flies off */
+.fd-flag { position: absolute; top: calc(max(10px, env(safe-area-inset-top)) + 64px); left: 50%; z-index: 7; pointer-events: none; transform: translateX(-50%); animation: fdIn 1.9s steps(24) both; }
+.fd-flag .led { display: inline-block; font-size: var(--t5); padding: var(--s2) var(--s4); background: rgba(0, 0, 0, .8); border: var(--px) solid var(--led); box-shadow: 0 0 18px rgba(245, 224, 74, .35); }
+@keyframes fdIn { 0% { transform: translate(-50%, -30px); opacity: 0; } 12%, 80% { transform: translate(-50%, 0); opacity: 1; } 100% { transform: translate(-50%, -20px); opacity: 0; } }
+html.calm .fd-flag { animation: none; }
+/* the shortcuts sheet */
+.keys-sheet { max-width: 520px; width: 100%; max-height: 86vh; overflow: auto; }
+.keys-sheet ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s2); }
+.keys-sheet li { display: grid; grid-template-columns: 120px 1fr; align-items: center; gap: var(--s3); }
+.keys-sheet kbd.kh { justify-self: start; font-size: var(--t2); padding: var(--s1) var(--s2); }
 /* the screen's panels sit above the labels drawn on the field (odds, number keys, dice tags) */
 .scorebug, .game-tools, .logfeed, .game-bottom, .dice-toast, .replay-ui, .chyron, .ticker { z-index: 6; }
 

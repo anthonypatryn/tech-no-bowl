@@ -37,9 +37,22 @@ export default function App() {
   const [view, setView] = useState(viewFromUrl);
   const [match, setMatch] = useState(null);
   const [tut, setTut] = useState(null); // the tutorial after an undo
+  const [wipe, setWipe] = useState(0);  // a new screen: the 8-bit wipe plays (not on the first load)
 
+  // the browser's Back button in a game opens the pause menu (Leave is there) instead of dropping the game
+  const viewRef = useRef(view);
+  viewRef.current = view;
   useEffect(() => {
-    const pop = () => setView(viewFromUrl());
+    const pop = () => {
+      const was = viewRef.current;
+      if ((was === 'game' || was === 'tutorial') && viewFromUrl() !== was) {
+        history.pushState(null, '', `?view=${was}`);
+        window.dispatchEvent(new Event('tb-back'));
+        return;
+      }
+      setView(viewFromUrl());
+      setWipe((w) => w + 1);
+    };
     window.addEventListener('popstate', pop);
     return () => window.removeEventListener('popstate', pop);
   }, []);
@@ -53,17 +66,23 @@ export default function App() {
     const url = v === 'home' ? location.pathname : `?view=${v}`;
     history.pushState(null, '', url);
     setView(v);
+    setWipe((w) => w + 1);
     window.scrollTo(0, 0);
   };
 
+  // gone after 0.6 s by the clock too: a background tab can stall the animation, and it must never cover the page
+  const [wipeOn, setWipeOn] = useState(false);
+  useEffect(() => { if (!wipe) return undefined; setWipeOn(true); const t = setTimeout(() => setWipeOn(false), 600); return () => clearTimeout(t); }, [wipe]);
+  const wiper = wipeOn && <div key={`wipe${wipe}`} className="page-wipe" aria-hidden="true" />;
   if (view === 'review') return <Suspense fallback={<div className="loading">Loading…</div>}><MomentReview go={go} /></Suspense>;
   if (view === 'moments') return <Suspense fallback={<div className="loading">Loading…</div>}><Lab /></Suspense>;
   // the tutorial: a set game vs the Rookie with the coach's tips on
-  if (view === 'tutorial') return <GameView key={tut?.key ?? 'tutorial'} match={tut ?? { you: { team: 'bighorns', uni: 'home', picks: {} }, cpu: { team: 'kittens', uni: 'home', picks: {} }, level: 'rookie', mode: 'techno', seed: 2026, tutorial: true }} onRestart={setTut} onExit={() => { setTut(null); go('home'); }} onRematch={() => { setTut(null); go('teams'); }} />;
-  if (view === 'game' && match) return <GameView key={match.key ?? match.seed} match={match} onRestart={(m) => setMatch(m)} onExit={() => go(match.season ? 'season' : 'teams')} onRematch={() => setMatch({ ...match, seed: Date.now() })} />;
+  if (view === 'tutorial') return <>{wiper}<GameView key={tut?.key ?? 'tutorial'} match={tut ?? { you: { team: 'bighorns', uni: 'home', picks: {} }, cpu: { team: 'kittens', uni: 'home', picks: {} }, level: 'rookie', mode: 'techno', seed: 2026, tutorial: true }} onRestart={setTut} onExit={() => { setTut(null); go('home'); }} onRematch={() => { setTut(null); go('teams'); }} /></>;
+  if (view === 'game' && match) return <>{wiper}<GameView key={match.key ?? match.seed} match={match} onRestart={(m) => setMatch(m)} onExit={() => go(match.season ? 'season' : 'teams')} onRematch={() => setMatch({ ...match, seed: Date.now() })} /></>;
 
   return (
     <div className="app">
+      {wiper}
       <TopBar view={view} go={go} />
       {view === 'home' && <Home go={go} onResume={(m) => { setMatch(m); go('game'); }} />}
       {(view === 'teams' || (view === 'game' && !match)) && <TeamPicker onStart={(m) => { setMatch({ ...m, seed: Date.now() }); go('game'); }} />}

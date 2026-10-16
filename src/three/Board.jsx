@@ -22,7 +22,7 @@ const SPEED = 6.5; // squares per second when walking
 // jump: { id, delay } = a leap (going up for a catch) after `delay` seconds
 // orbit: { id, pts:[[x,z]] } = walk round someone (a spin move), turning a full circle on the way
 // pile: { id, at:[x,z], level, delay, jx, jz, tilt:[rx,ry,rz] } = leap onto the pile after the whistle and stay there
-function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge, active, colors, jump, orbit, pile, skilled, solid = true, tag = null, odds = null, why = null }) {
+function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge, active, colors, jump, orbit, pile, skilled, solid = true, tag = null, odds = null, why = null, lift = 0, cel = null, turn = null, idle = null }) {
   const g = useRef();
   const pos = useRef(null);
   const queue = useRef([]);
@@ -62,6 +62,14 @@ function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge,
     sp.current = { id: orbit.id, t: 0 };
     queue.current = orbit.pts.map(([x, z]) => new THREE.Vector3(x, 0, z));
   }, [orbit?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // a touchdown: the scorer dances (hops and spins), teammates nearby jump with him
+  const cl = useRef({ id: null, t0: 0 });
+  useEffect(() => { if (cel && cel.id !== cl.current.id && !settings().calm) cl.current = { ...cel, t0: performance.now() + (cel.delay ?? 0) * 1000 }; }, [cel?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // a turnover: the player who took the ball spins round once and a ring in his team's colour flashes out
+  const tv = useRef({ id: null, t0: 0 });
+  const flash = useRef();
+  useEffect(() => { if (turn && turn.id !== tv.current.id && !settings().calm) { tv.current = { id: turn.id, t0: performance.now() }; sp.current = { id: `t${turn.id}`, t: 0 }; } }, [turn?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const phase = useMemo(() => hash(p.pid) * 6.28, [p.pid]);
   useFrame((_, dt) => {
     if (!pos.current || !g.current) return;
     const q = queue.current;
@@ -101,8 +109,31 @@ function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge,
     // the spin: a full turn while he goes round
     const S = sp.current;
     if (S.t < 1) S.t = Math.min(1, S.t + dt / 0.65);
-    g.current.rotation.set(0, S.t < 1 ? S.t * Math.PI * 2 : 0, 0);
+    let ry = S.t < 1 ? S.t * Math.PI * 2 : 0;
+    // the touchdown dance: 3 big hops for the scorer (a full turn on the middle one), 2 for the teammates
+    const C = cl.current;
+    if (C.id && now >= C.t0) {
+      const u = (now - C.t0) / 1000, n = C.star ? 3 : 2, per = 0.5;
+      if (u < n * per) {
+        oy += Math.abs(Math.sin((u / per) * Math.PI)) * (C.star ? 0.7 : 0.4);
+        if (C.star && u >= per && u < 2 * per) ry += ((u - per) / per) * Math.PI * 2;
+      }
+    }
+    // between downs: a little breathing bob; the defense crouches before the snap
+    let sy = 1;
+    if (idle && !q.length && L.t >= 1 && !(C.id && now >= C.t0 && now < C.t0 + 1600)) {
+      if (idle === 'crouch') { sy = 0.9 + Math.sin(now / 260 + phase) * 0.015; }
+      else oy += (Math.sin(now / 520 + phase) + 1) * 0.018;
+    }
+    g.current.scale.set(sy < 1 ? 1.04 : 1, sy, sy < 1 ? 1.04 : 1);
+    g.current.rotation.set(0, ry, 0);
     g.current.position.set(pos.current.x + ox, (q.length ? Math.abs(Math.sin(hop.current * Math.PI)) * 0.12 : 0) + oy, pos.current.z + oz);
+    // the turnover flash: a ring in his colours races out across the grass and fades
+    if (flash.current) {
+      const f = (now - tv.current.t0) / 900;
+      flash.current.visible = !!tv.current.id && f >= 0 && f < 1;
+      if (flash.current.visible) { flash.current.scale.setScalar(0.6 + f * 2.6); flash.current.material.opacity = 0.9 * (1 - f); }
+    }
     positions.current[p.pid] = g.current.position;
   });
   return (
@@ -110,10 +141,14 @@ function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge,
       <PlayerCube uniform={uniform} row={row} facing={Math.PI / 2} down={p.down} label={p.artNum != null && p.artNum !== p.num ? p.num : null} labelColors={colors}
         onClick={onPick ? (e) => { e.stopPropagation(); onPick(p.pid); } : undefined} pickable={solid} />
       {active && <TurnMarker colors={colors} />}
+      <mesh ref={flash} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]} visible={false} raycast={() => null}>
+        <ringGeometry args={[0.45, 0.62, 32]} />
+        <meshBasicMaterial color={colors?.[0] ?? '#ffffff'} transparent opacity={0} toneMapped={false} depthWrite={false} />
+      </mesh>
       {skilled && !active && !p.down && <AbilityGem />}
-      {tag != null && <Html position={[0, 1.3, 0]} center zIndexRange={[2, 0]} style={{ pointerEvents: 'none' }}><b className="field-key">{tag}</b></Html>}
+      {tag != null && <Html position={[0, 1.3 + lift * 0.45, 0]} center zIndexRange={[2, 0]} style={{ pointerEvents: 'none' }}><b className="field-key">{tag}</b></Html>}
       {(odds || why) && (
-        <Html position={[0, 1.2, 0]} center zIndexRange={[2, 0]} style={{ pointerEvents: 'none' }}>
+        <Html position={[0, 1.2 + lift * 0.45, 0]} center zIndexRange={[2, 0]} style={{ pointerEvents: 'none' }}>
           <span className="field-odds-wrap">
             {odds && <b className={`field-odds ${odds.kind}`}>{odds.text}</b>}
             {why && <b className={`field-why ${why.startsWith('-') ? 'hurt' : 'help'}`}>{why}</b>}
@@ -217,7 +252,54 @@ function moveFx(s) {
       });
     }
   }
-  return { jump, orbit, pile };
+  // the touchdown celebration: the scorer and his teammates within 4 squares
+  const cel = {}, turn = {};
+  const td = log.findLastIndex((e) => e.kind === 'td');
+  if (td > lastDown && !log[td].old) {
+    const e = log[td], c = s.players[e.pid];
+    if (c?.col != null) {
+      cel[c.pid] = { id: e.id, star: true, delay: 0.5 };
+      for (const q of Object.values(s.players)) if (q.side === c.side && q.pid !== c.pid && !q.down && q.col != null && Math.max(Math.abs(q.col - c.col), Math.abs(q.row - c.row)) <= 4) cel[q.pid] = { id: e.id, delay: 0.7 + hash(q.pid) * 0.4 };
+    }
+  }
+  const to = log.findLastIndex((e) => e.kind === 'turnover' && e.pid);
+  if (to > lastDown && !log[to].old) turn[log[to].pid] = { id: log[to].id };
+  return { jump, orbit, pile, cel, turn };
+}
+
+// ---------- the line of scrimmage: slides to the new spot; a first down flashes it yellow ----------
+// a first down = a 1st down for the team that had the ball last down too, with no score, turnover or half in between
+export function isFirstDown(log, e) {
+  const i = log.indexOf(e);
+  for (let k = i - 1; k >= 0; k--) {
+    const x = log[k];
+    if (['td', 'turnover', 'safety', 'fieldgoal', 'kick', 'half', 'drive', 'cointoss', 'final'].includes(x.kind)) return false;
+    if (x.kind === 'down') return x.offense === e.offense;
+  }
+  return false;
+}
+function LineMarker({ z, first }) {
+  const ref = useRef();
+  const fl = useRef({ id: null, t0: 0 });
+  const blue = useMemo(() => new THREE.Color('#3d8bff'), []), gold = useMemo(() => new THREE.Color('#f5e04a'), []);
+  useEffect(() => { if (first && first !== fl.current.id) fl.current = { id: first, t0: performance.now() }; }, [first]);
+  useFrame((_, dt) => {
+    const m = ref.current;
+    if (!m) return;
+    if (m.userData.z == null || settings().calm) m.userData.z = z;
+    m.userData.z += (z - m.userData.z) * (1 - Math.exp(-dt * 5));
+    m.position.z = m.userData.z;
+    const f = fl.current.id ? (performance.now() - fl.current.t0) / 1600 : 1;
+    const k = f < 1 ? Math.abs(Math.sin(f * Math.PI * 3)) : 0; // three pulses of gold
+    m.material.color.copy(blue).lerp(gold, k);
+    m.scale.y = 1 + k * 2.5;
+  });
+  return (
+    <mesh ref={ref} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, z]}>
+      <planeGeometry args={[13, 0.08]} />
+      <meshBasicMaterial color="#3d8bff" transparent opacity={0.85} toneMapped={false} />
+    </mesh>
+  );
 }
 
 // ---------- ON FIRE: 8-bit flames licking up off the cube ----------
@@ -375,6 +457,7 @@ function Ball({ ball, positions, slowmo, snapFrom, fire = false }) {
   const g = useRef();
   const from = useRef(null), to = useRef(new THREE.Vector3()), t = useRef(1), arc = useRef(0), long = useRef(false);
   const spin = useRef(), roll = useRef();
+  const loose = useRef(0); // when a loose ball (fumble, scatter) hit the grass: it wobbles and settles
   const goalOf = () => {
     if (ball.at === 'held') { const p = positions.current[ball.pid]; return p ? new THREE.Vector3(p.x, CUBE + 0.18 + p.y, p.z) : null; }
     if (ball.at === 'dead') return null;
@@ -395,6 +478,7 @@ function Ball({ ball, positions, slowmo, snapFrom, fire = false }) {
     t.current = settings().calm || d < 0.05 ? 1 : 0;
     arc.current = Math.min(4.5, d * 0.35);
     long.current = d >= 7.5 && slowmo;
+    loose.current = ball.at === 'ground' && t.current >= 1 ? performance.now() : 0;
   }, [sig]);
   useFrame((_, dt) => {
     if (!g.current) return;
@@ -411,13 +495,21 @@ function Ball({ ball, positions, slowmo, snapFrom, fire = false }) {
       g.current.position.y += Math.sin(k * Math.PI) * arc.current;
       // a spiral: nose along the flight path, spinning round its long axis
       const vel = g.current.position.clone().sub(prev);
-      if (vel.lengthSq() > 1e-8) spin.current.lookAt(g.current.position.clone().add(vel)); // world point ahead of the ball
-      roll.current.rotation.z += dt * (long.current ? 14 : 22);
+      if (ball.at === 'ground') {
+        // a loose ball doesn't spiral: it tumbles end over end
+        spin.current.rotation.x += dt * 16; spin.current.rotation.y += dt * 5;
+        if (t.current >= 1) loose.current = performance.now();
+      } else {
+        if (vel.lengthSq() > 1e-8) spin.current.lookAt(g.current.position.clone().add(vel)); // world point ahead of the ball
+        roll.current.rotation.z += dt * (long.current ? 14 : 22);
+      }
     } else {
       g.current.position.copy(goal);
       if (ball.at === 'air') g.current.position.y += Math.sin(performance.now() / 300) * 0.08;
-      // at rest / carried: lying along the field, laces up
-      spin.current.rotation.set(0, 0, 0);
+      // a loose ball on the grass wobbles on its point and settles (1.4 s); otherwise lying along the field, laces up
+      const w = ball.at === 'ground' && loose.current && !settings().calm ? (performance.now() - loose.current) / 1400 : 1;
+      if (w < 1) { const d = (1 - w) * (1 - w); spin.current.rotation.set(Math.sin(w * 30) * 0.5 * d, w * 2.2, Math.cos(w * 24) * 0.35 * d); }
+      else spin.current.rotation.set(0, 0, 0);
       roll.current.rotation.z *= 0.9;
     }
     positions.current.__ball = g.current.position;
@@ -933,9 +1025,12 @@ function Rig({ view, focus, dir, shot, positions, intro, setup }) {
     const kf = 1 - Math.exp(-dt * 1.6);
     if (goal) f.current.lerp(new THREE.Vector3(view === 'follow' ? goal.x : Math.max(-3, Math.min(3, goal.x * 0.4)), 0, goal.z), kf);
     // setting a formation: pull back wide enough to see everyone on the field round the ball
-    const s = setup && view !== 'free' && view !== 'overhead' ? { pos: [f.current.x + 17, 14, f.current.z + 0.5], target: [f.current.x - 0.5, 0, f.current.z] } : VIEW[view](f.current, dir);
     // tall screens (phones held upright): pull the lens back so the play still fits across
     const aspect = size.width / size.height;
+    // setting a formation on a tall screen: look down more steeply, so the field (not the stands) fills the picture
+    const s = setup && view !== 'free' && view !== 'overhead'
+      ? (aspect < 1 ? { pos: [f.current.x + 7, 17, f.current.z + 0.5], target: [f.current.x - 0.5, 0, f.current.z] } : { pos: [f.current.x + 17, 14, f.current.z + 0.5], target: [f.current.x - 0.5, 0, f.current.z] })
+      : VIEW[view](f.current, dir);
     if (aspect < 1.2) {
       const back = Math.min(1.9, 1.2 / aspect);
       for (let i = 0; i < 3; i++) s.pos[i] = s.target[i] + (s.pos[i] - s.target[i]) * back;
@@ -970,6 +1065,11 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
   const fx = useMemo(() => moveFx(s), [s.log.length, s.log.at(-1)?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // the crowd in the stands jumps on the big moments
   const roar = useRef(0);
+  // between downs the players breathe; once plays are called the defense crouches for the snap (calm: still)
+  const idleOf = (p) => (settings().calm ? null : ['call', 'motion'].includes(s.phase) && p.side !== s.offense ? 'crouch' : ['formation', 'call', 'motion'].includes(s.phase) ? 'bob' : null);
+  // a new first down (same team keeps the ball): the line slides up and flashes yellow
+  const lastDownE = s.log.findLast?.((e) => e.kind === 'down');
+  const firstDown = lastDownE && !lastDownE.old && lastDownE.down === 1 && isFirstDown(s.log, lastDownE) ? lastDownE.id : null;
   const introPlayers = useMemo(() => Object.values(s.players), [s.teams]); // eslint-disable-line react-hooks/exhaustive-deps
   const lastKind = s.log.at(-1)?.kind;
   useEffect(() => { if (['td', 'turnover', 'sack', 'catch', 'fieldgoal', 'safety', 'onfire', 'intercept'].includes(lastKind)) roar.current = 1; }, [s.log.at(-1)?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -980,6 +1080,20 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
     }
     return p;
   }).filter((p) => p.col != null);
+  // labels over heads (odds, + / -, number keys): neighbours' labels would sit on top of each other in a pile, so each
+  // labelled player next to one already placed goes a step higher
+  const lifts = {};
+  {
+    const placed = [];
+    const labelled = players.filter((p) => p.col != null && (odds[p.pid] || whyTags[p.pid] || tags[p.pid] != null)).sort((a, b) => a.row - b.row || a.col - b.col);
+    for (const p of labelled) {
+      const near = placed.filter((q) => Math.abs(q.col - p.col) <= 1 && Math.abs(q.row - p.row) <= 1).map((q) => lifts[q.pid]);
+      let l = 0;
+      while (near.includes(l)) l++;
+      lifts[p.pid] = l;
+      placed.push(p);
+    }
+  }
   // development: what the board is drawing (pieces it's given, their animated positions) for the replay checks
   // (set once the screen has updated, not while rendering: React can throw a render away and leave a stale value)
   useLayoutEffect(() => { if (import.meta.env.DEV) window.__boardDbg = { players, positions: positions.current, replaying: s.replayStep != null, step: s.replayStep }; });
@@ -1012,21 +1126,14 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
       <Lights />
       <Field />
       <Stadium colors={tcolors.map((c) => c[0])} roar={roar} crowd={settings().fieldHi} />
-      {showLine && (
-        <>
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, lineZ]}>
-            <planeGeometry args={[13, 0.08]} />
-            <meshBasicMaterial color="#3d8bff" transparent opacity={0.85} toneMapped={false} />
-          </mesh>
-        </>
-      )}
+      {showLine && <LineMarker z={lineZ} first={firstDown} />}
       {intro && <RunOut players={introPlayers} unis={unis} rows={rows} intro={intro} colors={tcolors[0]} roar={roar} />}
       {!intro && players.map((p) => (
         // a new epoch (a replay starting or ending) remounts the cubes, so they appear in place instead of sliding there
         <Mover key={`${p.pid}:${epoch}`} p={p} uniform={unis[p.side]} row={rows[p.side][p.num]} path={paths[p.pid]} positions={positions}
           ring={rings[p.pid]} onPick={onPlayer} onHover={onHoverPlayer} lunge={lunges[p.pid]} active={s.active?.pid === p.pid && s.phase === 'play'} colors={tcolors[p.side]}
           jump={fx.jump[p.pid]} orbit={fx.orbit[p.pid]} pile={fx.pile[p.pid]}
-          skilled={!!s.skills && (p.abilities?.some((a) => s.inferno || !a.startsWith('INFERNO')) || !!p.fuego)} solid={!pickable || pickable.has(p.pid)} tag={tags[p.pid] ?? null} odds={odds[p.pid] ?? null} why={whyTags[p.pid] ?? null} />
+          skilled={!!s.skills && (p.abilities?.some((a) => s.inferno || !a.startsWith('INFERNO')) || !!p.fuego)} solid={!pickable || pickable.has(p.pid)} tag={tags[p.pid] ?? null} odds={odds[p.pid] ?? null} why={whyTags[p.pid] ?? null} lift={lifts[p.pid] ?? 0} cel={fx.cel[p.pid]} turn={fx.turn[p.pid]} idle={idleOf(p)} />
       ))}
       <Ball key={epoch} ball={s.ball} positions={positions} slowmo={!settings().calm} snapFrom={s.log.findLast?.((e) => e.kind === 'snap')?.from}
         fire={(shot?.kind === 'throw' && shot.bomb) || s.log.slice(-4).some((e) => e.kind === 'firebomb' || (e.kind === 'check' && e.action === 'pass' && e.bomb))} />

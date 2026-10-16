@@ -3,10 +3,10 @@
 // only offers what the open request lists.
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Stage } from '../three/Stage';
-import { Board, VIEWS } from '../three/Board';
+import { Board, VIEWS, isFirstDown } from '../three/Board';
 import { Button, Chips, FireIcon, Kbd, PixelIcon, useConfirm, toggleFullscreen } from './ui';
 import { useSettings } from './prefs';
-import { isKey } from './keys';
+import { isKey, keyFor, labelFor, KEY_ACTIONS, FIXED_KEYS } from './keys';
 import { Sprite } from './TeamPicker';
 import { HUMAN, useGame, canUndo, resumeMatch, clearResume, clearOnlineResume, setTurbo, isTurbo } from './useGame';
 import { REACTIONS, PHRASES } from '../net/room';
@@ -75,6 +75,8 @@ function liveSkills(req, s, p) {
 // The side this screen coaches. Offline it's always side 0; online the friend coaches side 1. Set at the top of each
 // render (one game screen at a time), and every part of the screen below reads it.
 let ME = HUMAN;
+// keys the open question offers beyond the main button: same as last (L), playbook sets (1-9). Set by the prompt as it renders
+const HOT = { same: null, sets: [] };
 
 // remote: the friend's view of an online game (a RemoteGame fed by the host); me: which side this screen coaches
 export default function GameView({ match, remote = null, me = HUMAN, onExit, onRematch, onRestart }) {
@@ -133,6 +135,11 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
   };
   const endReel = () => { replayQueue.current = []; setReel(null); setReplay(null); skipShot(); };
   const shown = rs ?? s;
+  // a new first down: a flag flies in for a moment (the line on the field flashes gold with it)
+  const lastDownE = s.log.findLast?.((e) => e.kind === 'down');
+  const fdId = lastDownE && !lastDownE.old && lastDownE.down === 1 && isFirstDown(s.log, lastDownE) ? lastDownE.id : null;
+  const [fdFlag, setFdFlag] = useState(null);
+  useEffect(() => { if (!fdId) return undefined; setFdFlag(fdId); const t = setTimeout(() => setFdFlag(null), 1900); return () => clearTimeout(t); }, [fdId]);
   const lastTd = s.log.findLast?.((e) => e.kind === 'td');
   // the automatic replay after a touchdown: once the runner is in and the touchdown shot is over
   useEffect(() => {
@@ -175,6 +182,8 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
   const [team, setTeam] = useState(false);       // the Players drawer
   const [spot, setSpot] = useState(null);        // a player picked in it: ringed on the field
   const [cardOf, setCardOf] = useState(null);    // a player's full card, opened from a play card's ✦
+  const [keysOpen, setKeysOpen] = useState(false); // the keyboard shortcuts sheet (?)
+  const [tabPid, setTabPid] = useState(null);     // the player Tab has stepped to
   const [bug, setBug] = useState(false);
   const [tips, setTips] = useState(!!match.tutorial);
   const [paused, setPaused] = useState(false);
@@ -215,6 +224,14 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
     const t = setTimeout(() => game.answer(auto, req.id), 250);
     return () => clearTimeout(t);
   }, [req?.id, prefsNow.quick]); // eslint-disable-line react-hooks/exhaustive-deps
+  // a question with only one legal answer (a card to pick when the bench holds one kind of card) answers itself.
+  // (The engine already skips a single push or scatter square and a bonus with nothing to spend; anything that could
+  // be declined, cancelled or kept still asks.)
+  useEffect(() => {
+    if (req?.type !== 'pick' || new Set(req.bench).size !== 1) return undefined;
+    const t = setTimeout(() => game.answer(req.bench[0], req.id), 450);
+    return () => clearTimeout(t);
+  }, [req?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // undo: rebuild the game from your answers so far, minus the last one (the dice replay exactly)
   const undoable = !online && canUndo(game);
   const undo = () => { if (undoable) onRestart(resumeMatch({ match, trail: game.trail }, 1)); };  const reqId = req?.id;
@@ -223,7 +240,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
 
   // fresh local state for every new question
   useEffect(() => {
-    setMode('move'); setSel(null); setMotion(null); setDiscard([]); setHover(null); setTap(null);
+    setMode('move'); setSel(null); setMotion(null); setDiscard([]); setHover(null); setTap(null); setTabPid(null);
     // one-click: he's arrived next to his target: do the tackle / block now
     const q = queued.current;
     queued.current = null;
@@ -432,6 +449,10 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
       default: return true;
     }
   };
+  // Tab steps through these: the players the open question lets you act on (or, setting a formation, your own)
+  const tabList = req?.type === 'act'
+    ? [...new Set([...req.tackles, ...req.blocks, ...req.shoves, ...req.jukes, ...req.shakes, ...req.dirty, ...req.handoffs, ...(mode === 'pass' ? req.passes.map((x) => x.target).filter(Boolean) : []), ...Object.keys(board.reach ?? {})])]
+    : req?.type === 'formation' ? Object.values(s.players).filter((p) => p.side === ME).sort((a, b) => a.num - b.num).map((p) => p.pid) : [];
   const pickPlayer = (pid) => { if (usable(pid)) board.onPlayer(pid); else setCardOf(pid); };
   // moving: only the players you can act on catch the pointer, so aiming at a square near anyone else hits the square
   const pickable = useMemo(() => (req?.type === 'act' && req.moves.length ? new Set([...Object.keys(board.rings), ...Object.keys(board.reach ?? {}), ...(mode === 'pass' ? req.passes.map((x) => x.target).filter(Boolean) : [])]) : null), [req?.id, board.rings, mode]); // targets only (not the why / danger rings, which come and go as you hover) // eslint-disable-line react-hooks/exhaustive-deps
@@ -514,6 +535,18 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
       else if (isKey(e, 'turbo')) toggleTurbo();
       else if (isKey(e, 'skip') && (camShot || rs)) { e.preventDefault(); if (rs) setReplay(null); else skipShot(); }
       else if (/^[1-9]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey && board.keyed?.[Number(e.key) - 1] && !camShot && !rs) { e.preventDefault(); board.keyed[Number(e.key) - 1](); }
+      else if (/^[1-9]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey && HOT.sets[Number(e.key) - 1] && !camShot && !rs) { e.preventDefault(); HOT.sets[Number(e.key) - 1](); }
+      else if (isKey(e, 'same') && HOT.same && !camShot && !rs) { e.preventDefault(); HOT.same(); }
+      else if (isKey(e, 'keys') || (e.key === '?' && keyFor('keys') === '?')) { e.preventDefault(); setKeysOpen((x) => !x); }
+      // Tab: step through the players you can act on (their odds and breakdown show as if hovered); Enter does it
+      else if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey && !e.altKey && tabList.length && !camShot && !rs) {
+        e.preventDefault();
+        const i = tabList.indexOf(tabPid);
+        const next = tabList[(i < 0 ? (e.shiftKey ? tabList.length - 1 : 0) : (i + (e.shiftKey ? tabList.length - 1 : 1)) % tabList.length)];
+        setTabPid(next);
+        if (req?.type === 'formation') setSel(P(next)?.num ?? null); else setHover({ pid: next });
+      }
+      else if (isKey(e, 'skip') && tabPid && req?.type === 'act' && tabList.includes(tabPid) && !camShot && !rs) { e.preventDefault(); const pid = tabPid; setTabPid(null); pickPlayer(pid); }
       // not during a cinematic or a replay: the prompt is hidden then, and a press would answer something unseen
       else if (isKey(e, 'primary') && primary.current && !camShot && !rs) { e.preventDefault(); primary.current(); }
       else if (isKey(e, 'back')) { if (mode === 'pass') setMode('move'); else if (sel) setSel(null); else setPaused((x) => !x); }
@@ -540,6 +573,12 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
     window.addEventListener('resize', measure);
     return () => { clearTimeout(t); window.removeEventListener('resize', measure); };
   }, [req?.id, req?.type]); // eslint-disable-line react-hooks/exhaustive-deps
+  // the browser's Back button (App turns it into this): pause, or leave once the game is over
+  useEffect(() => {
+    const back = () => { if (s.phase === 'over') onExit(); else setPaused(true); };
+    window.addEventListener('tb-back', back);
+    return () => window.removeEventListener('tb-back', back);
+  });
   const leave = async () => { if (s.phase === 'over' || await confirmIt({ title: 'Leave this game?', body: 'It stays saved: Resume it from Home.', yes: 'Leave', danger: true })) onExit(); };
 
   return (
@@ -558,6 +597,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
       <Halftime s={s} game={game} busy={!!shot} highlights={highlights.current} onWatch={watchAll} />
       <Wipe s={s} />
       <CoinToss s={s} />
+      {fdFlag && !rs && <div key={fdFlag} className="fd-flag"><span className="led">FIRST DOWN!</span></div>}
       <CoachTips s={s} enabled={tips && !intro} fresh={!match.skipIntro} onOff={() => setTips(false)} />
       <LogFeed s={s} canUndo={undoable} onUndo={undo} online={online} onOpen={setDetail} />
       <Moment s={s} />
@@ -573,7 +613,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
             <div className="prompt-corner">
               {['formation', 'call', 'motion', 'kick', 'onFire'].includes(req.type) && !s.overtime && s.pile.length >= 1 && (
                 <Button size="small" className="timeout-btn" disabled={!s.timeouts[ME]} onClick={() => answer({ timeout: true })} title="Stop the clock: adds one more play to the half (rulebook p.13)">
-                  <PixelIcon name="timer" /> Timeout ({s.timeouts[ME]} left)
+                  <PixelIcon name="timer" /><span className="wide-only"> Timeout</span> ({s.timeouts[ME]}<span className="wide-only"> left</span>)
                 </Button>
               )}
               {['act', 'formation', 'call'].includes(req.type) && <Button size="small" onClick={askCoach} title="What would the coach do?">Suggest</Button>}
@@ -591,13 +631,13 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
       <div className="game-tools">
         <Button size="small" onClick={() => setPaused(true)}>Menu <Kbd a="back" /></Button>
         <span className="cam-chips"><Chips small value={view} onChange={setView} options={VIEWS.map(([k, l], i) => [k, i === 0 ? <>{l} <Kbd a="camera" /></> : l])} /></span>
-        <Button size="small" className="cam-cycle" onClick={nextView}>Camera: {VIEWS.find(([k]) => k === view)[1]}</Button>
+        <Button size="small" className="cam-cycle" onClick={nextView}><span className="wide-only">Camera: </span>{VIEWS.find(([k]) => k === view)[1]}</Button>
         <Button size="small" onClick={() => { setTeam((x) => !x); setSpot(null); }}>Players <Kbd a="team" /></Button>
         <Button size="small" onClick={() => setRules((r) => !r)}>Rules <Kbd a="rules" /></Button>
         <Button size="small" disabled={!lastPlay(s) || !!rs} onClick={() => setReplay(lastPlay(s, game.frames))}>Replay</Button>
         <SoundChip />
         <MusicPlayer small />
-        <button className={`btn small ${turbo ? 'on' : ''}`} onClick={toggleTurbo} title="Fast-forward: everything runs 4x"><PixelIcon name="ffwd" /> {turbo ? 'Fast' : 'Normal'} <Kbd a="turbo" /></button>
+        <button className={`btn small ${turbo ? 'on' : ''}`} onClick={toggleTurbo} title="Fast-forward: everything runs 4x"><PixelIcon name="ffwd" /><span className="wide-only"> {turbo ? 'Fast' : 'Normal'}</span> <Kbd a="turbo" /></button>
       </div>
       {rs && (
         <div className="replay-ui">
@@ -626,6 +666,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
               <span className="pause-label">Cinematic camera</span>
               <Chips small value={prefsNow.camMoves ?? 'big'} onChange={(camMoves) => setSettings({ camMoves })} options={[['big', 'Big plays'], ['all', 'Every moment'], ['off', 'Never']]} />
               <Button onClick={() => setSettings({ quick: !prefsNow.quick })}>Quick play: {prefsNow.quick ? 'on' : 'off'}</Button>
+              <Button onClick={() => { setPaused(false); setKeysOpen(true); }}>Keyboard shortcuts <Kbd a="keys" /></Button>
               <Button onClick={() => { setPaused(false); setBug(true); }}>Report a bug <Kbd a="bug" /></Button>
               <span className="pause-fs"><FullscreenButton /></span>
               <Button kind="danger" onClick={() => { setPaused(false); leave(); }}>Quit game</Button>
@@ -645,6 +686,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
         const e = chartedEdit(s.teams[ME].id, req, { line: req.line, dir: req.dir, col: req.col, count: req.roster.length });
         if (e) setEdit(e);
       }} />}
+      {keysOpen && <KeysSheet onClose={() => setKeysOpen(false)} />}
       {cardOf && s.players[cardOf] && <PlayerCard s={s} p={s.players[cardOf]} onClose={() => setCardOf(null)} onFind={setSpot} />}
       {dialog}
     </div>
@@ -652,10 +694,29 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
   );
 }
 
+// ---------- the keyboard shortcuts sheet (?) ----------
+function KeysSheet({ onClose }) {
+  useEffect(() => { const k = (e) => { if (e.key === 'Escape') { e.stopPropagation(); onClose(); } }; window.addEventListener('keydown', k, true); return () => window.removeEventListener('keydown', k, true); }, [onClose]);
+  return (
+    <div className="modal" onClick={onClose}>
+      <div className="modal-card glass keys-sheet" onClick={(e) => e.stopPropagation()}>
+        <h2>Keyboard shortcuts</h2>
+        <ul>
+          {KEY_ACTIONS.map(([a, label]) => <li key={a}><kbd className="kh">{labelFor(a)}</kbd><span>{label}</span></li>)}
+          {FIXED_KEYS.slice(0, 2).map(([k, label]) => <li key={k}><kbd className="kh">{k}</kbd><span>{label}</span></li>)}
+        </ul>
+        <p className="hint">Change any of them in Settings → Keys.</p>
+        <div className="btns"><Button kind="primary" onClick={onClose}>Got it</Button></div>
+      </div>
+    </div>
+  );
+}
+
 // ---------- prompts ----------
 function Prompt(props) {
   const { req, answer, s, P, primary } = props;
   primary.current = null;
+  HOT.same = null; HOT.sets = [];
   const name = (pid) => { const p = P(pid); return `#${p.num}`; };
   const yesNo = (q, yes = 'Yes', no = 'No', def = true) => {
     primary.current = () => answer(def);
@@ -759,9 +820,13 @@ function ActPrompt({ req, answer, P, mode, setMode, primary, hover, setHover, wh
   const canStillAct = (req.mode === 'card' || req.mode === 'full' || req.mode === 'rr') && !req.tackles.length && !req.blocks.length;
   if (canStillAct && carrier && carrier.side !== p.side) tip = 'Move next to their ball carrier: from a bright green square you can still tackle, and a Tackle button appears. Or block whoever is in the way.';
   if (canStillAct && carrier && carrier.side === p.side && carrier.pid !== p.pid) tip = 'Get open downfield for a throw, or move next to a defender near your ball carrier and block him (a Block button appears).';
-  if (hover?.move) tip = `Move here: costs ${hover.move.cost} of ${req.left}${hover.move.end === 'ball' ? ' and grab the ball' : hover.move.end === 'td' ? ': TOUCHDOWN' : hover.move.end === 'out' ? ': out of bounds (play over)' : ''}`;
-  if (hover?.move) tip += hover.actAfter ? ' · can still act' : (req.mode === 'card' || req.mode === 'full') ? ' · move only (too far to act after)' : '';
-  if (hover?.move && danger?.length) tip += ` · careful: ${danger.length} of them can get to you there next turn (red rings)`;
+  // a square under the pointer: what the move does, as chips beside its cost (not a sentence to read)
+  const moveChips = hover?.move ? [
+    hover.move.end === 'ball' && ['go', 'Grabs the ball'], hover.move.end === 'td' && ['go', 'TOUCHDOWN'], hover.move.end === 'out' && ['bad', 'Out of bounds: play over'],
+    hover.actAfter ? ['go', 'Can still act'] : (req.mode === 'card' || req.mode === 'full') ? ['', 'Move only'] : null,
+    danger?.length ? ['bad', `${danger.length} can reach you (red rings)`] : null,
+  ].filter(Boolean) : null;
+  if (hover?.move) tip = why?.kind === 'move' ? '' : `Costs ${hover.move.cost} of ${req.left}`;
   if (hover?.pid && reach?.[hover.pid]) tip = `${contactOdds(s, p, P(hover.pid), reach[hover.pid].kind === 'tackle' ? 'Tackle' : 'Block', reach[hover.pid].kind)} · click him: step next to him and ${reach[hover.pid].kind} in one go`;
   if (tap) tip = 'Tap the gold square again to move there.';
   if (hover?.pass) tip = passOdds(hover.pass);
@@ -790,8 +855,10 @@ function ActPrompt({ req, answer, P, mode, setMode, primary, hover, setHover, wh
         <div className="why">
           <b>{why.kind === 'move' ? `Costs ${why.total} of ${why.left}` : `Modifier ${why.net > 0 ? '+' : ''}${why.net}`}</b>
           {why.lines.map(([l, v]) => <span key={l} className={`why-chip ${v.startsWith('-') ? 'bad' : ''}`}>{l} <em>{v}</em></span>)}
+          {why.kind === 'move' && moveChips?.map(([k, l]) => <span key={l} className={`move-chip ${k}`}>{l}</span>)}
         </div>
       )}
+      {!why && moveChips?.length > 0 && <div className="why">{moveChips.map(([k, l]) => <span key={l} className={`move-chip ${k}`}>{l}</span>)}</div>}
       {/* every action open to him right now, as its own button (with the odds); or click the ringed player */}
       {(req.tackles.length > 0 || req.blocks.length > 0 || req.handoffs.length > 0 || req.passes.length > 0 || req.canStand || req.dirty.length > 0 || req.jukes.length > 0 || req.shakes.length > 0 || Object.keys(reach ?? {}).length > 0) && (
         <div className="act-btns">
@@ -977,13 +1044,15 @@ function FormationPrompt({ req, answer, edit, setEdit, sel, primary, hover, s })
   const lastOk = lastSpots && lastSpots.length === req.roster.length && (req.role === 'offense' ? checkOffense(lastSpots, ctx) : checkDefense(lastSpots, req.offense, ctx)).ok;
   const ready = () => { rememberLast(teamId, req.role, edit, ctx); answer(edit); };
   if (res.ok) primary.current = ready;
+  HOT.sets = sets.map((set) => () => useSet(set));
+  if (lastOk) HOT.same = () => setEdit(lastSpots);
   return (
     <>
       <h3>Set your {req.role}{sel != null ? `: place #${sel}` : ''}</h3>
       <p className="hint">{sel != null ? (hover?.setup ? (hover.setup.ok ? 'Legal: the formation is ready with him here.' : `Here: ${hover.setup.errors[0]}`) : 'Green squares make the formation legal; blue are allowed but something else is still missing. Hover for why.') : 'Click one of your players to move him, pick a set from the playbook, or reroll.'}</p>
       <div className="playbook">
         <span className="pb-label">Playbook</span>
-        {sets.map((set) => <button key={set.id} className="chipbtn" onClick={() => useSet(set)}>{set.name}</button>)}
+        {sets.map((set, i) => <button key={set.id} className="chipbtn" onClick={() => useSet(set)}>{i < 9 && <b className="chip-num">{i + 1}</b>}{set.name}</button>)}
         {mine.map((m) => (
           <span key={m.name} className="pb-mine">
             <button className="chipbtn mine" onClick={() => setEdit(applySaved(m, req.role, ctx))}>★ {m.name}</button>
@@ -1005,7 +1074,7 @@ function FormationPrompt({ req, answer, edit, setEdit, sel, primary, hover, s })
       <div className="btns">
         <Button kind="primary" disabled={!res.ok} onClick={ready}>Ready <Kbd a="primary" /></Button>
         <Button onClick={() => setDepthOpen(true)}>Depth chart</Button>
-        {lastOk && <Button onClick={() => setEdit(lastSpots)}>Same as last down</Button>}
+        {lastOk && <Button onClick={() => setEdit(lastSpots)}>Same as last down <Kbd a="same" /></Button>}
         <Button onClick={reroll}>Reroll</Button>
         {saving == null
           ? <Button disabled={!res.ok} onClick={() => setSaving(`My ${req.role === 'offense' ? 'set' : 'D'} ${mine.length + 1}`)}>Save to playbook</Button>
@@ -1028,6 +1097,7 @@ function CallPrompt({ req, answer, stack, setStack, rows, s, primary, askCoach }
   for (const n of stack) left.splice(left.indexOf(n), 1);
   const ready = stack.length === req.count;
   if (ready) primary.current = () => call(stack);
+  if (lastOk) HOT.same = () => setStack([...last]);
   return (
     <>
       <h3>Call your play: {req.count} cards, in the order they'll go</h3>
@@ -1045,7 +1115,7 @@ function CallPrompt({ req, answer, stack, setStack, rows, s, primary, askCoach }
       <div className="btns">
         <Button kind="primary" disabled={!ready} onClick={() => call(stack)}>Call it <Kbd a="primary" /></Button>
         <Button onClick={askCoach} title="The All-Pro coach's five, in order">Coach's call</Button>
-        {lastOk && <Button onClick={() => setStack([...last])}>Same as last</Button>}
+        {lastOk && <Button onClick={() => setStack([...last])}>Same as last <Kbd a="same" /></Button>}
         <Button onClick={() => { const pool = [...req.bench]; const out = []; while (out.length < req.count) out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]); setStack(out); }}>Random</Button>
         {ready && <Button onClick={() => savePlay(teamId, `Play ${stack.map((n) => n).join('-')}`, stack)}>Save play</Button>}
         {stack.length > 0 && <Button onClick={() => setStack([])}>Clear</Button>}
