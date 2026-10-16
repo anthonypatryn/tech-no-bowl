@@ -66,6 +66,9 @@ export class Game {
     this.stopped = false;
     this.logNo = 0;
     this.reqNo = 0;
+    // replays: where everyone and the ball really were after each log entry of a play (log id -> frame). Screen games
+    // only (they have pacing); kept out of the state, so it isn't saved or sent online.
+    this.frames = pace ? new Map() : null;
     this.stats = { downs: 0, activations: 0, checks: 0, botFixes: 0, fixedBy: {}, stalls: 0 };
     const players = {};
     teams.forEach((t, side) => {
@@ -122,6 +125,12 @@ export class Game {
     const entry = { ...data, text, kind, id: ++this.logNo };
     if (this.rewinding) entry.old = true; // rebuilt while resuming / undoing: the screen doesn't replay its show
     this.s.log = [...this.s.log.slice(-299), entry];
+    if (this.frames && (this.s.phase === 'play' || ['snap', 'td', 'whistle', 'safety'].includes(kind))) {
+      const p = {};
+      for (const pl of Object.values(this.s.players)) p[pl.pid] = [pl.col, pl.row, pl.down ? 1 : 0];
+      this.frames.set(entry.id, { p, b: { ...this.s.ball } });
+      if (this.frames.size > 600) this.frames.delete(this.frames.keys().next().value);
+    }
     if (this.pace) this.owed += this.pace(entry) ?? 0;
     this.emit();
   }

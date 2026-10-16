@@ -19,6 +19,12 @@ messages, the bug list (`?view=bugs`, PIN), the Art Review Board (`?view=art`) a
 the owner pastes their "copy for Claude" output. The owner often asks for a plan first: give one, then build it.
 
 ### Latest round (all pushed, live)
+- **Replays are exact now** (BUG-7 / BUG-8): the engine records every player's square and the ball after each log
+  entry of a play (`game.frames`, screen games only, not in the state); `lastPlay(s, frames)` plays those back
+  (`play.exact`). The old event-guessing rebuild is only the fallback for an online friend's screen. A walk logged after
+  what it set off (a sack) is shown first. Cubes and the ball remount at a replay's start / end (`epoch`), so nothing
+  slides across from the live game. The touchdown replay is `tdCut`: the scorer's last activation (one earlier if it
+  gave him the ball). Test: every play of three whole games checks out; a 120-game sweep over all modes: 0 problems.
 - Camera: lifts the picture only when a new question comes up (`--lift-h`), never on hover (the breakdown box grew the
   prompt, the picture slid and clicks missed). Settings / pause: Cinematic camera = Big plays (TD, long throw, kick) /
   Every moment / Never (`movesCamera` in shots.js); Overhead and Free never move; replays keep your view.
@@ -201,7 +207,7 @@ the owner pastes their "copy for Claude" output. The owner often asks for a plan
 ```
 npx oxlint src tools
 npx vite build
-npm test                                   # 66 rules tests
+npm test                                   # 67 rules tests
 npm run sim -- 300                         # must print errors: 0
 node tools/simulate.mjs 60 1 passive       # side 0 never acts: games must still end
 node tools/simulate.mjs 100 1 allpro:starter

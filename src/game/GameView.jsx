@@ -35,7 +35,7 @@ import { useGameSounds } from './useGameSounds';
 import { useShot, calloutFor, delayFor, skipShot, movesCamera } from './shots';
 import { ScoreBug, Chyrons, StatCard, Wipe } from './Broadcast';
 import OpeningShow, { SHOW } from './OpeningShow';
-import { lastPlay, useReplay } from './replay';
+import { lastPlay, useReplay, tdCut } from './replay';
 import { telestrate, bigPlay } from '../three/Telestrator';
 import CoinToss from './CoinToss';
 import { recordResult } from './records';
@@ -113,11 +113,11 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
   const [reel, setReel] = useState(null); // a highlight reel: { n, labels } (the replay's own place in it is reel.i)
   const nextReplay = () => {
     if (replayQueue.current.length) { setReel((r) => (r ? { ...r, i: r.i + 1 } : r)); setReplay(replayQueue.current.shift()); }
-    else { setReel(null); setReplay(null); }
+    else { setReel(null); setReplay(null); skipShot(); } // a shot the replay set off (the touchdown orbit) ends with it
   };
   const rs = useReplay(s, replay, nextReplay);
   // big plays get the telestrator: lines, arrows and circles drawn on the field as the replay runs
-  const tele = useMemo(() => (replay && bigPlay(replay) ? telestrate(replay) : null), [replay?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const tele = useMemo(() => (replay && bigPlay(replay) ? telestrate(replay) : null), [replay?.id, replay?.from]); // eslint-disable-line react-hooks/exhaustive-deps
   // highlights: [{ play, label }]
   const watchAll = (hl) => {
     if (!hl.length) return;
@@ -125,7 +125,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
     setReel(hl.length > 1 || hl[0].label ? { i: 0, n: hl.length, labels: hl.map((h) => h.label ?? '') } : null);
     setReplay(hl[0].play);
   };
-  const endReel = () => { replayQueue.current = []; setReel(null); setReplay(null); };
+  const endReel = () => { replayQueue.current = []; setReel(null); setReplay(null); skipShot(); };
   const shown = rs ?? s;
   const lastTd = s.log.findLast?.((e) => e.kind === 'td');
   // the automatic replay after a touchdown: once the runner is in and the touchdown shot is over
@@ -133,9 +133,10 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
     if (!lastTd || lastTd.old || settings().calm) return;
     const i = s.log.indexOf(lastTd);
     // the whole scoring play (snap to end zone), a bit quicker, labelled with who scored
-    const base = lastPlay(game.state);
+    // just the run in: the scorer's last activation (one earlier if that one gave him the ball), from the real positions
+    const base = tdCut(lastPlay(game.state, game.frames), lastTd.pid);
     const who = s.players[lastTd.pid];
-    const play = base && { ...base, speed: 0.75 };
+    const play = base && { ...base, speed: 0.85 };
     const label = `Touchdown ${s.teams[lastTd.side].name}${who ? `: #${who.num} ${who.name}` : ''}`;
     const t = setTimeout(() => { if (play) { replayQueue.current = []; setReel({ i: 0, n: 1, labels: [label] }); setReplay(play); } }, (delayFor(s.log, i) + 3.4 + 0.8) * 1000 / (isTurbo() ? 4 : 1));
     return () => clearTimeout(t);
@@ -446,7 +447,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
   const lastEnd = s.log.findLast?.((e) => ['whistle', 'td', 'safety'].includes(e.kind));
   useEffect(() => {
     if (!lastEnd) return;
-    const play = lastPlay(s);
+    const play = lastPlay(s, game.frames);
     if (!play || highlights.current.some((h) => h.play.id === play.id)) return;
     const ev = play.events;
     let score = 0, label = '';
@@ -505,7 +506,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
     <InfoCtx.Provider value={{ hover: (pid) => setHover(pid ? { pid } : null), open: setCardOf }}>
     <div ref={rootRef} className={`game ${camShot || intro || rs ? 'cine' : ''} ${intro ? 'intro' : ''} ${rs ? 'replaying' : ''}`}>
       <Stage className="game-stage">
-        <Board game={rs ? { state: rs } : game} view={rs ? (view === 'follow' ? 'broadcast' : view) : view} setup={!rs && ['formation', 'call', 'motion'].includes(s.phase)} onFree={() => setView('free')} shot={shot} camShot={!!camShot} intro={intro} tiles={rs ? [] : board.tiles} rings={rs ? {} : rings} onTile={rs ? null : board.onTile} onHover={setHover} onHoverPlayer={(pid) => setHover(pid ? { pid } : null)} outlines={rs ? [] : board.outlines} onPlayer={rs ? null : pickPlayer} pickable={pickable} tags={rs ? {} : board.tags} tele={rs && tele ? { marks: tele, shown: rs.log.length } : null}
+        <Board game={rs ? { state: rs } : game} view={rs ? (view === 'follow' ? 'broadcast' : view) : view} setup={!rs && ['formation', 'call', 'motion'].includes(s.phase)} onFree={() => setView('free')} shot={shot} camShot={!!camShot} intro={intro} tiles={rs ? [] : board.tiles} rings={rs ? {} : rings} onTile={rs ? null : board.onTile} onHover={setHover} onHoverPlayer={(pid) => setHover(pid ? { pid } : null)} outlines={rs ? [] : board.outlines} onPlayer={rs ? null : pickPlayer} pickable={pickable} tags={rs ? {} : board.tags} tele={rs && tele ? { marks: tele, shown: rs.step ?? 0 } : null} epoch={rs ? `r${replay?.id}:${replay?.from ?? 0}` : 'live'}
           edit={edit && req?.type === 'formation' ? { side: ME, spots: edit } : null}
           focusSq={spot != null && P(spot)?.col != null ? [P(spot).col, P(spot).row] : null} />
       </Stage>
@@ -551,7 +552,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
         <Button size="small" className="cam-cycle" onClick={nextView}>Camera: {VIEWS.find(([k]) => k === view)[1]}</Button>
         <Button size="small" onClick={() => { setTeam((x) => !x); setSpot(null); }}>Players <Kbd a="team" /></Button>
         <Button size="small" onClick={() => setRules((r) => !r)}>Rules <Kbd a="rules" /></Button>
-        <Button size="small" disabled={!lastPlay(s) || !!rs} onClick={() => setReplay(lastPlay(s))}>Replay</Button>
+        <Button size="small" disabled={!lastPlay(s) || !!rs} onClick={() => setReplay(lastPlay(s, game.frames))}>Replay</Button>
         <SoundChip />
         <MusicPlayer small />
         <button className={`btn small ${turbo ? 'on' : ''}`} onClick={toggleTurbo} title="Fast-forward: everything runs 4x">⏩ {turbo ? 'Fast' : 'Normal'} <Kbd a="turbo" /></button>

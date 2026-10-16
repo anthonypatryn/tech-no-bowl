@@ -691,3 +691,46 @@ test('p.15: total successes chain free activations (each free activation can ear
   await g.runActivation('0:34', 'card');
   assert.deepEqual(acted, ['0:34', '0:45', '0:22']);
 });
+
+test('replays: every play rebuilt from the recorded frames matches what happened (walks start and end in place)', async () => {
+  const { makeAI } = await import('../src/engine/ai.js');
+  const { lastPlay, tdCut } = await import('../src/game/replay.js');
+  let plays = 0, tds = 0;
+  for (const seed of [11, 22, 33]) {
+    const ai = makeAI('starter');
+    const problems = [];
+    let seen = 0;
+    const g = new Game({ teams: [{ id: 'a', name: 'A', roster: [6, 7, 33, 42, 45, 55, 68].map((num) => ({ num })) }, { id: 'b', name: 'B', roster: [6, 7, 33, 42, 45, 55, 68].map((num) => ({ num })) }], seed, mode: 'alltechno', agents: [ai, ai] }, {
+      pace: () => 0,
+      onChange: (st) => {
+        const end = st.log.at(-1);
+        if (!end || !['whistle', 'td', 'safety'].includes(end.kind) || end.id <= seen) return;
+        seen = end.id;
+        const play = lastPlay(st, g.frames);
+        if (!play) return;
+        plays++;
+        assert.ok(play.exact, 'screen games replay from frames');
+        let prev = play.start;
+        for (const { e, f } of play.steps) {
+          if (e.kind === 'move' && e.path?.length) {
+            const a = prev.p[e.pid], b = f.p[e.pid], last = e.path.at(-1), first = e.path[0];
+            if (b[0] !== last[0] || b[1] !== last[1]) problems.push(`move ${e.id} ends off its path`);
+            if (Math.max(Math.abs(a[0] - first[0]), Math.abs(a[1] - first[1])) > 1) problems.push(`move ${e.id} starts away from ${e.pid}`);
+          }
+          // nobody shares a square in any frame
+          const taken = new Set();
+          for (const [pid, q] of Object.entries(f.p)) { if (q[0] == null) continue; const k = `${q[0]},${q[1]}`; if (taken.has(k)) problems.push(`two on ${k} at ${e.id} (${pid})`); taken.add(k); }
+          prev = f;
+        }
+        if (end.kind === 'td') {
+          tds++;
+          const cut = tdCut(play, end.pid);
+          assert.ok(cut.from == null || cut.steps.slice(cut.from).some((x) => x.e.kind === 'move' && x.e.pid === end.pid), 'the touchdown cut shows the scorer moving');
+        }
+      },
+    });
+    await g.run();
+    assert.deepEqual(problems, [], `seed ${seed}`);
+  }
+  assert.ok(plays > 20 && tds > 0, `${plays} plays, ${tds} touchdowns checked`);
+});
