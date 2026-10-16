@@ -114,7 +114,7 @@ function far(st, e) {
 
 // how long each moment holds: the moves, hits, throws and skills flow on like TV
 const HOLD = { move: (e) => 200 + 175 * (e.path?.length ?? 1), push: 450, check: (e) => (e.action === 'pass' ? 350 : 550), sport: 250, scatter: 800, catch: 550,
-  inflight: 1300, tackle: 1200, sack: 1400, knockdown: 700, fumble: 600, td: 2400, snap: 550, spin: 900, stiffarm: 900, intercept: 900, dogpile: 1200, heat: 700 };
+  inflight: 1300, tackle: 1200, sack: 1400, knockdown: 700, fumble: 600, td: 2400, snap: 750, spin: 900, stiffarm: 900, intercept: 900, dogpile: 1200, heat: 700 };
 
 // play a replay: returns the board state to show (null when it's over). state.step = how many steps have played
 export function useReplay(s, play, onDone) {
@@ -123,9 +123,10 @@ export function useReplay(s, play, onDone) {
   useEffect(() => {
     // no replay (or it was skipped): drop the last frame too, or the board stays frozen on it
     if (!play) { setSt(null); return undefined; }
-    let cur = { ...startState(s, play), step: play.from ?? 0 };
+    let cur = { ...startState(s, play), step: play.from ?? 0, replayStep: play.from ?? 0 };
     if (!play.exact) for (let k = 0; k < (play.from ?? 0); k++) cur = apply(cur, play.events[k]);
     setSt(cur);
+    if (import.meta.env.DEV) window.__rsStep = { step: play.from ?? 0, play, at: performance.now() };
     let i = play.from ?? 0;
     const next = () => {
       if (i >= play.events.length) { timer.current = setTimeout(() => { setSt(null); onDone(); }, 900); return; }
@@ -133,10 +134,19 @@ export function useReplay(s, play, onDone) {
       const shown = { ...e, id: ++rid, dice: undefined, replay: true }; // no dice on screen in a replay
       const moved = play.exact ? atFrame(cur, play.steps[i].f, cur.ball) : apply(cur, e);
       i++;
-      cur = { ...moved, log: [...cur.log, shown], step: i };
+      cur = { ...moved, log: [...cur.log, shown], step: i, replayStep: i };
+      if (import.meta.env.DEV) window.__rsStep = { step: i, play, at: performance.now() };
       setSt(cur);
       const h = HOLD[e.kind];
       let ms = (typeof h === 'function' ? h(e) : h ?? 250) * (play.speed ?? 1);
+      // a throw: wait for the ball to land (the board flies a long throw in slow motion, ~2.2 s), or the next moment
+      // starts with the ball still in the air
+      if (['catch', 'inflight', 'offtarget'].includes(e.kind) && e.to) {
+        const prevF = play.exact ? (i > 1 ? play.steps[i - 2].f : play.start) : null;
+        const from = prevF && e.from ? prevF.p[e.from] : null;
+        const d = from ? Math.hypot(from[0] - e.to[0], from[1] - e.to[1]) : 6;
+        ms = Math.max(ms, (d >= 7.5 ? 2200 : 250 + d * 60) + 250);
+      }
       // the touchdown: hold until its cinematic is over (it waits for the runner's walk, then plays ~3.4 s), or the
       // replay would end first and the orbit play on over the live field
       if (e.kind === 'td') {
@@ -144,9 +154,9 @@ export function useReplay(s, play, onDone) {
         ms = (Math.min(2.5, (walk?.path?.length ?? 1) / 6.5 + 0.15) + 3.6) * 1000;
       }
       // away from the ball (a block downfield while the camera rides with the carrier): don't make the viewer wait on it
-      if (far(cur, e)) ms = Math.min(ms, e.kind === 'move' ? 150 + 165 * (e.path?.length ?? 1) : 280);
+      if (far(cur, e)) ms = Math.min(ms, e.kind === 'move' ? 250 + 190 * (e.path?.length ?? 1) : 280);
       // a walk always gets the time it needs on screen (or the next step cuts it off mid-stride)
-      timer.current = setTimeout(next, e.kind === 'move' ? Math.max(ms, 150 + 165 * (e.path?.length ?? 1)) : ms);
+      timer.current = setTimeout(next, e.kind === 'move' ? Math.max(ms, 250 + 190 * (e.path?.length ?? 1)) : ms); // a little slack for slow devices
     };
     timer.current = setTimeout(next, 700);
     return () => clearTimeout(timer.current);

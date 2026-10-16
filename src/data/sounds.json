@@ -525,5 +525,57 @@
    "fade": 0.25,
    "name": "helmet smash"
   }
+ ],
+ "cheer": [
+  {
+   "file": "crowd-cheer-a",
+   "start": 8.0,
+   "len": 4.5,
+   "vol": 0.6,
+   "fade": 0.7,
+   "name": "stadium roar"
+  },
+  {
+   "file": "crowd-cheer-a",
+   "start": 24.0,
+   "len": 5.0,
+   "vol": 0.6,
+   "fade": 0.8,
+   "name": "stadium roar 2"
+  },
+  {
+   "file": "crowd-cheer-b",
+   "start": 1.2,
+   "len": 6.0,
+   "vol": 0.6,
+   "fade": 0.8,
+   "name": "big cheer"
+  }
+ ],
+ "boo": [
+  {
+   "file": "crowd-boo",
+   "start": 1.8,
+   "len": 4.2,
+   "vol": 3.2,
+   "fade": 0.6,
+   "name": "outrage"
+  },
+  {
+   "file": "crowd-boo",
+   "start": 11.0,
+   "len": 4.5,
+   "vol": 3.0,
+   "fade": 0.7,
+   "name": "boos"
+  },
+  {
+   "file": "crowd-boo",
+   "start": 17.0,
+   "len": 5.0,
+   "vol": 2.6,
+   "fade": 0.8,
+   "name": "big boos"
+  }
  ]
 }

@@ -47,7 +47,7 @@ function whoosh(kind = 'fire') {
 export function useGameSounds(game, { theme = true } = {}) {
   const seen = useRef(0);
   useEffect(() => {
-    preload(['crowd', 'whistle', 'whistleStart', 'whistleFinal', 'grunt', 'hit', 'step', 'dice', 'coin', 'coinLand', 'card', 'fanfare', 'smash']);
+    preload(['crowd', 'whistle', 'whistleStart', 'whistleFinal', 'grunt', 'hit', 'step', 'dice', 'coin', 'coinLand', 'card', 'fanfare', 'smash', 'cheer', 'boo']);
     startCrowd();
     if (theme) playTheme(26).then(() => crowd(0.45, 22, 0.5)); // duck the crowd under the theme
     return () => { stopTheme(0.6); stopCrowd(0.8); };
@@ -62,7 +62,32 @@ export function useGameSounds(game, { theme = true } = {}) {
   }, [log]);
 }
 
+// the home crowd (side 0, the HOME team on the team select / the host online): cheers when the home team does well,
+// boos when the away team does, or when the home team messes up. One reaction at a time (a touchdown always gets one).
+let lastFans = 0;
+const sideOf = (pid) => (typeof pid === 'string' ? Number(pid.split(':')[0]) : null);
+function fans(goodFor, big = false) {
+  if (goodFor == null) return;
+  const now = performance.now();
+  if (!big && now - lastFans < 3500) return;
+  lastFans = now;
+  play(goodFor === 0 ? 'cheer' : 'boo', { vol: big ? 1 : 0.8 });
+}
+function react(e) {
+  switch (e.kind) {
+    case 'td': case 'safety': case 'fieldgoal': fans(e.side, true); break;
+    case 'turnover': fans(e.side, true); break;
+    case 'sack': fans(1 - sideOf(e.pid)); break; // whoever was sacked, the other side did well
+    case 'kick': if (!e.good && e.side != null) fans(1 - e.side); break; // a missed kick
+    case 'catch': if ((e.yds ?? 0) >= 25) fans(sideOf(e.pid)); break;
+    case 'knockdown': fans(1 - sideOf(e.pid)); break; // flattened: good for the other side
+    case 'onfire': fans(sideOf(e.pid)); break;
+    default:
+  }
+}
+
 function cue(e) {
+  react(e);
   switch (e.kind) {
     case 'half': stopTheme(2); play('whistleStart'); crowd(1.6, 1.5); break;
     case 'snap': crowd(1.25, 0.8); break;

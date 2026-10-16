@@ -14,7 +14,7 @@ export const decodeFile = (file) => (wake() ? load(file) : Promise.resolve(null)
 export const audioNow = () => ctx?.currentTime ?? 0;
 import { settings, onSettings } from './prefs';
 
-const CHANNEL = { crowd: 'crowd', theme: 'music' };
+const CHANNEL = { crowd: 'crowd', cheer: 'crowd', boo: 'crowd', theme: 'music' };
 const level = (slot) => settings().mix?.[CHANNEL[slot] ?? 'fx'] ?? 1;
 
 let ctx = null;

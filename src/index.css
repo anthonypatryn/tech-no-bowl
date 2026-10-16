@@ -984,3 +984,7 @@ html.calm *, html.calm *::before { transition: none !important; animation: none 
 .stats-helmet { height: 18px; vertical-align: -4px; transform: scaleX(-1); }
 .stats-by { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); margin-bottom: var(--s3); }
 .stats-page .panel, .stats-page .glass { overflow-x: auto; }
+
+/* the replay bar and the cinematic Skip button sit above the widescreen bars (and below the top one) */
+.replay-ui { z-index: 30; top: calc(11vh + var(--s2)); }
+.skip-shot { z-index: 30; bottom: calc(11vh + var(--s2)); }

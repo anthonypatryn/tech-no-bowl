@@ -5,7 +5,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Html, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { Field, Lights, sq, ROWS, COLS } from './Field';
-import { PlayerCube, DownCube, CUBE } from './Cube';
+import { PlayerCube, CUBE } from './Cube';
 import { uniformOf, teamColors, artRows } from '../data/art';
 import { DiceRolls } from './Dice';
 import { Stadium, TUNNEL_Z } from './Stadium';
@@ -45,7 +45,9 @@ function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge,
   const at = `${p.col},${p.row}`;
   useLayoutEffect(() => {
     const goal = new THREE.Vector3(...sq(p.col, p.row));
-    if (!pos.current || settings().calm) { pos.current = goal.clone(); queue.current = []; return; }
+    // placed (a new down, a replay starting, calm motion): there at once, and say so before the first frame, or the
+    // camera and the ball read the old spot
+    if (!pos.current || settings().calm) { pos.current = goal.clone(); queue.current = []; if (g.current) { g.current.position.copy(goal); positions.current[p.pid] = g.current.position; } return; }
     if (pos.current.distanceTo(goal) < 0.01) return;
     const walking = path?.length && path[path.length - 1][0] === p.col && path[path.length - 1][1] === p.row;
     // anything that isn't a walk along a path and is more than a push away (a new down's formation) is a teleport
@@ -62,11 +64,13 @@ function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge,
   useFrame((_, dt) => {
     if (!pos.current || !g.current) return;
     const q = queue.current;
-    if (q.length) {
+    // walk the path at SPEED squares a second whatever the frame rate: a slow frame covers several squares (it used to
+    // stop at one square a frame, so on a slow device or a background tab the walk fell behind the play)
+    let step = SPEED * Math.min(dt, 0.5);
+    while (q.length && step > 0) {
       const next = q[0];
       const d = pos.current.distanceTo(next);
-      const step = SPEED * dt;
-      if (d <= step) { pos.current.copy(next); q.shift(); hop.current = 0; } else { pos.current.lerp(next, step / d); hop.current += dt * SPEED; }
+      if (d <= step) { pos.current.copy(next); q.shift(); step -= d; hop.current = 0; } else { pos.current.lerp(next, step / d); hop.current += step; step = 0; }
     }
     const now = performance.now();
     // the pile: once his leap starts he's off the field's grid until the next down resets everyone
@@ -799,6 +803,9 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
     }
     return p;
   }).filter((p) => p.col != null);
+  // development: what the board is drawing (pieces it's given, their animated positions) for the replay checks
+  // (set once the screen has updated, not while rendering: React can throw a render away and leave a stale value)
+  useLayoutEffect(() => { if (import.meta.env.DEV) window.__boardDbg = { players, positions: positions.current, replaying: s.replayStep != null, step: s.replayStep }; });
   // grabbing the camera (a real drag, not a click on a square) switches to the free camera
   const drag = useRef(null);
   useEffect(() => {
@@ -834,7 +841,6 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
             <planeGeometry args={[13, 0.08]} />
             <meshBasicMaterial color="#3d8bff" transparent opacity={0.85} toneMapped={false} />
           </mesh>
-          <DownCube down={s.down} position={[8.2, 0, lineZ]} size={0.85} />
         </>
       )}
       {intro && <RunOut teams={[0, 1].map((side) => Object.values(s.players).filter((p) => p.side === side))} unis={unis} rows={rows} t0={intro.t0} startAt={intro.startAt} />}
@@ -858,7 +864,7 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
       {shot?.kind === 'skill' && shot.fx === 'spark' && <Burst key={shot.id} at={sq(...shot.at, 0)} colors={['#ffffff', '#ffe14a', '#c9c9c9']} count={34} />}
       {shot?.kind === 'skill' && shot.fx === 'dust' && <Dust key={shot.id} at={sq(...shot.at, 0)} />}
       {shot?.kind === 'td' && <Burst key={shot.id} confetti at={sq(...shot.at, 0)} colors={teamColors(s.teams[shot.side].id, s.teams[shot.side].uniform).concat(['#f5e04a', '#ffffff'])} count={120} />}
-      <DiceRolls log={s.log} players={s.players} offense={s.offense} home={[s.spot, s.line]}
+      <DiceRolls key={epoch} log={s.log} players={s.players} offense={s.offense} home={[s.spot, s.line]}
         teamColors={s.teams.map((t) => teamColors(t.id, t.uniform))} teamNames={s.teams.map((t) => t.name)} />
       <Tiles tiles={tiles} onPick={onTile} onHover={onHover} />
       {tele && <Telestrator marks={tele.marks} shown={tele.shown} />}

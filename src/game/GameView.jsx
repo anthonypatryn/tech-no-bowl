@@ -537,8 +537,10 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
     <div ref={rootRef} className={`game ${camShot || intro || rs ? 'cine' : ''} ${intro ? 'intro' : ''} ${rs ? 'replaying' : ''}`}>
       <Stage className="game-stage">
         <Board game={rs ? { state: rs } : game} view={rs ? (view === 'follow' ? 'broadcast' : view) : view} setup={!rs && ['formation', 'call', 'motion'].includes(s.phase)} onFree={() => setView('free')} shot={shot} camShot={!!camShot} intro={intro} tiles={rs ? [] : board.tiles} rings={rs ? {} : rings} onTile={rs ? null : board.onTile} onHover={setHover} onHoverPlayer={(pid) => setHover(pid ? { pid } : null)} outlines={rs ? [] : board.outlines} onPlayer={rs ? null : pickPlayer} pickable={pickable} tags={rs ? {} : board.tags} odds={rs ? {} : fieldOdds} whyTags={rs || prefsNow.fieldOdds === false ? {} : why?.tags ?? {}} tele={rs && tele ? { marks: tele, shown: rs.step ?? 0 } : null} epoch={rs ? `r${replay?.id}:${replay?.from ?? 0}` : 'live'}
-          edit={edit && req?.type === 'formation' ? { side: ME, spots: edit } : null}
-          focusSq={spot != null && P(spot)?.col != null ? [P(spot).col, P(spot).row] : null} />
+          // a replay shows the recorded play only: never the line-up you're arranging for the next down (that drew your
+          // pieces in their new spots over every touchdown replay), nor a player picked in the live game
+          edit={!rs && edit && req?.type === 'formation' ? { side: ME, spots: edit } : null}
+          focusSq={!rs && spot != null && P(spot)?.col != null ? [P(spot).col, P(spot).row] : null} />
       </Stage>
       <ScoreBug s={s} />
       <Chyrons s={s} />

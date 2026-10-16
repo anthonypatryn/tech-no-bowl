@@ -19,6 +19,15 @@ messages, the bug list (`?view=bugs`, PIN), the Art Review Board (`?view=art`) a
 the owner pastes their "copy for Claude" output. The owner often asks for a plan first: give one, then build it.
 
 ### Latest round (all pushed, live; session of 2026-10-15/16)
+- **The real touchdown-replay bug**: during the replay the next down's line-up question was already open, and the
+  Board drew the human's pieces at that line-up (`edit`) over the replay. Board now gets `edit` / `focusSq` only when not
+  replaying. Found with `src/dev/tdcheck.js` (dev tool: answers side 0 through the screen like a person, checks every
+  replay step: pieces given to the Board, cubes on screen, the ball, vs the frames). 11 touchdowns (6 for, 5 against):
+  every piece and the ball right at every step. Also: walks keep pace at any frame rate, pieces report their spot as
+  soon as placed, the debug hook is set after commit, replays wait for throws to land, live dice reset with a replay.
+- Removed the down-marker cube from the sideline (the chyron shows the down). The replay bar and Skip sit above the
+  widescreen bars. Home crowd reactions: `cheer` / `boo` slots (Pixabay clips) from `react()` in useGameSounds: home
+  (side 0) cheered, away booed, the home team booed when it gives the ball up / gets sacked / misses.
 - Touchdown replay = the whole scoring play through the same path as the end-of-game highlights (`watchAll`); the
   cut to the scorer's last turn (`tdCut`) is gone. The real "wrong replay" after it: coming back from a replay, the shot
   director re-played the live touchdown over the empty field. `useShot` now plays each log entry's shot once
@@ -223,6 +232,8 @@ the owner pastes their "copy for Claude" output. The owner often asks for a plan
   Pass the real one (`THREE.Mesh.prototype.raycast`). That made players unclickable after a move (BUG-9).
 - **The ball isn't cleared at the end of a play** (endPlay): only at the next down, after `catchUp()`, or a scoring
   catch's flight is never drawn.
+- **Anything live stays out of a replay**: line-up edits, picked players, dice, tiles, rings, odds, tags. Pass them
+  to the Board only when `!rs`.
 - **Hooks order in GameView's Screen**: effects that read `prefsNow` / `board` / `why` go after those are declared
   (a TDZ crash there takes the whole game screen down; lint doesn't catch it, so look in the browser).
 - **Timeouts** are an answer (`{ timeout: true }`) to any dead-ball question (`DEAD_BALL` in game.js), so they're
