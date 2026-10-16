@@ -738,6 +738,9 @@ button.card:hover { border-color: var(--led); }
 .fire-hud { position: absolute; top: 56px; left: 50%; transform: translateX(-50%); display: flex; gap: var(--s4); padding: var(--s2) var(--s3); z-index: 6; }
 .fire-side { display: flex; align-items: center; gap: var(--s2); }
 .fire-side small { font-family: var(--pixel); font-size: var(--t1); color: var(--muted); }
+/* PixelIcon: 8-bit icons in the text colour (no emoji anywhere but the online chat reactions) */
+.pix { height: calc(var(--px) * 8); width: auto; vertical-align: -.25em; fill: currentColor; flex: none; } /* 8 art pixels at 2 screen pixels each: always crisp */
+
 /* the fire token (FireIcon): the punchboard's pixel fireball, sized with the text; a spent token greys out */
 .fire-ico { width: 1.15em; height: 1.15em; vertical-align: -.2em; image-rendering: pixelated; flex: none; }
 .fire-ico.off { filter: grayscale(1) opacity(.25); }

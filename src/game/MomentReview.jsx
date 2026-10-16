@@ -13,7 +13,7 @@ import { useShot } from './shots';
 import { useGameSounds } from './useGameSounds';
 import { calloutFor } from './shots';
 import { settings } from './prefs';
-import { Button } from './ui';
+import { Button, PixelIcon } from './ui';
 
 const KEY = 'tb-moment-review';
 const PIN_KEY = 'tb-bug-pin';
@@ -332,7 +332,7 @@ export default function MomentReview({ go }) {
       {phase !== 'playing' && (
         <div className="review-panel glass">
           <p className="review-expect"><b>What should happen:</b> {m.expect}</p>
-          {phase === 'ready' && <Button kind="primary" size="big" onClick={play}>▶ Play</Button>}
+          {phase === 'ready' && <Button kind="primary" size="big" onClick={play}><PixelIcon name="play" /> Play</Button>}
           {phase === 'done' && (
             <>
               <div className="btns">
@@ -348,8 +348,8 @@ export default function MomentReview({ go }) {
           )}
           {v && <p className="hint">Last verdict: {VERDICT[v.status]}{v.note ? ` — ${v.note}` : ''}</p>}
           <div className="btns review-nav">
-            <Button size="small" disabled={i === 0} onClick={() => setI(i - 1)}>◀ Previous</Button>
-            <Button size="small" onClick={() => setI(i + 1)}>Skip ▶</Button>
+            <Button size="small" disabled={i === 0} onClick={() => setI(i - 1)}><PixelIcon name="left" /> Previous</Button>
+            <Button size="small" onClick={() => setI(i + 1)}>Skip <PixelIcon name="play" /></Button>
             <Button size="small" onClick={() => setI(REVIEW.length)}>See the list</Button>
           </div>
           {settings().calm && <p className="warn">Calm motion is on in Settings, so the cinematics are switched off. Turn it off to review them.</p>}

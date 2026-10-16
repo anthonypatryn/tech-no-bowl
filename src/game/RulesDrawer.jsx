@@ -2,7 +2,7 @@
 // One chapter at a time on tabs, plus a search across every rule.
 import { useEffect, useRef, useState } from 'react';
 import { RULES } from '../data/rulesText';
-import { Button, Panel } from './ui';
+import { Button, Panel, PixelIcon } from './ui';
 
 // the rule text with the search words lit up
 function Lit({ text, words }) {
@@ -45,8 +45,8 @@ function RulesBrowser({ focus, autoFocus }) {
             <h3>{sec.title} <small>rulebook p.{sec.page}</small></h3>
             <ul>{sec.items.map((l) => <li key={l}>{l}</li>)}</ul>
             <div className="rules-pager">
-              {i > 0 ? <Button size="small" onClick={() => setTab(RULES[i - 1].id)}>◀ {RULES[i - 1].title}</Button> : <span />}
-              {i < RULES.length - 1 && <Button size="small" onClick={() => setTab(RULES[i + 1].id)}>{RULES[i + 1].title} ▶</Button>}
+              {i > 0 ? <Button size="small" onClick={() => setTab(RULES[i - 1].id)}><PixelIcon name="left" /> {RULES[i - 1].title}</Button> : <span />}
+              {i < RULES.length - 1 && <Button size="small" onClick={() => setTab(RULES[i + 1].id)}>{RULES[i + 1].title} <PixelIcon name="play" /></Button>}
             </div>
           </section>
         )}

@@ -19,6 +19,9 @@ messages, the bug list (`?view=bugs`, PIN), the Art Review Board (`?view=art`) a
 the owner pastes their "copy for Claude" output. The owner often asks for a plan first: give one, then build it.
 
 ### Latest round (all pushed, live; session of 2026-10-15/16)
+- **No emoji anywhere but the online chat reactions** (`REACTIONS` in room.js). Buttons use `PixelIcon` (ui.jsx: 8 x 8 pixel
+  grids in the text colour, drawn at exactly 2 screen pixels a pixel): play, left, pause, prev, next, ffwd, shuffle, sound,
+  soundLow, mute, dice, chat, timer, note, screen, exitScreen. Add an icon = one grid in `PIX`. Text marks (★ ✓ ✦ →) stay.
 - **Inferno 8 v 8** (`infernopro` in MODES: pro + skills + field goals + inferno). Not a house rule: the rulebook says
   INFERNO "also works with ALL PRO" (p.19). `ModePicker` (TeamPicker.jsx) adds 7 v 7 / 8 v 8 under Inferno! in quick
   game, season and online; `modeName()`. Sim (200 games): 0 errors; vs 7 v 7: fewer TDs (1.9 vs 2.4 a game), ~0.4 field

@@ -98,7 +98,7 @@ export function menuSounds() {
     const el = e.target.closest?.('button, a, .chipbtn, [role=switch], .toggle');
     if (!el || el.disabled) return;
     const txt = el.textContent || '';
-    synth(el.classList.contains('primary') || el.classList.contains('menu-card') ? 'select' : /^(◀|Back|Close|Cancel|No|Leave|Quit)/.test(txt.trim()) ? 'back' : 'blip');
+    synth(el.classList.contains('primary') || el.classList.contains('menu-card') ? 'select' : (/^(Back|Close|Cancel|No|Leave|Quit)/.test(txt.trim()) || !!el.querySelector('[data-icon=left]')) ? 'back' : 'blip');
   }, true);
 }
 

@@ -9,7 +9,7 @@ import { Field, Lights } from '../three/Field';
 import { PlayerCube, DownCube } from '../three/Cube';
 import { Chips, Toggle } from './ui';
 import { TEAMS, uniformsFor, uniformOf, rosterFor, artUrl, helmetUrl, teamById, PUNCH } from '../data/art';
-import { Button } from './ui';
+import { Button, PixelIcon } from './ui';
 import { Sprite } from './TeamPicker';
 
 const SECTIONS = [['teams', 'Teams'], ['helmets', 'Helmets'], ['downs', 'Down marker'], ['field', 'Field'], ['board', 'Scoreboard & tokens'], ['moments', 'Moments'], ['checks', 'Checks'], ['review', 'Review']];
@@ -219,12 +219,12 @@ function MomentsSection() {
   return (
     <section className="glass moments-review">
       <p>The moments have their own review now: one at a time, each on a board set up for it, played with sound and cameras, then approve / change / reject right there. At the end, copy the whole list for Claude.</p>
-      <div className="btns"><a className="btn primary big" href="?view=review">▶ Start the moment review</a></div>
+      <div className="btns"><a className="btn primary big" href="?view=review"><PixelIcon name="play" /> Start the moment review</a></div>
       <p className="hint">Or fire any of them freely in the Moment Lab:</p>
       <div className="moment-list">
         {MOMENTS.map(([k, label]) => (
           <div key={k} className="moment-row">
-            <a className="btn small" href={`?view=moments&m=${k}`} target="_blank" rel="noreferrer">▶ {label}</a>
+            <a className="btn small" href={`?view=moments&m=${k}`} target="_blank" rel="noreferrer"><PixelIcon name="play" /> {label}</a>
             <Verdict id={`moment:${k}`} label={label} />
           </div>
         ))}

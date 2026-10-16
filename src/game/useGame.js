@@ -71,7 +71,7 @@ export function useGame(match) {
   return game;
 }
 
-// fast-forward (the ⏩ button / G): everything runs 4x until it's switched off
+// fast-forward (the fast-forward button / G): everything runs 4x until it's switched off
 let turbo = false;
 export const setTurbo = (on) => { turbo = !!on; };
 export const isTurbo = () => turbo;

@@ -8,6 +8,34 @@ import { artUrl } from '../data/art';
 // the INFERNO fire token: the pixel fireball from the punchboard (art/fire.png, 24 x 24), never an emoji
 export const FireIcon = ({ off = false }) => <img className={`fire-ico ${off ? 'off' : ''}`} src={artUrl('fire.png')} alt="fire" draggable={false} />;
 
+// 8-bit icons for buttons, drawn from pixel grids in the text colour (never emoji: they change look per device and
+// break the 8-bit style). <PixelIcon name="play" />. The online chat reactions are the one place emoji are used.
+const PIX = {
+  play: ['.#......', '.##.....', '.###....', '.####...', '.####...', '.###....', '.##.....', '.#......'],
+  left: ['......#.', '.....##.', '....###.', '...####.', '...####.', '....###.', '.....##.', '......#.'],
+  pause: ['........', '.##..##.', '.##..##.', '.##..##.', '.##..##.', '.##..##.', '.##..##.', '........'],
+  prev: ['........', '.#...#..', '.#..##..', '.#.###..', '.#.###..', '.#..##..', '.#...#..', '........'],
+  next: ['........', '..#...#.', '..##..#.', '..###.#.', '..###.#.', '..##..#.', '..#...#.', '........'],
+  ffwd: ['........', '#...#...', '##..##..', '###.###.', '###.###.', '##..##..', '#...#...', '........'],
+  shuffle: ['......#.', '##..####', '..##..#.', '...##...', '...##...', '..##..#.', '##..####', '......#.'],
+  sound: ['........', '...#..#.', '..##...#', '####.#.#', '####.#.#', '..##...#', '...#..#.', '........'],
+  soundLow: ['........', '...#....', '..##....', '####.#..', '####.#..', '..##....', '...#....', '........'],
+  mute: ['........', '...#....', '..##.#.#', '####..#.', '####.#.#', '..##....', '...#....', '........'],
+  dice: ['.######.', '#......#', '#.#....#', '#..##..#', '#..##..#', '#....#.#', '#......#', '.######.'],
+  chat: ['.#######.', '#.......#', '#.#.#.#.#', '#.......#', '.#######.', '..##.....', '.#.......'],
+  note: ['....###.', '....#.##', '....#...', '....#...', '..###...', '.####...', '.###....', '........'],
+  screen: ['###..###', '#......#', '#......#', '........', '........', '#......#', '#......#', '###..###'],
+  exitScreen: ['..#..#..', '..#..#..', '###..###', '........', '........', '###..###', '..#..#..', '..#..#..'],
+  timer: ['..###...', '...#....', '.#####..', '#..#..#.', '#..##.#.', '#.....#.', '.#####..', '........'],
+};
+const pixPath = (rows) => rows.flatMap((r, y) => [...r].map((c, x) => (c === '#' ? `M${x} ${y}h1v1h-1z` : ''))).join('');
+const PIX_D = Object.fromEntries(Object.entries(PIX).map(([k, rows]) => [k, { d: pixPath(rows), w: rows[0].length, h: rows.length }]));
+export function PixelIcon({ name }) {
+  const ic = PIX_D[name];
+  if (!ic) return null;
+  return <svg className="pix" data-icon={name} viewBox={`0 0 ${ic.w} ${ic.h}`} shapeRendering="crispEdges" aria-hidden="true"><path d={ic.d} /></svg>;
+}
+
 // const [confirmIt, dialog] = useConfirm();  …  if (await confirmIt({ title, body, yes, no, danger })) …;  render {dialog}
 export function useConfirm() {
   const [ask, setAsk] = useState(null);

@@ -3,7 +3,7 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { TRACKS, nowPlaying, onMusic, playTrack, toggle, next, prev, position, seek } from './music';
 import { setSettings, useSettings } from './prefs';
-import { Button, Slider, Toggle } from './ui';
+import { Button, PixelIcon, Slider, Toggle } from './ui';
 
 const clock = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 
@@ -22,7 +22,7 @@ export default function MusicPlayer({ small }) {
   const setVol = (v) => { if (v > 0) lastVol.current = v; setSettings({ mix: { music: Math.round(v * 100) / 100 } }); };
   return (
     <span className="jukebox">
-      <button className={`btn small ${playing ? 'on' : ''}`} onClick={() => setOpen(!open)} title="Music">♪{small ? '' : ` ${playing && track ? track.title : 'Music'}`}</button>
+      <button className={`btn small ${playing ? 'on' : ''}`} onClick={() => setOpen(!open)} title="Music" aria-label="Music"><PixelIcon name="note" />{small ? '' : ` ${playing && track ? track.title : 'Music'}`}</button>
       {open && (
         <div className="jukebox-panel glass" onClick={(e) => e.stopPropagation()}>
           <div className="jb-now">
@@ -38,13 +38,13 @@ export default function MusicPlayer({ small }) {
             <span className="jb-time">-{clock(track ? Math.max(0, len - t) : 0)}</span>
           </div>
           <div className="btns jb-ctl">
-            <Button size="small" onClick={prev} aria-label="Previous">⏮</Button>
-            <Button kind="primary" size="small" onClick={toggle}>{playing ? '⏸ Pause' : '▶ Play'}</Button>
-            <Button size="small" onClick={next} aria-label="Next">⏭</Button>
-            <button className={`btn small ${s.musicShuffle !== false ? 'on' : ''}`} onClick={() => setSettings({ musicShuffle: s.musicShuffle === false })} title="Shuffle">🔀</button>
+            <Button size="small" onClick={prev} aria-label="Previous"><PixelIcon name="prev" /></Button>
+            <Button kind="primary" size="small" onClick={toggle}>{playing ? <><PixelIcon name="pause" /> Pause</> : <><PixelIcon name="play" /> Play</>}</Button>
+            <Button size="small" onClick={next} aria-label="Next"><PixelIcon name="next" /></Button>
+            <button className={`btn small ${s.musicShuffle !== false ? 'on' : ''}`} onClick={() => setSettings({ musicShuffle: s.musicShuffle === false })} title="Shuffle" aria-label="Shuffle"><PixelIcon name="shuffle" /></button>
           </div>
           <div className="jb-vol">
-            <Button size="small" onClick={() => setVol(vol ? 0 : lastVol.current)} title={vol ? 'Mute the music' : 'Music back on'}>{vol ? '🔊' : '🔇'}</Button>
+            <Button size="small" onClick={() => setVol(vol ? 0 : lastVol.current)} title={vol ? 'Mute the music' : 'Music back on'}>{vol ? <PixelIcon name="sound" /> : <PixelIcon name="mute" />}</Button>
             <Slider value={vol} onChange={setVol} label="Music volume" />
             <span className="jb-time">{Math.round(vol * 100)}%</span>
           </div>
@@ -83,5 +83,5 @@ export function FullscreenButton() {
     if (document.fullscreenElement || document.webkitFullscreenElement) (document.exitFullscreen ?? document.webkitExitFullscreen)?.call(document);
     else (d.requestFullscreen ?? d.webkitRequestFullscreen)?.call(d)?.catch?.(() => {});
   };
-  return <Button size="small" className="fs-btn" onClick={go} title="Full screen (F)">{on ? '⤓ Exit full screen' : '⛶ Full screen'}</Button>;
+  return <Button size="small" className="fs-btn" onClick={go} title="Full screen (F)">{on ? <><PixelIcon name="exitScreen" /> Exit full screen</> : <><PixelIcon name="screen" /> Full screen</>}</Button>;
 }

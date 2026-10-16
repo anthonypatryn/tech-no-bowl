@@ -3,7 +3,7 @@
 // whether the play clocks run, then kicks it off. Anyone joining a full room watches.
 import { useEffect, useMemo, useReducer, useState } from 'react';
 import { HostRoom, JoinClient, RemoteGame, cleanCode, loadIce } from '../net/room';
-import { Button, Chips, Panel, Row, Toggle } from './ui';
+import { Button, Chips, Panel, PixelIcon, Row, Toggle } from './ui';
 import { TEAMS, teamById, uniformsFor, teamColors, helmetUrl, rosterFor } from '../data/art';
 import { altSlots, lineup as lineupOf } from '../data/abilities';
 import { ModePicker, modeName, MODE_INFO, TeamGrid, LineupPicker, AbilityCard, Sprite } from './TeamPicker';
@@ -144,9 +144,9 @@ function TeamChooser({ sel, onChange, disabled, mode }) {
       {!disabled && (
         <>
           <div className="btns">
-            <Button size="small" onClick={() => pick(TEAMS[(i - 1 + TEAMS.length) % TEAMS.length].id)}>◀</Button>
+            <Button size="small" onClick={() => pick(TEAMS[(i - 1 + TEAMS.length) % TEAMS.length].id)}><PixelIcon name="left" /></Button>
             <Button size="small" onClick={() => setGrid(true)}>All teams</Button>
-            <Button size="small" onClick={() => pick(TEAMS[(i + 1) % TEAMS.length].id)}>▶</Button>
+            <Button size="small" onClick={() => pick(TEAMS[(i + 1) % TEAMS.length].id)}><PixelIcon name="play" /></Button>
             <Button size="small" onClick={() => pick(TEAMS[Math.floor(Math.random() * TEAMS.length)].id)}>Random</Button>
           </div>
           <Chips small value={sel.uni} onChange={(uni) => onChange({ ...sel, uni })} options={uniformsFor(sel.team).map((u) => [u.id, u.label])} />

@@ -4,7 +4,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Stage } from '../three/Stage';
 import { Board, VIEWS } from '../three/Board';
-import { Button, Chips, FireIcon, Kbd, useConfirm, toggleFullscreen } from './ui';
+import { Button, Chips, FireIcon, Kbd, PixelIcon, useConfirm, toggleFullscreen } from './ui';
 import { useSettings } from './prefs';
 import { isKey } from './keys';
 import { Sprite } from './TeamPicker';
@@ -573,7 +573,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
             <div className="prompt-corner">
               {['formation', 'call', 'motion', 'kick', 'onFire'].includes(req.type) && !s.overtime && s.pile.length >= 1 && (
                 <Button size="small" className="timeout-btn" disabled={!s.timeouts[ME]} onClick={() => answer({ timeout: true })} title="Stop the clock: adds one more play to the half (rulebook p.13)">
-                  ⏱ Timeout ({s.timeouts[ME]} left)
+                  <PixelIcon name="timer" /> Timeout ({s.timeouts[ME]} left)
                 </Button>
               )}
               {['act', 'formation', 'call'].includes(req.type) && <Button size="small" onClick={askCoach} title="What would the coach do?">Suggest</Button>}
@@ -597,7 +597,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
         <Button size="small" disabled={!lastPlay(s) || !!rs} onClick={() => setReplay(lastPlay(s, game.frames))}>Replay</Button>
         <SoundChip />
         <MusicPlayer small />
-        <button className={`btn small ${turbo ? 'on' : ''}`} onClick={toggleTurbo} title="Fast-forward: everything runs 4x">⏩ {turbo ? 'Fast' : 'Normal'} <Kbd a="turbo" /></button>
+        <button className={`btn small ${turbo ? 'on' : ''}`} onClick={toggleTurbo} title="Fast-forward: everything runs 4x"><PixelIcon name="ffwd" /> {turbo ? 'Fast' : 'Normal'} <Kbd a="turbo" /></button>
       </div>
       {rs && (
         <div className="replay-ui">
@@ -761,7 +761,7 @@ function ActPrompt({ req, answer, P, mode, setMode, primary, hover, setHover, wh
   if (canStillAct && carrier && carrier.side === p.side && carrier.pid !== p.pid) tip = 'Get open downfield for a throw, or move next to a defender near your ball carrier and block him (a Block button appears).';
   if (hover?.move) tip = `Move here: costs ${hover.move.cost} of ${req.left}${hover.move.end === 'ball' ? ' and grab the ball' : hover.move.end === 'td' ? ': TOUCHDOWN' : hover.move.end === 'out' ? ': out of bounds (play over)' : ''}`;
   if (hover?.move) tip += hover.actAfter ? ' · can still act' : (req.mode === 'card' || req.mode === 'full') ? ' · move only (too far to act after)' : '';
-  if (hover?.move && danger?.length) tip += ` · ⚠ ${danger.length} of them can get to you there next turn (red rings)`;
+  if (hover?.move && danger?.length) tip += ` · careful: ${danger.length} of them can get to you there next turn (red rings)`;
   if (hover?.pid && reach?.[hover.pid]) tip = `${contactOdds(s, p, P(hover.pid), reach[hover.pid].kind === 'tackle' ? 'Tackle' : 'Block', reach[hover.pid].kind)} · click him: step next to him and ${reach[hover.pid].kind} in one go`;
   if (tap) tip = 'Tap the gold square again to move there.';
   if (hover?.pass) tip = passOdds(hover.pass);
@@ -1101,7 +1101,7 @@ function OnlineBar({ net, host }) {
         <span>{host ? (f ? `${f.name}${f.connected ? '' : ' (disconnected)'}${f.cpu ? ' · computer covering' : ''}` : 'No opponent') : net.status === 'reconnecting' ? 'Reconnecting to the host…' : `Room ${net.code}`}</span>
         {host && f && !f.connected && !f.cpu && <Button size="small" onClick={() => net.takeOver()}>Let the computer play</Button>}
         <span className="reacts">{REACTIONS.map((e, k) => <button key={k} className="chipbtn" onClick={() => (host ? net.react(0, k) : net.react(k))}>{e}</button>)}</span>
-        <span className="jukebox"><button className="chipbtn" onClick={() => setChat(!chat)} title="Quick chat">💬</button>
+        <span className="jukebox"><button className="chipbtn" onClick={() => setChat(!chat)} title="Quick chat" aria-label="Quick chat"><PixelIcon name="chat" /></button>
           {chat && <span className="chat-menu glass">{PHRASES.map((p, i) => <button key={p} className="chipbtn" onClick={() => { const k = REACTIONS.length + i; if (host) net.react(0, k); else net.react(k); setChat(false); }}>{p}</button>)}</span>}</span>
       </div>
       <div className="react-float">{recent.map((r) => <span key={r.id} className={`rf side${r.side} ${r.k >= REACTIONS.length ? 'phrase' : ''}`}>{r.k < REACTIONS.length ? REACTIONS[r.k] : PHRASES[r.k - REACTIONS.length]}</span>)}</div>
@@ -1190,7 +1190,7 @@ function LogFeed({ s, canUndo, onUndo, online, onOpen }) {
       <div className="log-list" ref={list}>
         {items.map((e) => {
           const roll = ['check', 'sport', 'scatter', 'dice', 'kick'].includes(e.kind);
-          return <div key={e.id} className={`log-${e.kind} ${roll ? 'rollable' : ''}`} onClick={roll ? () => onOpen(e) : undefined} title={roll ? 'Why? Click for the full roll' : undefined}>{roll ? '🎲 ' : ''}{e.text}</div>;
+          return <div key={e.id} className={`log-${e.kind} ${roll ? 'rollable' : ''}`} onClick={roll ? () => onOpen(e) : undefined} title={roll ? 'Why? Click for the full roll' : undefined}>{roll ? <><PixelIcon name="dice" /> </> : ''}{e.text}</div>;
         })}
       </div>
     </div>
@@ -1292,8 +1292,8 @@ function EndScreen({ s, onExit, onRematch, match, online, highlights = [], onWat
         {top.length > 0 && (
           <div className="recap">
             <h3>Highlights</h3>
-            {top.length > 1 && <Button kind="primary" size="small" onClick={() => onWatch(top.map((h) => ({ play: h.play, label: h.label })))}>▶ Watch them all</Button>}
-            {top.map((h, i) => <Button key={h.play.id} size="small" onClick={() => onWatch([{ play: h.play, label: h.label }])}>▶ {i + 1}. {h.label}</Button>)}
+            {top.length > 1 && <Button kind="primary" size="small" onClick={() => onWatch(top.map((h) => ({ play: h.play, label: h.label })))}><PixelIcon name="play" /> Watch them all</Button>}
+            {top.map((h, i) => <Button key={h.play.id} size="small" onClick={() => onWatch([{ play: h.play, label: h.label }])}><PixelIcon name="play" /> {i + 1}. {h.label}</Button>)}
           </div>
         )}
         <div className="btns"><Button size="small" onClick={share}>{copied ? 'Copied!' : 'Copy the result to share'}</Button></div>
@@ -1363,7 +1363,7 @@ function Halftime({ s, game, busy, highlights = [], onWatch }) {
         <div className="half-hl glass">
           <b className="led">FIRST-HALF HIGHLIGHTS</b>
           {top.map((h) => <span key={h.play.id}>{h.label}</span>)}
-          <Button onClick={() => { setOpen(null); onWatch(top.map((h) => ({ play: h.play, label: `1st half · ${h.label}` }))); }}>▶ Watch them</Button>
+          <Button onClick={() => { setOpen(null); onWatch(top.map((h) => ({ play: h.play, label: `1st half · ${h.label}` }))); }}><PixelIcon name="play" /> Watch them</Button>
         </div>
       )}
     </div>
@@ -1444,7 +1444,7 @@ function SoundChip() {
     setSt(audioState());
     playSound('whistle', { vol: 0.6 });
   };
-  const label = { on: '🔊', muted: '🔇 Muted: click to unmute', off: '🔈 Click to turn sound on' }[st];
+  const label = { on: <PixelIcon name="sound" />, muted: <><PixelIcon name="mute" /> Muted: click to unmute</>, off: <><PixelIcon name="soundLow" /> Click to turn sound on</> }[st];
   return <button className={`btn small sound-chip ${st}`} onClick={fix} title="Sound check">{label}</button>;
 }
 

@@ -2,7 +2,7 @@
 // abilities down the outside (tap one to read what his abilities do), name and home/away at the bottom. Teams with
 // alternate players ask who suits up when you pick them.
 import { useEffect, useState } from 'react';
-import { Button, Chips } from './ui';
+import { Button, Chips, PixelIcon } from './ui';
 import { TEAMS, teamById, uniformsFor, uniformOf, teamColors, artUrl, helmetUrl, rosterFor } from '../data/art';
 import { abilityText, altSlots, lineup } from '../data/abilities';
 import { LEVELS } from '../engine/ai.js';
@@ -102,9 +102,9 @@ function Half({ who, label, tag, sel, set, step, random, openGrid, onInfo, onLin
       <header className="ts-top">
         <span className="ts-who">{label}</span>
         <div className="ts-nav">
-          <Button size="small" onClick={() => step(-1)} aria-label="Previous team">◀</Button>
+          <Button size="small" onClick={() => step(-1)} aria-label="Previous team"><PixelIcon name="left" /></Button>
           <Button size="small" onClick={openGrid}>All teams</Button>
-          <Button size="small" onClick={() => step(1)} aria-label="Next team">▶</Button>
+          <Button size="small" onClick={() => step(1)} aria-label="Next team"><PixelIcon name="play" /></Button>
           <Button size="small" onClick={random} title="Random team">Random</Button>
         </div>
       </header>
