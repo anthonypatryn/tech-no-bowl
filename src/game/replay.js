@@ -26,7 +26,9 @@ export function lastPlay(s) {
   if (!spots[0] || !spots[1]) return null;
   const motions = log.slice(0, snap).filter((e, i, a) => e.kind === 'motion' && i > a.findLastIndex((x) => x.kind === 'down'));
   const events = log.slice(snap, end + 1).filter((e) => KEEP.includes(e.kind) || ENDS.includes(e.kind));
-  return { id: log[end].id, spots, motions, events, big: events.some((e) => e.kind === 'td' || e.kind === 'turnover' || (e.kind === 'catch' && e.yds >= 25)) };
+  // the down it was played on (the live game has moved on to the next one by the time a replay starts)
+  const down = log.slice(0, snap).findLast((e) => e.kind === 'down');
+  return { id: log[end].id, spots, motions, events, down: down ? { down: down.down, line: down.line, offense: down.offense } : null, big: events.some((e) => e.kind === 'td' || e.kind === 'turnover' || (e.kind === 'catch' && e.yds >= 25)) };
 }
 
 export function startState(s, play) {
@@ -36,7 +38,8 @@ export function startState(s, play) {
     players[p.pid] = { ...p, col: sp?.col ?? null, row: sp?.row ?? null, down: false };
   }
   for (const m of play.motions) if (players[m.pid]) { players[m.pid].col = m.to[0]; players[m.pid].row = m.to[1]; }
-  return { ...s, players, ball: { at: 'dead' }, log: [], phase: 'play', request: null, active: null };
+  const d = play.down;
+  return { ...s, ...(d ? { down: d.down, line: d.line, offense: d.offense } : {}), players, ball: { at: 'dead' }, log: [], phase: 'play', request: null, active: null };
 }
 
 export function apply(st, e) {
@@ -61,13 +64,12 @@ export function apply(st, e) {
   return { ...st, players, ball, log: [...st.log, e] };
 }
 
-// the touchdown replay: from where the scorer got the ball (snap, hand-off, catch, pickup) to the end zone
-export function scorerCut(play, pid) {
-  if (!play) return play;
-  let from = -1;
-  play.events.forEach((e, i) => { if ((e.kind === 'snap' || e.kind === 'handoff') && e.to === pid) from = i; else if ((e.kind === 'catch' || (e.kind === 'sport' && e.ok)) && e.pid === pid) from = i; });
-  if (from < 0) from = Math.max(0, play.events.length - 4);
-  return from > 0 ? { ...play, from } : play;
+// is this moment well away from the ball (more than 4 squares)?
+function far(st, e) {
+  const p = e.pid && st.players[e.pid];
+  const b = st.ball.at === 'held' ? st.players[st.ball.pid] : st.ball.col != null ? { col: st.ball.col, row: st.ball.row } : null;
+  if (!p || !b || p.col == null || b.col == null || st.ball.pid === e.pid) return false;
+  return Math.max(Math.abs(p.col - b.col), Math.abs(p.row - b.row)) > 4;
 }
 
 // how long each replayed moment holds (slow motion)
@@ -92,8 +94,12 @@ export function useReplay(s, play, onDone) {
       const e = play.events[i++];
       cur = apply(cur, { ...e, id: ++rid });
       setSt(cur);
+      // play.speed < 1 runs it quicker (the touchdown replay), but a walk always gets the time it needs on screen
       const h = HOLD[e.kind];
-      timer.current = setTimeout(next, typeof h === 'function' ? h(e) : h ?? 250);
+      let ms = (typeof h === 'function' ? h(e) : h ?? 250) * (play.speed ?? 1);
+      // away from the ball (a block downfield while the camera rides with the carrier): don't make the viewer wait on it
+      if (far(cur, e)) ms = Math.min(ms, e.kind === 'move' ? 150 + 165 * (e.path?.length ?? 1) : 280);
+      timer.current = setTimeout(next, e.kind === 'move' ? Math.max(ms, 150 + 165 * (e.path?.length ?? 1)) : ms);
     };
     timer.current = setTimeout(next, 900);
     return () => clearTimeout(timer.current);

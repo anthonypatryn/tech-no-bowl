@@ -35,7 +35,7 @@ import { useGameSounds } from './useGameSounds';
 import { useShot, calloutFor, delayFor, skipShot } from './shots';
 import { ScoreBug, Chyrons, StatCard, Wipe } from './Broadcast';
 import OpeningShow, { SHOW } from './OpeningShow';
-import { lastPlay, useReplay, scorerCut } from './replay';
+import { lastPlay, useReplay } from './replay';
 import CoinToss from './CoinToss';
 import { recordResult } from './records';
 import { loadSeason, reportResult } from './season';
@@ -129,8 +129,12 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
   useEffect(() => {
     if (!lastTd || lastTd.old || settings().calm) return;
     const i = s.log.indexOf(lastTd);
-    const play = scorerCut(lastPlay(game.state), lastTd.pid);
-    const t = setTimeout(() => { if (play) setReplay(play); }, (delayFor(s.log, i) + 3.4 + 0.8) * 1000 / (isTurbo() ? 4 : 1));
+    // the whole scoring play (snap to end zone), a bit quicker, labelled with who scored
+    const base = lastPlay(game.state);
+    const who = s.players[lastTd.pid];
+    const play = base && { ...base, speed: 0.75 };
+    const label = `Touchdown ${s.teams[lastTd.side].name}${who ? `: #${who.num} ${who.name}` : ''}`;
+    const t = setTimeout(() => { if (play) { replayQueue.current = []; setReel({ i: 0, n: 1, labels: [label] }); setReplay(play); } }, (delayFor(s.log, i) + 3.4 + 0.8) * 1000 / (isTurbo() ? 4 : 1));
     return () => clearTimeout(t);
   }, [lastTd?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const shot = useShot(shown.log, shown.players);
@@ -478,7 +482,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
     <InfoCtx.Provider value={{ hover: (pid) => setHover(pid ? { pid } : null), open: setCardOf }}>
     <div ref={rootRef} className={`game ${shot || intro || rs ? 'cine' : ''} ${intro ? 'intro' : ''} ${rs ? 'replaying' : ''}`}>
       <Stage className="game-stage">
-        <Board game={rs ? { state: rs } : game} view={rs ? 'follow' : view} setup={!rs && ['formation', 'call', 'motion'].includes(s.phase)} onFree={() => setView('free')} shot={shot} intro={intro} tiles={rs ? [] : board.tiles} rings={rs ? {} : rings} onTile={rs ? null : board.onTile} onHover={setHover} onHoverPlayer={(pid) => setHover(pid ? { pid } : null)} outlines={rs ? [] : board.outlines} onPlayer={rs ? null : pickPlayer} pickable={pickable}
+        <Board game={rs ? { state: rs } : game} view={rs ? 'broadcast' : view} setup={!rs && ['formation', 'call', 'motion'].includes(s.phase)} onFree={() => setView('free')} shot={shot} intro={intro} tiles={rs ? [] : board.tiles} rings={rs ? {} : rings} onTile={rs ? null : board.onTile} onHover={setHover} onHoverPlayer={(pid) => setHover(pid ? { pid } : null)} outlines={rs ? [] : board.outlines} onPlayer={rs ? null : pickPlayer} pickable={pickable}
           edit={edit && req?.type === 'formation' ? { side: ME, spots: edit } : null}
           focusSq={spot != null && P(spot)?.col != null ? [P(spot).col, P(spot).row] : null} />
       </Stage>
@@ -531,10 +535,10 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
       </div>
       {rs && (
         <div className="replay-ui">
-          <span className="replay-bug"><i />{reel ? `HIGHLIGHT ${reel.i + 1} OF ${reel.n}` : 'REPLAY'}</span>
+          <span className="replay-bug"><i />{reel && reel.n > 1 ? `HIGHLIGHT ${reel.i + 1} OF ${reel.n}` : 'REPLAY'}</span>
           {reel?.labels[reel.i] && <span className="replay-label">{reel.labels[reel.i]}</span>}
           {reel && reel.i < reel.n - 1 && <Button size="small" onClick={nextReplay}>Next &gt;</Button>}
-          <Button kind="primary" size="small" onClick={endReel}>{reel ? 'Back to the game' : 'Skip replay'}</Button>
+          <Button kind="primary" size="small" onClick={endReel}>{reel && reel.n > 1 ? 'Back to the game' : 'Skip replay'}</Button>
         </div>
       )}
       {bug && <BugReport onClose={() => setBug(false)} context={{

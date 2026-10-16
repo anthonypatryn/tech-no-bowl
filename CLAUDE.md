@@ -38,7 +38,8 @@ the owner pastes their "copy for Claude" output. The owner often asks for a plan
   renderer (`gl.info.memory`). A 2-minute fast-forward game showed no GPU leak (textures level off at 30).
 - Rules: a Glossary tab (30 terms) and the Adjustment rule.
 - Clicking / tapping a cube the open question can't use opens his card (`pickPlayer` in GameView). The touchdown's
-  auto replay opens where the scorer got the ball (`scorerCut` in replay.js, `play.from`).
+  auto replay is the whole scoring play (snap to end zone) at 0.75 speed, labelled with the scorer, on the broadcast
+  camera; replays skim action more than 4 squares from the ball and rebuild the down / line it was played on.
 - The depth chart opens before your first line-up of a game (the play clock waits). While moving, only target players
   catch the pointer (`pickable` on Board, `solid` on Mover); rings never do, so squares near players are easy to hit.
 - Helmet thumbnails (`public/art/helmets/sm/`, `helmetUrl(id, true)`; made by extract_art.py) for grids, schedules,
