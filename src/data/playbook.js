@@ -133,12 +133,23 @@ export function saveFormation(teamId, role, name, spots, { line, dir, col }) {
   t[role] = [...(t[role] ?? []).filter((x) => x.name !== name), { name, spots: rel }];
   write(all);
 }
+// BUG-12: a formation saved in midfield, used near a goal line, put deep players past the end line, where place()
+// found no square and dropped them (gone from the field, impossible to click). Now every player gets a square: his
+// row is held on the field, then walked back toward his own line until a free square turns up.
+// deep: which way is deeper on his own side (+1 / -1 rows); never past his own line
+function placeNear([c, r], used, home, deep) {
+  const r0 = Math.max(0, Math.min(23, r));
+  const toward = Math.sign(home - r0);
+  for (let k = 0; k <= Math.abs(home - r0); k++) { const q = place([c, r0 + toward * k], used); if (q) return q; }
+  for (let k = 0; k < 24; k++) { const rr = home + deep * k; if (!inBounds(0, rr)) break; const q = place([c, rr], used); if (q) return q; }
+  return null;
+}
 export function applySaved(saved, role, { line, dir, col }) {
   const { off, def, back } = losRows(line, dir);
   const base = role === 'offense' ? off : def;
   const step = role === 'offense' ? back : -back;
   const used = new Set();
-  return saved.spots.map((p) => { const q = place([col + p.dc, base + step * p.d], used); return q ? { num: p.num, col: q[0], row: q[1] } : null; }).filter(Boolean);
+  return saved.spots.map((p) => { const q = placeNear([col + p.dc, base + step * p.d], used, base, Math.sign(step)); return q ? { num: p.num, col: q[0], row: q[1] } : null; }).filter(Boolean);
 }
 // "same as last down": the formation (relative to the ball) and play call each team used last, on this device
 const LAST = 'tb-last';

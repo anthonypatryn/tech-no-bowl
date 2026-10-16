@@ -19,6 +19,13 @@ messages, the bug list (`?view=bugs`, PIN), the Art Review Board (`?view=art`) a
 the owner pastes their "copy for Claude" output. The owner often asks for a plan first: give one, then build it.
 
 ### Latest round (all pushed, live; session of 2026-10-15/16)
+- BUG-12: a saved formation (or "same as last") used near a goal line dropped deep players past the end line: place()
+  found no square and they vanished from the line-up (unclickable). `applySaved` now uses `placeNear` (row held on the
+  field, walked back toward his own line, never past it). Test 68 covers both goal lines.
+- BUG-11: the ball stayed in the last carrier's hands through the next line-up, then jumped to the hiker at the snap.
+  From the line-up to the snap the Board now draws the ball spotted on the line in front of the hiker (`drawnBall`,
+  `spotted`: placed, never flown, no loose-ball wobble), and the snap keys on each new snap (`snapId`) to start in the
+  hiker's hands. Recorded frame by frame: spot, snap, hand-off all smooth.
 - **Polish pass** (legibility, ease, hotkeys, navigation, animations):
   - Prompt titles are Pixelify Sans (sentences), the play log is a size up. Hovering a square: the cost chips plus
     move chips (grabs the ball / TOUCHDOWN / out, can still act / move only, N can reach you); no repeated sentence.
@@ -294,7 +301,7 @@ the owner pastes their "copy for Claude" output. The owner often asks for a plan
 ```
 npx oxlint src tools
 npx vite build
-npm test                                   # 67 rules tests
+npm test                                   # 68 rules tests
 npm run sim -- 300                         # must print errors: 0
 node tools/simulate.mjs 60 1 passive       # side 0 never acts: games must still end
 node tools/simulate.mjs 100 1 allpro:starter

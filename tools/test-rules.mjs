@@ -736,3 +736,19 @@ test('replays: every play rebuilt from the recorded frames matches what happened
   }
   assert.ok(plays > 20 && tds > 0, `${plays} plays, ${tds} touchdowns checked`);
 });
+
+test('BUG-12: a saved formation used near a goal line keeps every player on the field, on his own side', async () => {
+  const { applySaved } = await import('../src/data/playbook.js');
+  // a deep defense saved in midfield: line men, then backs up to 9 rows off the ball
+  const saved = { name: 'Deep', spots: [[1, 0, 0], [2, -1, 0], [3, 1, 0], [4, -3, 4], [5, 3, 4], [6, 0, 7], [7, 0, 9]].map(([num, dc, d]) => ({ num, dc, d })) };
+  for (const [line, dir] of [[2, -1], [3, -1], [22, 1], [21, 1], [12, -1]]) {
+    const { def } = losRows(line, dir);
+    const spots = applySaved(saved, 'defense', { line, dir, col: 6 });
+    assert.equal(spots.length, 7, `line ${line}: everyone placed`);
+    assert.equal(new Set(spots.map((p) => `${p.col},${p.row}`)).size, 7, `line ${line}: no two on one square`);
+    for (const p of spots) {
+      assert.ok(p.row >= 0 && p.row <= 23 && p.col >= 0 && p.col <= 12, `line ${line}: #${p.num} on the field (${p.col},${p.row})`);
+      assert.ok(dir < 0 ? p.row <= def : p.row >= def, `line ${line}: #${p.num} on the defense's side`);
+    }
+  }
+});

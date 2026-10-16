@@ -5,6 +5,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Html, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { Field, Lights, sq, ROWS, COLS } from './Field';
+import { losRows } from '../engine/board.js';
 import { PlayerCube, CUBE } from './Cube';
 import { uniformOf, teamColors, artRows } from '../data/art';
 import { DiceRolls } from './Dice';
@@ -453,7 +454,8 @@ function KickBall({ shot }) {
 }
 
 // ---------- the ball ----------
-function Ball({ ball, positions, slowmo, snapFrom, fire = false }) {
+function Ball({ ball, positions, slowmo, snapFrom, snapId = null, fire = false }) {
+  const lastSnap = useRef(snapId);
   const g = useRef();
   const from = useRef(null), to = useRef(new THREE.Vector3()), t = useRef(1), arc = useRef(0), long = useRef(false);
   const spin = useRef(), roll = useRef();
@@ -461,24 +463,29 @@ function Ball({ ball, positions, slowmo, snapFrom, fire = false }) {
   const goalOf = () => {
     if (ball.at === 'held') { const p = positions.current[ball.pid]; return p ? new THREE.Vector3(p.x, CUBE + 0.18 + p.y, p.z) : null; }
     if (ball.at === 'dead') return null;
+    if (ball.spotted) return new THREE.Vector3(ball.x, 0.14, ball.z); // on the line of scrimmage, in front of the hiker
     const [x, , z] = sq(ball.col, ball.row);
     return new THREE.Vector3(x, ball.at === 'air' ? 1.6 : 0.14, z);
   };
-  const sig = ball.at === 'held' ? `h${ball.pid}` : `${ball.at}${ball.col},${ball.row}`;
+  const sig = ball.at === 'held' ? `h${ball.pid}` : `${ball.at}${ball.col},${ball.row}${ball.spotted ? 's' : ''}`;
   // a layout effect: it must set up the flight before the next frame draws, or that frame snaps the ball straight to
   // its new holder and there's no flight left to show (the "teleporting" throw)
   useLayoutEffect(() => {
     const goal = goalOf();
     if (!goal || !g.current) return;
     // the snap: the ball comes out of the center's hands, not out of thin air
-    const hiker = !g.current.visible && snapFrom && ball.at === 'held' ? positions.current[snapFrom] : null;
+    // (BUG-11: keyed on each new snap, not on the ball being hidden: when the last play's ball was still showing, the
+    // snap flew it across from where that play ended instead of out of the hiker's hands)
+    const newSnap = snapId != null && snapId !== lastSnap.current;
+    if (newSnap) lastSnap.current = snapId;
+    const hiker = (newSnap || !g.current.visible) && snapFrom && ball.at === 'held' ? positions.current[snapFrom] : null;
     from.current = hiker ? new THREE.Vector3(hiker.x, CUBE * 0.55, hiker.z) : g.current.position.clone();
     to.current = goal;
     const d = from.current.distanceTo(goal);
-    t.current = settings().calm || d < 0.05 ? 1 : 0;
+    t.current = settings().calm || d < 0.05 || ball.spotted ? 1 : 0; // a ball spotted for the next down is placed, not thrown
     arc.current = Math.min(4.5, d * 0.35);
     long.current = d >= 7.5 && slowmo;
-    loose.current = ball.at === 'ground' && t.current >= 1 ? performance.now() : 0;
+    loose.current = ball.at === 'ground' && !ball.spotted && t.current >= 1 ? performance.now() : 0;
   }, [sig]);
   useFrame((_, dt) => {
     if (!g.current) return;
@@ -507,7 +514,7 @@ function Ball({ ball, positions, slowmo, snapFrom, fire = false }) {
       g.current.position.copy(goal);
       if (ball.at === 'air') g.current.position.y += Math.sin(performance.now() / 300) * 0.08;
       // a loose ball on the grass wobbles on its point and settles (1.4 s); otherwise lying along the field, laces up
-      const w = ball.at === 'ground' && loose.current && !settings().calm ? (performance.now() - loose.current) / 1400 : 1;
+      const w = ball.at === 'ground' && !ball.spotted && loose.current && !settings().calm ? (performance.now() - loose.current) / 1400 : 1;
       if (w < 1) { const d = (1 - w) * (1 - w); spin.current.rotation.set(Math.sin(w * 30) * 0.5 * d, w * 2.2, Math.cos(w * 24) * 0.35 * d); }
       else spin.current.rotation.set(0, 0, 0);
       roll.current.rotation.z *= 0.9;
@@ -1070,6 +1077,10 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
   // a new first down (same team keeps the ball): the line slides up and flashes yellow
   const lastDownE = s.log.findLast?.((e) => e.kind === 'down');
   const firstDown = lastDownE && !lastDownE.old && lastDownE.down === 1 && isFirstDown(s.log, lastDownE) ? lastDownE.id : null;
+  // BUG-11: from the line-up to the snap the ball is spotted on the line in front of the hiker (it used to stay in the
+  // last carrier's hands wherever he lined up, then jump to the hiker at the snap)
+  const preSnap = ['formation', 'call', 'motion'].includes(s.phase) && s.replayStep == null && s.spot != null && s.line != null;
+  const drawnBall = preSnap ? { at: 'ground', col: s.spot, row: losRows(s.line, s.teams[s.offense].dir).off, spotted: true, x: s.spot - 6, z: s.line - ROWS / 2 } : s.ball;
   const introPlayers = useMemo(() => Object.values(s.players), [s.teams]); // eslint-disable-line react-hooks/exhaustive-deps
   const lastKind = s.log.at(-1)?.kind;
   useEffect(() => { if (['td', 'turnover', 'sack', 'catch', 'fieldgoal', 'safety', 'onfire', 'intercept'].includes(lastKind)) roar.current = 1; }, [s.log.at(-1)?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1135,7 +1146,7 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
           jump={fx.jump[p.pid]} orbit={fx.orbit[p.pid]} pile={fx.pile[p.pid]}
           skilled={!!s.skills && (p.abilities?.some((a) => s.inferno || !a.startsWith('INFERNO')) || !!p.fuego)} solid={!pickable || pickable.has(p.pid)} tag={tags[p.pid] ?? null} odds={odds[p.pid] ?? null} why={whyTags[p.pid] ?? null} lift={lifts[p.pid] ?? 0} cel={fx.cel[p.pid]} turn={fx.turn[p.pid]} idle={idleOf(p)} />
       ))}
-      <Ball key={epoch} ball={s.ball} positions={positions} slowmo={!settings().calm} snapFrom={s.log.findLast?.((e) => e.kind === 'snap')?.from}
+      <Ball key={epoch} ball={drawnBall} positions={positions} slowmo={!settings().calm} snapFrom={s.log.findLast?.((e) => e.kind === 'snap')?.from} snapId={s.log.findLast?.((e) => e.kind === 'snap')?.id ?? null}
         fire={(shot?.kind === 'throw' && shot.bomb) || s.log.slice(-4).some((e) => e.kind === 'firebomb' || (e.kind === 'check' && e.action === 'pass' && e.bomb))} />
       {shot?.kind === 'hit' && <Burst key={shot.id} at={sq(...shot.at, 0)} colors={['#c9c9c9', '#7a5a3a', '#3f6b2a', '#ffffff']} count={shot.big ? 46 : 26} />}
       {shot?.kind === 'sack' && <Dust key={shot.id} at={sq(...shot.at, 0)} />}
