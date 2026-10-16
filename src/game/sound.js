@@ -67,6 +67,21 @@ export function synth(kind) {
       for (const [fq, d, g] of [[523, 0.9, 0.12], [1337, 0.6, 0.08], [2213, 0.45, 0.05]]) {
         const r = ac.createOscillator(); r.type = 'sine'; r.frequency.value = fq; env(ac, r, t, g * v, 0.002, d); r.start(t); r.stop(t + d + 0.05);
       }
+    } else if (kind === 'launch') {
+      // a firework going up: a thin rising whistle
+      const o = ac.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(700, t); o.frequency.exponentialRampToValueAtTime(2100, t + 0.65);
+      env(ac, o, t, 0.06 * v, 0.05, 0.7); o.start(t); o.stop(t + 0.75);
+    } else if (kind === 'pop') {
+      // a firework bursting: a deep thump, then crackle
+      const o = ac.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(120, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.4);
+      env(ac, o, t, 0.55 * v, 0.004, 0.5); o.start(t); o.stop(t + 0.55);
+      const n = ac.createBufferSource(), lp = ac.createBiquadFilter(); n.buffer = noiseBuffer(ac, 1.2); lp.type = 'lowpass'; lp.frequency.setValueAtTime(1800, t); lp.frequency.exponentialRampToValueAtTime(500, t + 1);
+      n.connect(lp); env(ac, lp, t, 0.45 * v, 0.003, 1.1); n.start(t);
+      for (let k = 0; k < 7; k++) {
+        const c = ac.createBufferSource(), hp = ac.createBiquadFilter(), at = t + 0.25 + Math.random() * 0.8;
+        c.buffer = noiseBuffer(ac, 0.04); hp.type = 'highpass'; hp.frequency.value = 2500;
+        c.connect(hp); env(ac, hp, at, 0.18 * v, 0.002, 0.05); c.start(at);
+      }
     } else {
       // 8-bit menu blips: blip (a click), select (going forward), back
       const [a, b, len] = { blip: [660, 660, 0.045], select: [880, 1320, 0.09], back: [700, 440, 0.08] }[kind] ?? [660, 660, 0.045];

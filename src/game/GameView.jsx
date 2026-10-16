@@ -38,6 +38,7 @@ import OpeningShow, { SHOW } from './OpeningShow';
 import { lastPlay, useReplay } from './replay';
 import { telestrate, bigPlay } from '../three/Telestrator';
 import CoinToss from './CoinToss';
+const HOLD = { hold: true };
 import { recordResult } from './records';
 import { recordGameStats } from './stats';
 import { autoSave } from './sync';
@@ -149,7 +150,14 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
   // the opening show runs first; the engine starts when it ends (calm motion skips it)
   const [intro, setIntro] = useState(() => (settings().calm || match.skipIntro ? null : { t0: performance.now(), startAt: SHOW.h2h }));
   const endIntro = useRef(null);
-  endIntro.current = () => { setIntro(null); stopTheme(1.8); crowd(1, 0.2); game.begin(); };
+  endIntro.current = () => { setIntro(null); setHeld(true); stopTheme(1.8); crowd(1, 0.2); game.begin(); };
+  // the show's last picture (the captains at midfield with the referee) stays up through the coin toss
+  const [held, setHeld] = useState(false);
+  const toss = held ? s.log.find((e) => e.kind === 'cointoss' && !e.old) : null;
+  const [tossShown, setTossShown] = useState(false);
+  useEffect(() => { if (!toss) return; const t = setTimeout(() => setTossShown(true), 3800); return () => clearTimeout(t); }, [toss?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (held && tossShown && s.phase !== 'setup') setHeld(false); }, [held, tossShown, s.phase]);
+  const boardIntro = intro ?? (held ? HOLD : null);
   useEffect(() => { if (!intro) { stopTheme(1.8); game.begin(); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const req = !spectating && s.request && s.request.side === ME ? s.request : null;
   // portrait phones: the field runs up the screen from the end-zone camera, so start there
@@ -538,7 +546,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
     <InfoCtx.Provider value={{ hover: (pid) => setHover(pid ? { pid } : null), open: setCardOf }}>
     <div ref={rootRef} className={`game ${camShot || intro || rs ? 'cine' : ''} ${intro ? 'intro' : ''} ${rs ? 'replaying' : ''}`}>
       <Stage className="game-stage">
-        <Board game={rs ? { state: rs } : game} view={rs ? (view === 'follow' ? 'broadcast' : view) : view} setup={!rs && ['formation', 'call', 'motion'].includes(s.phase)} onFree={() => setView('free')} shot={shot} camShot={!!camShot} intro={intro} tiles={rs ? [] : board.tiles} rings={rs ? {} : rings} onTile={rs ? null : board.onTile} onHover={setHover} onHoverPlayer={(pid) => setHover(pid ? { pid } : null)} outlines={rs ? [] : board.outlines} onPlayer={rs ? null : pickPlayer} pickable={pickable} tags={rs ? {} : board.tags} odds={rs ? {} : fieldOdds} whyTags={rs || prefsNow.fieldOdds === false ? {} : why?.tags ?? {}} tele={rs && tele ? { marks: tele, shown: rs.step ?? 0 } : null} epoch={rs ? `r${replay?.id}:${replay?.from ?? 0}` : 'live'}
+        <Board game={rs ? { state: rs } : game} view={rs ? (view === 'follow' ? 'broadcast' : view) : view} setup={!rs && ['formation', 'call', 'motion'].includes(s.phase)} onFree={() => setView('free')} shot={shot} camShot={!!camShot} intro={rs ? null : boardIntro} tiles={rs ? [] : board.tiles} rings={rs ? {} : rings} onTile={rs ? null : board.onTile} onHover={setHover} onHoverPlayer={(pid) => setHover(pid ? { pid } : null)} outlines={rs ? [] : board.outlines} onPlayer={rs ? null : pickPlayer} pickable={pickable} tags={rs ? {} : board.tags} odds={rs ? {} : fieldOdds} whyTags={rs || prefsNow.fieldOdds === false ? {} : why?.tags ?? {}} tele={rs && tele ? { marks: tele, shown: rs.step ?? 0 } : null} epoch={rs ? `r${replay?.id}:${replay?.from ?? 0}` : 'live'}
           // a replay shows the recorded play only: never the line-up you're arranging for the next down (that drew your
           // pieces in their new spots over every touchdown replay), nor a player picked in the live game
           edit={!rs && edit && req?.type === 'formation' ? { side: ME, spots: edit } : null}
@@ -628,7 +636,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
       )}
       {rules && <RulesDrawer onClose={() => setRules(false)} focus={typeof rules === 'string' ? rules : null} />}
       {team && <TeamDrawer s={s} me={ME} oppName={oppName} spot={spot} setSpot={setSpot} onClose={() => { setTeam(false); setSpot(null); }} />}
-      {intro && <OpeningShow s={s} t0={intro.t0} onDone={() => endIntro.current()} />}
+      {intro && <OpeningShow s={s} t0={intro.t0} me={ME} onDone={() => endIntro.current()} />}
       {s.inferno && <FireHud s={s} opp={oppName} />}
       {online && <OnlineBar net={net} host={!!match.online} />}
       {s.phase === 'over' && !rs && <EndScreen s={s} onExit={onExit} onRematch={onRematch} match={match} online={online} highlights={highlights.current} onWatch={watchAll} />}

@@ -19,6 +19,14 @@ messages, the bug list (`?view=bugs`, PIN), the Art Review Board (`?view=art`) a
 the owner pastes their "copy for Claude" output. The owner often asks for a plan first: give one, then build it.
 
 ### Latest round (all pushed, live; session of 2026-10-15/16)
+- **Opening show, bigger** (`src/three/introPlan.js` = one timeline for the field, the cards and the sounds): after
+  the helmet smash the away team comes out of its tunnel one by one (grey smoke, boos), then the home team (fireworks
+  in team colours, smoke, CO2 jets, cheers, crowd jumping, hard camera cuts: worm's-eye, crane, dollies). Each player
+  gets a TV card (`PlayerTv` in OpeningShow.jsx: headshot = his cube's front face, number, name, depth-chart position,
+  SKILL, abilities, his numbers: CAREER for yours, VS YOU for opponents (`playerLine`; `tb-stats` now also keeps
+  `foes`), or DEBUT / FIRST MEETING) and a headshot strip fills in. Then the two stars (captains) walk to midfield
+  with a striped referee holding the coin; that picture is held (`HOLD` / `boardIntro` in GameView) through the coin
+  toss. New synth sounds `launch` / `pop`. Seen in the browser (portrait and landscape, Skip); not heard (audio).
 - **Sync codes** (Settings → Play on another device; `src/game/sync.js`, `SyncPanel.jsx`, `api/sync.js`, `lib/sync.js`):
   `SYNC_KEYS` (season, resume, stats, records, depth, playbook, last set, name; never settings) go up under an
   8-character code (Redis `tech-no-bowl:sync:CODE`, 400 days). Auto-saves after a game, a new / ended season and when
@@ -171,7 +179,7 @@ the owner pastes their "copy for Claude" output. The owner often asks for a plan
 | `src/game/RulesDrawer.jsx`, `src/data/rulesText.js` | Tabbed, searchable rules (drawer in game, `?view=rules`); `HELP_FOR` maps prompts to sections |
 | `src/game/CoachTips.jsx` | Tutorial coach cards |
 | `src/data/playbook.js` | Preset formations (follow the depth chart), saved formations / plays, "same as last", depth chart (`depthFor`) |
-| `src/game/Broadcast.jsx`, `OpeningShow.jsx`, `CoinToss.jsx` | Score bug, chyrons, stat cards, wipes; the opening show; the coin flip |
+| `src/game/Broadcast.jsx`, `OpeningShow.jsx`, `CoinToss.jsx` | Score bug, chyrons, stat cards, wipes; the opening show (player TV cards); the coin flip. The run-out's timeline is `src/three/introPlan.js` (Board's `RunOut`, `Puffs`, `Fireworks`, `Referee`, `introCam`) |
 | `src/game/shots.js` | Shot director: `useShot(log)` picks the cinematic (throw / hit / sack / td / onfire / skill / kick), callouts, skip |
 | `src/game/replay.js` | `lastPlay(state)` rebuilds a play from the log; `useReplay` plays it back |
 | `src/game/sound.js`, `useGameSounds.js` | Audio engine (one context, mixer, crowd bed, streamed theme, unlock, `synth()` whoosh / bash / blips, `menuSounds()`) and the log-driven cues |

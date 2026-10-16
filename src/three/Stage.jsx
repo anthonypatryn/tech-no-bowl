@@ -7,8 +7,8 @@ import { TOUCH } from '../game/prefs';
 export function Stage({ children, camera, className = '', style, frameloop = 'always' }) {
   // the browser can drop the 3D context (low memory, a GPU reset): build a fresh canvas instead of a blank white field
   const [gen, setGen] = useState(0);
-  const created = ({ gl }) => {
-    if (import.meta.env.DEV) window.__gl = gl; // renderer stats while developing (gl.info.memory)
+  const created = ({ gl, scene }) => {
+    if (import.meta.env.DEV) { window.__gl = gl; window.__scene = scene; } // renderer stats and the scene while developing (gl.info.memory)
     gl.domElement.addEventListener('webglcontextlost', (e) => {
       e.preventDefault();
       console.warn('3D context lost: rebuilding the scene');

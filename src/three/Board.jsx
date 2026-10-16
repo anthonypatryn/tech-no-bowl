@@ -1,6 +1,6 @@
 // The live game on the 3D field: cubes that walk their paths, the ball (carried, loose or hanging in the air),
 // the line of scrimmage, the down cube, clickable square highlights and the camera.
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Html, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
@@ -10,6 +10,7 @@ import { uniformOf, teamColors, artRows } from '../data/art';
 import { DiceRolls } from './Dice';
 import { Stadium, TUNNEL_Z } from './Stadium';
 import { Telestrator } from './Telestrator';
+import { INTRO, introPlan, FIREWORKS, ROCKET } from './introPlan';
 import { settings } from '../game/prefs';
 
 const SPEED = 6.5; // squares per second when walking
@@ -528,66 +529,237 @@ function Dust({ at }) {
 }
 
 // ---------- the opening run-out ----------
-// Both teams pour out of tunnels under the end-zone stands and line up across their own 35s, through smoke.
+// The away team comes out of its tunnel through grey smoke; then the home team, under fireworks and smoke jets, the
+// crowd on its feet; each lines up across its own 35. Then the two captains walk to midfield, where the referee waits
+// with the coin. One timeline (introPlan.js) drives this, the camera, the player cards and the sounds.
+// hold: the show is over (or skipped) and the coin toss is on: everyone stands in the final picture.
 const ease = (u) => u * u * (3 - 2 * u);
-export function RunOut({ teams, unis, rows, t0, startAt }) {
-  const group = useRef();
-  const squads = useMemo(() => teams.map((roster, side) => {
-    const tunnelZ = side === 0 ? TUNNEL_Z - 0.3 : -(TUNNEL_Z - 0.3);
+const clamp01 = (u) => Math.min(1, Math.max(0, u));
+const introRel = (intro) => (intro.hold ? 1e6 : (performance.now() - intro.t0) / 1000 - intro.startAt);
+const rand = (i, k = 0) => { const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return x - Math.floor(x); };
+const RUN = 2.3, WALK = 2.6;
+export function RunOut({ players, unis, rows, intro, colors, roar }) {
+  const plan = useMemo(() => introPlan(players), [players]);
+  const squads = useMemo(() => [0, 1].flatMap((side) => plan.order[side].map((q, i) => {
+    const tz = side === 0 ? TUNNEL_Z - 0.3 : -(TUNNEL_Z - 0.3);
     const lineZ = side === 0 ? 3.2 : -3.2;
-    return roster.map((p, i) => ({
-      key: `${side}:${p.num}`, side, num: p.num,
-      from: new THREE.Vector3((i % 2 ? 1 : -1) * 0.4, 0, tunnelZ),
-      to: new THREE.Vector3((i - (roster.length - 1) / 2) * 1.3, 0, lineZ),
-      delay: 0.35 + i * 0.32 + side * 0.15, dur: 2.4 + Math.random() * 0.4, hop: 3 + Math.random() * 2,
-    }));
-  }).flat(), [teams]);
+    const captain = plan.captains[side] === q.pid;
+    return { ...q, side, key: q.pid, captain, from: new THREE.Vector3((rand(i, side) - 0.5) * 0.8, 0, tz), to: new THREE.Vector3(q.x, 0, lineZ),
+      mid: new THREE.Vector3(0, 0, side === 0 ? 0.75 : -0.75), hop: 4 + rand(i, 7) * 2, ph: rand(i, 3) * 6 };
+  })), [plan]);
   const refs = useRef({});
-  const [smoke, setSmoke] = useState(false); // the smoke bursts when the run-out starts, not under the title card
+  const ref = useRef();
+  const fired = useRef(new Set());
   useFrame(() => {
-    const rel = (performance.now() - t0) / 1000 - startAt;
-    if (!smoke && rel > 0) setSmoke(true);
+    const rel = introRel(intro);
+    // the crowd jumps for the home team and every firework
+    const cue = (k, at, x) => { if (rel >= at && rel < at + 1 && !fired.current.has(k)) { fired.current.add(k); if (roar) roar.current = Math.max(roar.current, x); } };
+    cue('home', INTRO.home, 1);
+    FIREWORKS.forEach(([t], i) => cue(`fw${i}`, t + ROCKET, 0.8));
     for (const q of squads) {
       const o = refs.current[q.key];
       if (!o) continue;
-      const u = Math.min(1, Math.max(0, (rel - q.delay) / q.dur));
-      o.visible = rel >= q.delay;
-      const k = ease(u);
-      o.position.lerpVectors(q.from, q.to, k);
-      o.position.y = u < 1 ? Math.abs(Math.sin(u * Math.PI * q.hop)) * 0.28 : 0;
-      o.rotation.y = Math.PI / 2 + (u < 1 ? Math.sin(u * 20) * 0.12 : 0);
+      o.visible = rel >= q.at;
+      const u = clamp01((rel - q.at) / RUN);
+      const w = q.captain ? clamp01((rel - INTRO.meet - 0.4) / WALK) : 0;
+      if (w > 0) {
+        // the captain's walk to midfield, then he faces the other one
+        o.position.lerpVectors(q.to, q.mid, ease(w));
+        o.position.y = w < 1 ? Math.abs(Math.sin(w * Math.PI * 5)) * 0.08 : 0;
+        o.rotation.y = w < 1 ? Math.atan2(q.mid.x - q.to.x, q.mid.z - q.to.z) : q.side === 0 ? Math.PI : 0;
+      } else if (u < 1) {
+        o.position.lerpVectors(q.from, q.to, ease(u));
+        o.position.y = Math.abs(Math.sin(u * Math.PI * q.hop)) * 0.28;
+        o.rotation.y = Math.atan2(q.to.x - q.from.x, q.to.z - q.from.z) + Math.sin(u * 20) * 0.12;
+      } else {
+        o.position.copy(q.to);
+        // the home team bounces on its line, fired up, until the captains walk out
+        const fired = q.side === 0 && rel < INTRO.meet;
+        o.position.y = fired ? Math.abs(Math.sin(rel * 7 + q.ph)) * 0.12 : 0;
+        o.rotation.y = Math.PI / 2;
+      }
     }
+    if (ref.current) ref.current.visible = rel >= INTRO.meet;
   });
+  const rel0 = () => introRel(intro);
   return (
-    <group ref={group}>
+    <group>
       {squads.map((q) => (
         <group key={q.key} ref={(o) => { refs.current[q.key] = o; }} visible={false}>
-          <PlayerCube uniform={unis[q.side]} row={rows[q.side][q.num] ?? 0} />
+          <PlayerCube uniform={unis[q.side]} row={rows[q.side][q.num] ?? 0} pickable={false} />
         </group>
       ))}
-      {/* smoke out of the tunnels (built into the stadium's end-zone stands) */}
-      {[TUNNEL_Z, -TUNNEL_Z].map((z, i) => (
-        <group key={z} position={[0, 0, z]}>
-          {smoke && <Burst confetti at={[0, 0, i ? 0.5 : -0.5]} colors={['#9aa0a6', '#c8ccd0', '#6f757b']} count={60} />}
-        </group>
-      ))}
+      <group ref={ref} visible={false}><Referee rel={rel0} /></group>
+      {/* the away tunnel: one cloud of grey smoke */}
+      <Puffs rel={rel0} start={INTRO.away + 0.1} spawn={1.2} life={3.2} count={40} at={[0, 0.4, -(TUNNEL_Z - 0.4)]} vel={[0, 0.7, 1.3]} spread={0.9} size={[0.4, 1.4]} color="#8d939a" opacity={0.4} />
+      {/* the home tunnel: thick smoke, then CO2 jets either side under the first fireworks */}
+      <Puffs rel={rel0} start={INTRO.home} spawn={1.5} life={2.8} count={40} at={[0, 0.4, TUNNEL_Z - 0.4]} vel={[0, 0.8, -1.8]} spread={2.2} size={[0.4, 1.2]} color="#c9cdd2" opacity={0.26} />
+      {[0, 1.3].map((t) => [-2.3, 2.3].map((x) => (
+        <Puffs key={`${t}${x}`} rel={rel0} start={INTRO.home + t} spawn={0.7} life={1.6} count={14} at={[x, 0.2, TUNNEL_Z - 0.6]} vel={[0, 4.2, -0.3]} spread={0.15} size={[0.15, 0.55]} color="#f4f6f8" opacity={0.42} />
+      )))}
+      <Fireworks rel={rel0} colors={colors} />
     </group>
   );
 }
-// camera for the run-out: low at the home tunnel, sweep along the field, crane up to the wide shot
+
+// smoke: soft round puffs (flat, always facing the camera) born over `spawn` seconds from `at`, drifting along `vel`
+// (slowing), growing, fading
+let puffTex = null;
+function puffTexture() {
+  if (puffTex) return puffTex;
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d'), grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0, 'rgba(255,255,255,1)'); grad.addColorStop(0.45, 'rgba(255,255,255,.55)'); grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
+  puffTex = new THREE.CanvasTexture(c);
+  return puffTex;
+}
+function Puffs({ rel, start, spawn, life, count, at, vel, spread, size, color, opacity }) {
+  const ref = useRef();
+  const { camera } = useThree();
+  const tex = useMemo(puffTexture, []);
+  const tmp = useMemo(() => new THREE.Object3D(), []);
+  const parts = useMemo(() => Array.from({ length: count }, (_, i) => ({
+    born: (i / count) * spawn, j: [rand(i, 1) - 0.5, rand(i, 2), rand(i, 3) - 0.5], sp: 0.6 + rand(i, 4) * 0.8, r: rand(i, 5) * 6,
+  })), [count, spawn]);
+  useFrame(() => {
+    const m = ref.current;
+    if (!m) return;
+    const t = rel() - start;
+    m.visible = t > 0 && t < spawn + life;
+    if (!m.visible) return;
+    parts.forEach((q, i) => {
+      const a = t - q.born;
+      if (a < 0 || a > life) { tmp.scale.setScalar(0); tmp.updateMatrix(); m.setMatrixAt(i, tmp.matrix); return; }
+      const d = (1 - Math.exp(-a * 1.4)) / 1.4; // drag: moves fast, then hangs
+      tmp.position.set(at[0] + (vel[0] * q.sp + q.j[0] * spread * 2) * d, at[1] + (vel[1] * q.sp + q.j[1] * 0.8) * d, at[2] + (vel[2] * q.sp + q.j[2] * spread * 2) * d);
+      const k = a / life;
+      tmp.scale.setScalar((size[0] + (size[1] - size[0]) * Math.sqrt(k)) * 2.2 * (k > 0.6 ? (1 - k) * 2.5 : 1));
+      tmp.quaternion.copy(camera.quaternion);
+      tmp.rotateZ(q.r + a * 0.3);
+      tmp.updateMatrix();
+      m.setMatrixAt(i, tmp.matrix);
+    });
+    m.instanceMatrix.needsUpdate = true;
+  });
+  return (
+    <instancedMesh ref={ref} args={[null, null, count]} raycast={() => null} visible={false} frustumCulled={false}>
+      <planeGeometry args={[1, 1]} />
+      <meshBasicMaterial map={tex} color={color} transparent opacity={opacity} depthWrite={false} />
+    </instancedMesh>
+  );
+}
+
+// fireworks over the home end zone: a rocket climbs, bursts into sparks that fall and fade; a flash lights the field
+const SPARKS = 56;
+function Fireworks({ rel, colors }) {
+  const ref = useRef();
+  const light = useRef();
+  const tmp = useMemo(() => new THREE.Object3D(), []);
+  const n = FIREWORKS.length * (SPARKS + 1);
+  const dirs = useMemo(() => FIREWORKS.map((_, f) => Array.from({ length: SPARKS }, (__, i) => {
+    const z = rand(i, f * 3 + 1) * 2 - 1, a = rand(i, f * 3 + 2) * Math.PI * 2, r = Math.sqrt(1 - z * z);
+    return new THREE.Vector3(r * Math.cos(a), z, r * Math.sin(a)).multiplyScalar(3.4 + rand(i, f) * 1.0);
+  })), []);
+  // team colours, brightened so a black or navy team still shows against the night
+  const palette = useMemo(() => [...colors, '#ffd84a'].map((c) => { const k = new THREE.Color(c); const hsl = {}; k.getHSL(hsl); if (hsl.l < 0.45) k.setHSL(hsl.h, Math.max(hsl.s, 0.6), 0.55); return k; }), [colors]);
+  useLayoutEffect(() => {
+    const m = ref.current;
+    if (!m) return;
+    FIREWORKS.forEach(([, , , c], f) => { for (let i = 0; i <= SPARKS; i++) m.setColorAt(f * (SPARKS + 1) + i, i === SPARKS ? palette[2] : palette[(c + (i % 3 === 0 ? 1 : 0)) % palette.length]); });
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+  }, [palette]);
+  useFrame(() => {
+    const m = ref.current;
+    if (!m) return;
+    const t = rel();
+    m.visible = t > INTRO.home - 0.5 && t < INTRO.meet + 1;
+    if (!m.visible) { if (light.current) light.current.intensity = 0; return; }
+    let flash = 0;
+    FIREWORKS.forEach(([t0, x, h], f) => {
+      const base = f * (SPARKS + 1), z = TUNNEL_Z + 2.5, a = t - t0 - ROCKET;
+      // the rocket
+      const r = (t - t0) / ROCKET;
+      tmp.rotation.set(0, 0, 0);
+      if (r > 0 && r < 1) { tmp.position.set(x, 3 + (h - 3) * (1 - (1 - r) * (1 - r)), z); tmp.scale.set(0.08, 0.35, 0.08); } else tmp.scale.setScalar(0);
+      tmp.updateMatrix(); m.setMatrixAt(base + SPARKS, tmp.matrix);
+      // the sparks
+      for (let i = 0; i < SPARKS; i++) {
+        if (a < 0 || a > 1.9) tmp.scale.setScalar(0);
+        else {
+          const d = dirs[f][i], k = (1 - Math.exp(-a * 2.2)) / 2.2;
+          tmp.position.set(x + d.x * k, h + d.y * k - 0.9 * a * a, z + d.z * k);
+          tmp.scale.setScalar(0.22 * (1 - a / 1.9));
+        }
+        tmp.updateMatrix(); m.setMatrixAt(base + i, tmp.matrix);
+      }
+      if (a > 0 && a < 0.6 && light.current) { flash = Math.max(flash, 1 - a / 0.6); light.current.position.set(x, h, z); light.current.color.copy(palette[FIREWORKS[f][3] % palette.length]); }
+    });
+    m.instanceMatrix.needsUpdate = true;
+    if (light.current) light.current.intensity = flash * 60;
+  });
+  return (
+    <>
+      <instancedMesh ref={ref} args={[null, null, n]} raycast={() => null} visible={false} frustumCulled={false}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshBasicMaterial toneMapped={false} />
+      </instancedMesh>
+      <pointLight ref={light} intensity={0} distance={30} decay={1.5} />
+    </>
+  );
+}
+
+// the referee: a black-and-white striped cube with a black cap, out from the far sideline to midfield
+let stripes = null;
+function stripeMaterials() {
+  if (stripes) return stripes;
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#111' : '#f4f4f4'; g.fillRect(i * 8, 0, 8, 64); }
+  g.fillStyle = '#111'; g.fillRect(0, 50, 64, 14); // black trousers
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.magFilter = THREE.NearestFilter;
+  const side = new THREE.MeshStandardMaterial({ map: t, roughness: 0.8 }), cap = new THREE.MeshStandardMaterial({ color: '#111', roughness: 0.6 });
+  stripes = [side, side, cap, side, side, side];
+  return stripes;
+}
+function Referee({ rel }) {
+  const ref = useRef();
+  const mats = useMemo(stripeMaterials, []);
+  useFrame(() => {
+    const o = ref.current;
+    if (!o) return;
+    const w = clamp01((rel() - INTRO.meet) / 2.2);
+    o.position.set(-7 + 5.8 * ease(w), w < 1 ? Math.abs(Math.sin(w * Math.PI * 6)) * 0.06 : 0, 0);
+    o.rotation.y = Math.PI / 2;
+  });
+  return (
+    <group ref={ref}>
+      <mesh position={[0, CUBE * 0.5, 0]} material={mats} castShadow raycast={() => null}><boxGeometry args={[CUBE * 0.9, CUBE, CUBE * 0.9]} /></mesh>
+      {/* the coin, catching the light */}
+      <mesh position={[0.48, CUBE * 0.55, 0]} rotation={[0, 0, Math.PI / 2]} raycast={() => null}><cylinderGeometry args={[0.12, 0.12, 0.03, 20]} /><meshStandardMaterial color="#f2c94c" metalness={0.9} roughness={0.25} emissive="#5a4300" /></mesh>
+    </group>
+  );
+}
+
+// the run-out camera: hard cuts between shots, each a slow move. [from, to, pos from, pos to, look from, look to]
+const INTRO_SHOTS = [
+  // the away team: low in front of their tunnel as they pour out at us, then tracking them down the sideline
+  [-99, INTRO.away + 3.6, [2.6, 1.0, -8.6], [2.0, 0.9, -9.6], [0, 1.0, -14.2], [0, 0.9, -14]],
+  [INTRO.away + 3.6, INTRO.home, [7.5, 2.6, -9.5], [8.5, 3.4, -3.5], [0, 0.3, -7], [0, 0, -3.2]],
+  // the home team: worm's-eye under the fireworks, crane over their stands, low dolly down their line
+  [INTRO.home, INTRO.home + 2.6, [2.6, 0.5, 2.0], [1.8, 0.45, 3.4], [0, 3.2, 15], [0, 3.8, 15]],
+  [INTRO.home + 2.6, INTRO.home + 5.4, [-7.5, 9, 10.5], [-5.5, 7, 7.5], [0, 0.5, 9], [0, 0, 4.5]],
+  [INTRO.home + 5.4, INTRO.home + 7.6, [-1.2, 1.3, 11.5], [1.2, 1.1, 11.0], [0, 0.6, 3.2], [0, 1.4, 4]],
+  [INTRO.home + 7.6, INTRO.meet, [6.8, 1.0, 6.5], [6.2, 1.6, 1.2], [0, 0.5, 3.2], [0, 0.5, 2.4]],
+  // the captains meet at midfield: from the broadcast side, pushing in
+  [INTRO.meet, 1e9, [9.5, 3.6, 0], [4.4, 1.5, 0.2], [0, 0.6, 0], [0, 0.45, 0]],
+];
 function introCam(rel) {
-  const keys = [
-    [0, [3.2, 1.0, 16.5], [0, 0.6, 12.5]],
-    [2.6, [5.5, 2.2, 9], [0, 0.4, 4]],
-    [5.0, [11, 6.5, 1.5], [0, 0, 0]],
-    [7.6, [15, 12, 0.5], [0, 0, 0]],
-  ];
-  let i = 0;
-  while (i < keys.length - 2 && rel > keys[i + 1][0]) i++;
-  const [ta, pa, la] = keys[i], [tb, pb, lb] = keys[i + 1];
-  const u = ease(Math.min(1, Math.max(0, (rel - ta) / (tb - ta))));
-  const lerp = (a, b) => a.map((v, k) => v + (b[k] - v) * u);
-  return { pos: new THREE.Vector3(...lerp(pa, pb)), target: new THREE.Vector3(...lerp(la, lb)), rate: 6 };
+  const i = Math.max(0, INTRO_SHOTS.findIndex(([, b]) => rel < b));
+  const [a, b, p0, p1, l0, l1] = INTRO_SHOTS[i];
+  const u = ease(clamp01((rel - Math.max(a, INTRO.away)) / (Math.min(b, INTRO.end) - Math.max(a, INTRO.away))));
+  const lerp = (x, y) => x.map((v, k) => v + (y[k] - v) * u);
+  return { pos: new THREE.Vector3(...lerp(p0, p1)), target: new THREE.Vector3(...lerp(l0, l1)), rate: 5, cut: i };
 }
 
 // ---------- highlights ----------
@@ -726,6 +898,7 @@ function Rig({ view, focus, dir, shot, positions, intro, setup }) {
   // the cards + prompt cover the bottom of the screen (a lot of it on a phone): shift the picture up so what the camera
   // looks at sits in the middle of the part you can still see. --bottom-h is measured by GameView.
   const lift = useRef({ b: -1, t: 0 });
+  const lastCut = useRef(null);
   useFrame(() => {
     const now = performance.now();
     if (now - lift.current.t < 300) return;
@@ -742,9 +915,12 @@ function Rig({ view, focus, dir, shot, positions, intro, setup }) {
     camera.updateProjectionMatrix();
   });
   useFrame((_, dt) => {
-    const sc = intro ? introCam((performance.now() - intro.t0) / 1000 - intro.startAt) : shot ? shotCam(shot, positions) : null;
+    const sc = intro ? introCam(introRel(intro)) : shot ? shotCam(shot, positions) : null;
     if (sc) {
-      const k = 1 - Math.exp(-dt * sc.rate);
+      // the run-out cuts between shots: a new shot starts where it starts, no glide across the stadium
+      const cut = sc.cut != null && sc.cut !== lastCut.current;
+      lastCut.current = sc.cut ?? null;
+      const k = cut ? 1 : 1 - Math.exp(-dt * sc.rate);
       camera.position.lerp(sc.pos, k);
       target.current.lerp(sc.target, k);
       camera.lookAt(target.current);
@@ -794,6 +970,7 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
   const fx = useMemo(() => moveFx(s), [s.log.length, s.log.at(-1)?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // the crowd in the stands jumps on the big moments
   const roar = useRef(0);
+  const introPlayers = useMemo(() => Object.values(s.players), [s.teams]); // eslint-disable-line react-hooks/exhaustive-deps
   const lastKind = s.log.at(-1)?.kind;
   useEffect(() => { if (['td', 'turnover', 'sack', 'catch', 'fieldgoal', 'safety', 'onfire', 'intercept'].includes(lastKind)) roar.current = 1; }, [s.log.at(-1)?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const players = Object.values(s.players).map((p) => {
@@ -843,7 +1020,7 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
           </mesh>
         </>
       )}
-      {intro && <RunOut teams={[0, 1].map((side) => Object.values(s.players).filter((p) => p.side === side))} unis={unis} rows={rows} t0={intro.t0} startAt={intro.startAt} />}
+      {intro && <RunOut players={introPlayers} unis={unis} rows={rows} intro={intro} colors={tcolors[0]} roar={roar} />}
       {!intro && players.map((p) => (
         // a new epoch (a replay starting or ending) remounts the cubes, so they appear in place instead of sliding there
         <Mover key={`${p.pid}:${epoch}`} p={p} uniform={unis[p.side]} row={rows[p.side][p.num]} path={paths[p.pid]} positions={positions}
@@ -864,7 +1041,7 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
       {shot?.kind === 'skill' && shot.fx === 'spark' && <Burst key={shot.id} at={sq(...shot.at, 0)} colors={['#ffffff', '#ffe14a', '#c9c9c9']} count={34} />}
       {shot?.kind === 'skill' && shot.fx === 'dust' && <Dust key={shot.id} at={sq(...shot.at, 0)} />}
       {shot?.kind === 'td' && <Burst key={shot.id} confetti at={sq(...shot.at, 0)} colors={teamColors(s.teams[shot.side].id, s.teams[shot.side].uniform).concat(['#f5e04a', '#ffffff'])} count={120} />}
-      <DiceRolls key={epoch} log={s.log} players={s.players} offense={s.offense} home={[s.spot, s.line]}
+      <DiceRolls key={`dice:${epoch}`} log={s.log} players={s.players} offense={s.offense} home={[s.spot, s.line]}
         teamColors={s.teams.map((t) => teamColors(t.id, t.uniform))} teamNames={s.teams.map((t) => t.name)} />
       <Tiles tiles={tiles} onPick={onTile} onHover={onHover} />
       {tele && <Telestrator marks={tele.marks} shown={tele.shown} />}
