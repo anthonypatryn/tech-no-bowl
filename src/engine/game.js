@@ -1021,7 +1021,7 @@ export class Game {
     }
     const short = path.length < 2;
     victim.col = at[0]; victim.row = at[1];
-    this.log(`${this.name(victim)} is SHOVED back ${path.length}${short || knock ? ' and knocked flat' : ''}!`, 'push', { pid: victim.pid, from, to: at, path, by: by.pid, shove: true });
+    this.log(`${this.name(victim)} is SHOVED back ${path.length}${short || knock ? ' and knocked flat' : ''}!`, 'push', { pid: victim.pid, from, to: at, path, by: by.pid, shove: true, knock: short || knock });
     if (path.length) {
       if (looseAt(s, ...at)) await this.scatter(at, s.ball.at === 'air', 'the ball bounces off him');
       this.ballMoved();
@@ -1054,7 +1054,7 @@ export class Game {
     }
     const to = opts.length === 1 ? opts[0] : await this.askValid(chooser, { type: 'push', pid: victim.pid, options: opts }, (v) => (opts.some((q) => same(q, v)) ? null : 'pick a push square'), () => opts[0]);
     victim.col = to[0]; victim.row = to[1];
-    this.log(`${this.name(victim)} is driven back${knock ? ' and FLATTENED' : ''}.`, 'push', { pid: victim.pid, from, to, by: by.pid });
+    this.log(`${this.name(victim)} is driven back${knock ? ' and FLATTENED' : ''}.`, 'push', { pid: victim.pid, from, to, by: by.pid, knock: !!knock });
     if (looseAt(s, ...to)) await this.scatter(to, s.ball.at === 'air', 'the ball bounces off him');
     this.ballMoved();
     this.checkTouchdown(victim);

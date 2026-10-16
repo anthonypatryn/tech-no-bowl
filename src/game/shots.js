@@ -36,6 +36,8 @@ export function shotFor(e, players) {
   if (e.kind === 'check' && e.action === 'pass' && e.dist >= LONG_THROW && e.from && e.to) return { kind: 'throw', from: e.from, to: e.to };
   if (e.kind === 'tackle') return e.at ? { kind: 'hit', at: e.at } : null;
   if (e.kind === 'sack') { const at = sqOfPid(e.pid); return at ? { kind: 'sack', at } : null; }
+  // flattened by a critical block / shove: the same snap-zoom as a big hit, at where he lands
+  if (e.kind === 'push' && e.knock && e.to) return { kind: 'hit', at: e.to, big: true };
   if (e.kind === 'knockdown' || (e.kind === 'fumble' && e.crit)) { const at = sqOfPid(e.pid); return at ? { kind: 'hit', at, big: e.kind !== 'knockdown' } : null; }
   if (e.kind === 'td') { const at = e.at ?? (e.pid && sqOfPid(e.pid)); return at ? { kind: 'td', at, side: e.side } : null; }
   if (e.kind === 'onfire') { const at = sqOfPid(e.pid); return at ? { kind: 'onfire', at, pid: e.pid } : null; }
@@ -58,7 +60,7 @@ const seen = new Map();
 export const skipShot = () => window.dispatchEvent(new Event('tb-skip-shot'));
 
 // the shot running now (or null). The newest cinematic log entry wins.
-export function useShot(log, players) {
+export function useShot(log, players, { full = false } = {}) {
   const last = useMemo(() => {
     for (let i = log.length - 1; i >= Math.max(0, log.length - 6); i--) { const sh = shotFor(log[i], players); if (sh) return { ...sh, id: log[i].id, wait: delayFor(log, i) }; }
     return null;
@@ -70,7 +72,7 @@ export function useShot(log, players) {
     const t1 = setTimeout(() => {
       const n = seen.get(last.kind) ?? 0;
       seen.set(last.kind, n + 1);
-      const s = { ...last, t0: performance.now(), dur: DUR[last.kind] * (n && last.kind !== 'throw' ? 0.6 : 1) };
+      const s = { ...last, t0: performance.now(), dur: DUR[last.kind] * (n && !full && last.kind !== 'throw' ? 0.6 : 1) };
       setShot(s);
       t2 = setTimeout(() => setShot((x) => (x?.id === s.id ? null : x)), s.dur * 1000);
     }, last.wait * 1000);

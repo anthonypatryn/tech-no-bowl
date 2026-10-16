@@ -703,3 +703,16 @@ html.calm *, html.calm *::before { transition: none !important; animation: none 
   .prompt-min { display: inline-block; }
   .prompt h3 { padding-left: 34px; }
 }
+/* the moment review */
+.game.review .review-top { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: var(--s3); padding: 6px 14px; z-index: 6; flex-wrap: wrap; justify-content: center; max-width: 96vw; }
+.review-dots { display: flex; gap: 3px; }
+.review-dots i { width: 10px; height: 10px; border: 1px solid var(--line); cursor: pointer; }
+.review-dots i.on { outline: 2px solid var(--led); }
+.review-dots i.ok { background: var(--go); } .review-dots i.fix { background: var(--led); } .review-dots i.reject { background: var(--mfl-red); }
+.review-panel { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); width: min(720px, 94vw); padding: var(--s3) var(--s4); display: flex; flex-direction: column; gap: var(--s2); z-index: 6; }
+.review-expect { margin: 0; }
+.review-note { font: inherit; font-family: var(--body); padding: 8px; background: rgba(0,0,0,.4); color: #fff; border: var(--px) solid var(--line); border-radius: 4px; resize: vertical; }
+.btn.v-ok { background: var(--go); color: #04140a; } .btn.v-fix { border-color: var(--led); color: var(--led); } .btn.v-reject { border-color: var(--mfl-red); color: #ff8a80; }
+.review-nav { justify-content: space-between; }
+.game.review.cine .review-top { opacity: .35; }
+.review-done table td:nth-child(3) { max-width: 360px; }

@@ -218,7 +218,9 @@ function BoardSection() {
 function MomentsSection() {
   return (
     <section className="glass moments-review">
-      <p>Each one opens the Moment Lab and plays it. Come back here to approve it or leave a note.</p>
+      <p>The moments have their own review now: one at a time, each on a board set up for it, played with sound and cameras, then approve / change / reject right there. At the end, copy the whole list for Claude.</p>
+      <div className="btns"><a className="btn primary big" href="?view=review">▶ Start the moment review</a></div>
+      <p className="hint">Or fire any of them freely in the Moment Lab:</p>
       <div className="moment-list">
         {MOMENTS.map(([k, label]) => (
           <div key={k} className="moment-row">

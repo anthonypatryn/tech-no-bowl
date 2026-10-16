@@ -18,6 +18,7 @@ const ArtReview = lazy(() => import('./game/ArtReview.jsx'));
 const BugList = lazy(() => import('./game/BugList.jsx'));
 const Lab = lazy(() => import('./game/Lab.jsx'));
 const OnlinePage = lazy(() => import('./game/OnlinePage.jsx'));
+const MomentReview = lazy(() => import('./game/MomentReview.jsx'));
 const SoundEditor = lazy(() => import('./game/SoundEditor.jsx'));
 import BugReport from './game/BugReport.jsx';
 import { RulesPage } from './game/RulesDrawer.jsx';
@@ -47,6 +48,7 @@ export default function App() {
   };
 
   if (view === 'sounds') return <Suspense fallback={<div className="loading">Loading…</div>}><SoundEditor /></Suspense>;
+  if (view === 'review') return <Suspense fallback={<div className="loading">Loading…</div>}><MomentReview go={go} /></Suspense>;
   if (view === 'moments') return <Suspense fallback={<div className="loading">Loading…</div>}><Lab /></Suspense>;
   if (view === 'bugs') return <Suspense fallback={<div className="loading">Loading…</div>}><BugList /></Suspense>;
   // the tutorial: a set game vs the Rookie with the coach's tips on

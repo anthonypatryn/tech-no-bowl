@@ -10,7 +10,7 @@ import { settings } from './prefs';
 export const HUMAN = 0; // you are side 0: you attack the blue end zone (row 0), the computer attacks the orange one
 
 // how long each kind of moment stays on screen before the next decision (ms at normal speed)
-const BEATS = {
+export const BEATS = {
   move: (e) => 150 + 150 * (e.path?.length ?? 1), push: () => 450, check: (e) => (e.action === 'pass' && e.dist >= 8 ? 3300 : 1800), sport: () => 1300, scatter: () => 1500, dice: () => 1400, cointoss: () => 3600,
   snap: () => 700, flip: () => 500, readReact: () => 700, td: () => 3500, safety: () => 2000, whistle: () => 1300, turnover: () => 1200,
   fumble: () => 500, catch: () => 500, inflight: () => 800, offtarget: () => 300, formation: () => 450, motion: () => 700,
@@ -22,7 +22,7 @@ const BEATS = {
 };
 export const SPEEDS = { slow: 0.7, normal: 1, fast: 1.8 };
 
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+export const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export function teamSetup(sel) {
   const t = teamById(sel.team);

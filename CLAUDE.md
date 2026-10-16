@@ -51,6 +51,10 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
   cleanest dark helmets' cutouts and clips all 32 to it, edge colour inpainted from inside. `npm run art helmets`.
 - **Footsteps:** `public/sfx/steps-a..d.mp3` (owner's grass running), 13 levelled clips in the `step` slot; every
   move plays a random one cut to the walk, at a slightly varied speed.
+- **Moment review** (`?view=review`, `src/game/MomentReview.jsx`): the 20 cinematics one at a time, each on a board
+  staged for it and run through the real engine (forced dice, scripted answers, game pacing, sounds, full-length
+  shots). Replay / approve / needs a change (note) / reject, then the next; verdicts kept on the device (and on the
+  Art Review Board with the PIN); the end screen copies the whole list for Claude. Add a moment = one REVIEW entry.
 - **Next:** owner play-test.
 
 ## Look (8-bit everywhere)
