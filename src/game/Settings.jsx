@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button, Chips, Panel, Row, Toggle } from './ui';
 import { setSettings, useSettings } from './prefs';
-import { applyMute, nudgeAudio, play as playSound } from './sound';
+import { nudgeAudio, play as playSound } from './sound';
 import { DEFAULT_KEYS, KEY_ACTIONS, RESERVED, keyLabel, rebind } from './keys';
 
 export default function Settings() {
@@ -35,7 +35,7 @@ export default function Settings() {
           <Toggle checked={s.clocks} onChange={(clocks) => setSettings({ clocks })}>1:00 to set up and to call plays, 0:30 for motion, with the rulebook penalties</Toggle>
         </Row>
         <Row label="Sound">
-          <Toggle checked={!s.muted} onChange={(on) => { setSettings({ muted: !on }); applyMute(); }}>Sound on</Toggle>
+          <Toggle checked={!s.muted} onChange={(on) => setSettings({ muted: !on })}>Sound on</Toggle>
           <button className="btn small" onClick={async () => { await nudgeAudio(); playSound('whistle'); setTimeout(() => playSound('step', { len: 0.8 }), 900); }}>Test sound</button>
         </Row>
         {[['fx', 'Effects'], ['crowd', 'Crowd'], ['music', 'Music']].map(([k, label]) => (

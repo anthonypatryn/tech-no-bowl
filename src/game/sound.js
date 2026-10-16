@@ -12,7 +12,7 @@ export async function loadSoundOverrides() {
 }
 export const decodeFile = (file) => (wake() ? load(file) : Promise.resolve(null));
 export const audioNow = () => ctx?.currentTime ?? 0;
-import { settings } from './prefs';
+import { settings, onSettings } from './prefs';
 
 const CHANNEL = { crowd: 'crowd', theme: 'music' };
 const level = (slot) => settings().mix?.[CHANNEL[slot] ?? 'fx'] ?? 1;
@@ -30,7 +30,8 @@ function wake() {
 // what the player can hear right now: 'muted' (Settings), 'off' (the browser hasn't let audio start yet: needs a
 // tap), or 'on'. And a nudge to get it going (a tap on the sound button).
 export function audioState() {
-  if (settings().muted) return 'muted';
+  const m = settings().mix ?? {};
+  if (settings().muted || (!m.fx && !m.crowd && !m.music)) return 'muted';
   return ctx && ctx.state === 'running' ? 'on' : 'off';
 }
 export function nudgeAudio() { const c = wake(); applyMute(); return c?.resume?.().catch(() => {}); }
@@ -51,6 +52,17 @@ export function applyMute() {
   const g = master.gain, t = ctx.currentTime;
   g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(settings().muted ? 0 : 1, t + 0.1);
 }
+// Every sound control (Settings, the pause menu, the game's sound button, the mixer) only changes the one setting;
+// the engine follows it here: the master mute, the crowd and music levels while they play, and a crowd that never
+// started because the game began muted starts now.
+onSettings(() => {
+  applyMute();
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  if (bed) { const g = bed.gain.gain; g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(Math.max(0.0001, bed.base0 * level('crowd')), t + 0.2); bed.base = bed.base0 * level('crowd'); }
+  if (music) { const g = music.gain.gain; g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(Math.max(0.0001, music.base0 * level('theme')), t + 0.2); }
+  if (!settings().muted && crowdWanted && !bed && !bedStarting) startCrowd();
+});
 
 const buffers = {};
 const load = (file) => (buffers[file] ??= fetch(`/sfx/${file}.mp3`).then((r) => r.arrayBuffer()).then((b) => ctx.decodeAudioData(b)).catch(() => null));
@@ -104,18 +116,20 @@ export function play(slot, opts = {}) {
 }
 
 // ---------- the crowd: a bed that never stops, with swells (big plays) and hushes (pre-snap) ----------
-let bed = null, bedStarting = null;
+let bed = null, bedStarting = null, crowdWanted = false;
 export async function startCrowd() {
+  crowdWanted = true;
   if (bed || bedStarting) return;
   bedStarting = play('crowd'); // a loop: never skipped for being late
   bed = await bedStarting;
+  if (bed) bed.base0 = bed.base / (level('crowd') || 1); // its level before the mixer, so mixer changes rescale it
   bedStarting = null;
 }
-export function stopCrowd(f = 1.2) { bed?.stop(f); bed = null; }
+export function stopCrowd(f = 1.2) { crowdWanted = false; bed?.stop(f); bed = null; }
 // ramp the bed to `x` times its level for `hold` seconds, then back
 export function crowd(x, hold = 1.5, ramp = 0.25) {
   if (!bed || !ctx) return;
-  const g = bed.gain.gain, t = ctx.currentTime, base = bed.base * (level('crowd') || 0.0001);
+  const g = bed.gain.gain, t = ctx.currentTime, base = Math.max(0.0001, bed.base);
   g.cancelScheduledValues(t); g.setValueAtTime(g.value, t);
   g.linearRampToValueAtTime(Math.max(0.0001, base * x), t + ramp);
   g.setValueAtTime(Math.max(0.0001, base * x), t + ramp + hold);
@@ -164,6 +178,7 @@ export async function playTheme(seconds = 24) {
   const c = list[Math.floor(Math.random() * list.length)];
   const clip = await streamClip({ ...c, len: Math.min(c.len, seconds) }, level('theme'));
   if (token !== themeToken) { clip?.stop(0.3); return null; }
+  if (clip) clip.base0 = clip.base / (level('theme') || 1);
   music = clip;
   return c.name;
 }

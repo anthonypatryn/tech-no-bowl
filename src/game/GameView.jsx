@@ -34,7 +34,7 @@ import { lastPlay, useReplay } from './replay';
 import CoinToss from './CoinToss';
 import { recordResult } from './records';
 import { loadSeason, reportResult } from './season';
-import { crowd, stopTheme, applyMute, audioState, nudgeAudio, play as playSound } from './sound';
+import { crowd, stopTheme, audioState, nudgeAudio, play as playSound } from './sound';
 import { settings } from './prefs';
 
 const BASE_COLORS = { act: '#2fd06b', moveOnly: '#1f9e8f', legal: '#2fd06b', move: '#2fd06b', ball: '#ffd34a', td: '#ffffff', out: '#ff6a5a', good: '#2fd06b', ok: '#f5e04a', bad: '#ff5a4a', push: '#ff9a3c', scatter: '#c77dff', motion: '#4ab8ff', place: '#4ab8ff' };
@@ -445,7 +445,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
             <div className="pause-list">
               <button className="btn primary" onClick={() => setPaused(false)}>Resume</button>
               <button className="btn" onClick={() => { setPaused(false); setRules(true); }}>How to play</button>
-              <button className="btn" onClick={() => { setSettings({ muted: !settings().muted }); applyMute(); }}>Sound: {prefsNow.muted ? 'OFF (turn on)' : 'ON (turn off)'}</button>
+              <button className="btn" onClick={() => setSettings({ muted: !settings().muted })}>Sound: {prefsNow.muted ? 'OFF (turn on)' : 'ON (turn off)'}</button>
               <Chips small value={prefsNow.speed} onChange={(speed) => setSettings({ speed })} options={[['slow', 'Slow'], ['normal', 'Normal'], ['fast', 'Fast']]} />
               <button className="btn" onClick={() => setSettings({ quick: !prefsNow.quick })}>Quick play: {prefsNow.quick ? 'on' : 'off'}</button>
               <button className="btn danger" onClick={() => { setPaused(false); leave(); }}>Quit game</button>
@@ -1079,7 +1079,7 @@ function SoundChip() {
   const [st, setSt] = useState(audioState);
   useEffect(() => { const t = setInterval(() => setSt(audioState()), 1000); return () => clearInterval(t); }, []);
   const fix = async () => {
-    if (st === 'muted') setSettings({ muted: false });
+    if (st === 'muted') { const m = settings().mix ?? {}; setSettings({ muted: false, ...(!m.fx && !m.crowd && !m.music ? { mix: { fx: 1, crowd: 0.75, music: 0.75 } } : {}) }); }
     await nudgeAudio();
     setSt(audioState());
     playSound('whistle', { vol: 0.6 });
