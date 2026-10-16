@@ -165,8 +165,7 @@ function DownsSection() {
         <DownCube down={down} size={1.2} face={0} />
         <OrbitControls makeDefault enableDamping target={[0, 0.5, 0]} />
       </Stage>
-      <p className="hint">The mixed cube (1/2/3/4 round its sides) turns a quarter each down. The single-number cubes are in the atlas below too.</p>
-      <img className="art-img narrow" src={artUrl('cubes/downs.webp')} alt="Down marker atlas" />
+      <p className="hint">Drawn by the game now: a plain white number on solid orange, the current down on every side. A new down gives it a quarter turn and the number changes as it turns. (The printed sheet, with its outlined digits, isn't used any more.)</p>
       <Verdict id="downs" label="Down marker cubes" />
     </section>
   );

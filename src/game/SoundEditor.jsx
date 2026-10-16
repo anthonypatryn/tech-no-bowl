@@ -12,9 +12,10 @@ const SLOTS = [
   ['whistleStart', 'Whistle: half starts'],
   ['whistleFinal', 'Whistle: end of the half / game'],
   ['grunt', 'Grunts (blocks, tackles, pile-ups)'],
+  ['step', 'Footsteps (every move; a random one, cut to the walk)'],
   ['hit', 'Hits (contact, knockdowns)'],
 ];
-const FILES = ['crowd', 'themes', 'whistle-start', 'whistle-final', 'grunts', 'effects'];
+const FILES = ['crowd', 'themes', 'whistle-start', 'whistle-final', 'grunts', 'effects', 'steps-a', 'steps-b', 'steps-c', 'steps-d'];
 const PIN_KEY = 'tb-bug-pin';
 const fmt = (t) => `${Math.floor(t / 60)}:${(t % 60).toFixed(2).padStart(5, '0')}`;
 const same = (a, b) => JSON.stringify(a ?? []) === JSON.stringify(b ?? []);

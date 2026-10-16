@@ -50,7 +50,7 @@ const load = (file) => (buffers[file] ??= fetch(`/sfx/${file}.mp3`).then((r) => 
 export function preload(slots) { if (!wake()) return; for (const s of slots) for (const c of SOUNDS[s] ?? []) load(c.file); }
 
 // one clip -> { stop(fade), gain } ; loop clips keep going until stopped
-export async function playClip(c, mix = 1, { late = 0.6 } = {}) {
+export async function playClip(c, mix = 1, { late = 0.6, rate = 1 } = {}) {
   if (!wake() || settings().muted) return null;
   const asked = performance.now();
   const buf = await load(c.file);
@@ -62,6 +62,7 @@ export async function playClip(c, mix = 1, { late = 0.6 } = {}) {
   const fade = Math.min(c.fade ?? 0.1, len / 2);
   const src = ctx.createBufferSource(), gain = ctx.createGain(), t = ctx.currentTime, v = (c.vol ?? 1) * mix;
   src.buffer = buf;
+  src.playbackRate.value = rate; // a touch faster / slower so repeats don't sound identical
   if (c.loop) {
     src.loop = true; src.loopStart = start; src.loopEnd = start + len;
     gain.gain.setValueAtTime(0.0001, t); gain.gain.linearRampToValueAtTime(v, t + fade);
@@ -79,12 +80,18 @@ export async function playClip(c, mix = 1, { late = 0.6 } = {}) {
   };
 }
 
-// a random clip of a slot. opts: { vol, pick: index }
+// a random clip of a slot (never the same one twice running). opts: { vol, pick: index, len, rate }
+const lastPick = {};
 export function play(slot, opts = {}) {
   const list = SOUNDS[slot];
   if (!list?.length) return Promise.resolve(null);
-  const c = list[opts.pick ?? Math.floor(Math.random() * list.length)];
-  return playClip(opts.len ? { ...c, len: Math.min(c.len, opts.len) } : c, level(slot) * (opts.vol ?? 1));
+  let i = opts.pick ?? Math.floor(Math.random() * list.length);
+  if (opts.pick == null && list.length > 1 && i === lastPick[slot]) i = (i + 1 + Math.floor(Math.random() * (list.length - 1))) % list.length;
+  lastPick[slot] = i;
+  const c = list[i];
+  // a clip cut short (len) is measured in the clip's own time, so a faster rate still fills the same seconds
+  const rate = opts.rate ?? 1;
+  return playClip(opts.len ? { ...c, len: Math.min(c.len, opts.len * rate) } : c, level(slot) * (opts.vol ?? 1), { rate });
 }
 
 // ---------- the crowd: a bed that never stops, with swells (big plays) and hushes (pre-snap) ----------

@@ -47,6 +47,10 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
   prompt, end-of-game highlights + copy result. Redraws fall back to a timer when no animation frame comes.
 - **Art fixes:** helmet edges un-mixed from the page white (no erosion; Chefs white facemask closes its gaps),
   plain white-on-orange down cube drawn in code, Moment Lab plays each moment on a fresh field (Replay button).
+- **Helmets:** one master silhouette (every helmet is the same model in the same frame): `do_helmets` averages the
+  cleanest dark helmets' cutouts and clips all 32 to it, edge colour inpainted from inside. `npm run art helmets`.
+- **Footsteps:** `public/sfx/steps-a..d.mp3` (owner's grass running), 13 levelled clips in the `step` slot; every
+  move plays a random one cut to the walk, at a slightly varied speed.
 - **Next:** owner play-test.
 
 ## Look (8-bit everywhere)

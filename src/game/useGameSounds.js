@@ -79,7 +79,7 @@ function coin() {
 export function useGameSounds(game, { theme = true } = {}) {
   const seen = useRef(0);
   useEffect(() => {
-    preload(['crowd', 'whistle', 'whistleStart', 'whistleFinal', 'grunt', 'hit', 'theme']);
+    preload(['crowd', 'whistle', 'whistleStart', 'whistleFinal', 'grunt', 'hit', 'step', 'theme']);
     startCrowd();
     if (theme) playTheme(26).then(() => crowd(0.45, 22, 0.5)); // duck the crowd under the theme
     return () => { stopTheme(0.6); stopCrowd(0.8); };
@@ -109,6 +109,12 @@ function cue(e) {
       break;
     case 'sport': case 'scatter': case 'dice': rattle(); break;
     case 'push': play('hit', { vol: 0.7 }); break;
+    // running on the turf: as long as the cube's walk (6.5 squares a second on the board), quieter for a follow-up
+    case 'move': case 'motion': {
+      const n = e.path?.length ?? 1;
+      play('step', { len: Math.min(2.2, Math.max(0.35, n / 6.5 + 0.1)), rate: 0.92 + Math.random() * 0.16, vol: e.followUp ? 0.55 : 0.85 });
+      break;
+    }
     case 'knockdown': case 'fumble': play('hit'); play('grunt'); thump('hit'); crowd(1.8, 1.5); break;
     case 'sack': thump('sack'); play('hit', { vol: 0.6 }); play('grunt'); setTimeout(() => play('grunt', { vol: 0.8 }), 260); crowd(2.6, 2.6); break;
     case 'tackle': thump('hit'); break;

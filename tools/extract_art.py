@@ -209,7 +209,7 @@ def do_board():
     return {'punch': {'cols': 10, 'rows': 8, 'files': [f'punch/pb{n}{s}.webp' for n in range(1, 5) for s in 'fb']}}
 
 
-def cutout(rgb, pocket_from=(0.5, 0.0), close=0):
+def cutout(rgb, pocket_from=(0.5, 0.0), close=0, crop=True):
     """Helmet-style cutout on a white page: RGBA with
     - the background (white connected to the border) removed
     - page white showing through the facemask removed (enclosed near-white pockets on the facemask side)
@@ -266,7 +266,7 @@ def cutout(rgb, pocket_from=(0.5, 0.0), close=0):
                 alpha[lab == k] = 0
     im = Image.fromarray(np.dstack([c.astype(np.uint8), alpha]), 'RGBA')
     bbox = im.getbbox()
-    return im.crop(bbox) if bbox else im
+    return im.crop(bbox) if bbox and crop else im
 
 
 def do_logo():
@@ -284,33 +284,54 @@ def do_logo():
     return 'techno-logo.webp'
 
 
-# helmets whose facemask is white on the white page: close the gaps the background flood leaves in the bars
-WHITE_MASKS = {'chefs': 21}
-
-
 def do_helmets():
-    """Team guide pages 2-17: two helmets per page (team order = teams.json), white background -> transparent."""
+    """Team guide pages 2-17: two helmets per page (team order = teams.json), white page -> transparent.
+    Every helmet is the same 3D model repainted, printed in the same frame. So: cut out each one, average the cleanest
+    (dark shell, dark facemask) into one master silhouette, facemask holes and all, and clip every helmet to that.
+    White shells and white facemasks (where the art can't be told from the page) get the true outline that way."""
     os.makedirs(os.path.join(OUT, 'helmets'), exist_ok=True)
     teams = json.load(open(os.path.join(DATA, 'teams.json'), encoding='utf8'))
     d = fitz.open(os.path.join(ROOT, 'TECHNO_BOWL_TeamGuide_DriveThru.pdf'))
-    out = {}
+    W, H = 1000, 800  # every helmet's frame, rendered the same size
+    shots = {}
     for i, t in enumerate(teams):
         page = d[1 + i // 2]
-        # some helmets are stacked layers (logo over shell): render the page area so they composite
-        # helmet-sized images only (the last page has its text as wide, short images too)
+        # helmet-sized images only (the last page has its text as wide, short images too); stacked layers (logo over
+        # shell) composite in the render. The frame is the biggest layer: the shell's.
         half = [x for x in page.get_image_info(xrefs=True) if x['width'] > 800 and x['height'] > 500 and x['bbox'][3] - x['bbox'][1] > 120
                 and (x['bbox'][0] < page.rect.width / 2) == (i % 2 == 0)]
         if not half:
             print('!! no helmet for', t['id']); continue
-        r = fitz.Rect(half[0]['bbox'])
-        for x in half[1:]: r |= fitz.Rect(x['bbox'])
-        pix = page.get_pixmap(clip=r + (-2, -2, 2, -4), dpi=320, colorspace=fitz.csRGB)  # bottom trimmed: the title bar starts right below
-        rgb = np.frombuffer(pix.samples, np.uint8).reshape(pix.h, pix.w, pix.n)[:, :, :3].copy()
-        im = cutout(rgb, close=WHITE_MASKS.get(t['id'], 0))
+        big = max(half, key=lambda x: (x['bbox'][2] - x['bbox'][0]) * (x['bbox'][3] - x['bbox'][1]))
+        r = fitz.Rect(big['bbox'])
+        pix = page.get_pixmap(clip=r, matrix=fitz.Matrix(W / r.width, H / r.height), colorspace=fitz.csRGB)
+        rgb = cv2.resize(np.frombuffer(pix.samples, np.uint8).reshape(pix.h, pix.w, pix.n)[:, :, :3].copy(), (W, H))
+        cut = np.array(cutout(rgb, crop=False))
+        shots[t['id']] = (rgb, cut)
+    # the master: the helmets whose own cutout agrees best with the rest (dark art on the page cuts out cleanly)
+    hard = {k: cut[:, :, 3] > 128 for k, (_, cut) in shots.items()}
+    ref = hard['ninjas'] if 'ninjas' in hard else next(iter(hard.values()))
+    iou = {k: (a & ref).sum() / max(1, (a | ref).sum()) for k, a in hard.items()}
+    good = [k for k, v in iou.items() if v >= 0.995]
+    master = np.mean([shots[k][1][:, :, 3].astype(np.float32) for k in good], axis=0)
+    master = cv2.GaussianBlur(master, (3, 3), 0)
+    master[master < 20] = 0
+    ys, xs = np.nonzero(master)
+    box = (xs.min(), ys.min(), xs.max() + 1, ys.max() + 1)
+    print('helmet master from', len(good), 'helmets:', ', '.join(sorted(good)))
+    out = {}
+    for k, (rgb, cut) in shots.items():
+        # colour: the un-mixed edge colour where this helmet's own cutout is solid (dark art), the art itself elsewhere
+        own = cut[:, :, 3] >= 128
+        col = np.where(own[..., None], cut[:, :, :3], rgb)
+        # the mask's soft edge: take the colour from just inside (never the page white the edge was printed against)
+        edge = (master < 250).astype(np.uint8)
+        col = cv2.inpaint(np.ascontiguousarray(col), edge, 3, cv2.INPAINT_TELEA)
+        im = Image.fromarray(np.dstack([col, master.astype(np.uint8)]), 'RGBA').crop(box)
         im.thumbnail((640, 640), Image.LANCZOS)
-        name = f"helmets/{t['id']}.webp"
+        name = f"helmets/{k}.webp"
         im.save(os.path.join(OUT, name), 'WEBP', quality=88, method=6)
-        out[t['id']] = name
+        out[k] = name
     print('helmets:', len(out))
     return out
 

@@ -319,5 +319,111 @@
    "fade": 2.0,
    "name": "ESPN"
   }
+ ],
+ "step": [
+  {
+   "file": "steps-a",
+   "start": 6.48,
+   "len": 1.8,
+   "vol": 19.63,
+   "fade": 0.06,
+   "name": "run a1"
+  },
+  {
+   "file": "steps-a",
+   "start": 8.28,
+   "len": 1.6,
+   "vol": 17.35,
+   "fade": 0.06,
+   "name": "run a2"
+  },
+  {
+   "file": "steps-a",
+   "start": 12.3,
+   "len": 1.9,
+   "vol": 5.95,
+   "fade": 0.06,
+   "name": "run a3"
+  },
+  {
+   "file": "steps-a",
+   "start": 14.39,
+   "len": 1.8,
+   "vol": 5.26,
+   "fade": 0.06,
+   "name": "run a4"
+  },
+  {
+   "file": "steps-a",
+   "start": 16.47,
+   "len": 1.9,
+   "vol": 11.31,
+   "fade": 0.06,
+   "name": "run a5"
+  },
+  {
+   "file": "steps-a",
+   "start": 20.3,
+   "len": 1.8,
+   "vol": 19.65,
+   "fade": 0.06,
+   "name": "run a6"
+  },
+  {
+   "file": "steps-a",
+   "start": 30.1,
+   "len": 1.8,
+   "vol": 12.1,
+   "fade": 0.06,
+   "name": "run a7"
+  },
+  {
+   "file": "steps-a",
+   "start": 45.17,
+   "len": 1.8,
+   "vol": 14.96,
+   "fade": 0.06,
+   "name": "run a8"
+  },
+  {
+   "file": "steps-b",
+   "start": 0.39,
+   "len": 1.55,
+   "vol": 10.05,
+   "fade": 0.06,
+   "name": "run b9"
+  },
+  {
+   "file": "steps-c",
+   "start": 1.95,
+   "len": 1.4,
+   "vol": 0.22,
+   "fade": 0.06,
+   "name": "run c10"
+  },
+  {
+   "file": "steps-c",
+   "start": 7.28,
+   "len": 1.6,
+   "vol": 0.48,
+   "fade": 0.06,
+   "name": "run c11"
+  },
+  {
+   "file": "steps-c",
+   "start": 8.4,
+   "len": 1.5,
+   "vol": 0.48,
+   "fade": 0.06,
+   "name": "run c12"
+  },
+  {
+   "file": "steps-d",
+   "start": 1.32,
+   "len": 0.7,
+   "vol": 3.32,
+   "fade": 0.06,
+   "name": "run d13"
+  }
  ]
 }
