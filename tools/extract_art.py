@@ -269,6 +269,38 @@ def cutout(rgb, pocket_from=(0.5, 0.0), close=0, crop=True):
     return im.crop(bbox) if bbox and crop else im
 
 
+def clip_to_helmet(im, rgb):
+    """The logo is the same helmet model as the 32 team helmets: clip it to their master silhouette (the alpha every
+    team helmet carries, see do_helmets), lined up by the best overlap, so it gets the same clean outline and facemask
+    holes (the cover's glow and white highlights otherwise fringe the cut). Needs the helmets made first."""
+    ref = os.path.join(OUT, 'helmets', 'ninjas.webp')
+    if not os.path.exists(ref):
+        print('!! no team helmets yet: logo left unclipped'); return im
+    a = np.array(im.convert('RGBA'))
+    H, W = a.shape[:2]
+    own = a[:, :, 3] > 128
+    m = np.array(Image.open(ref).convert('RGBA'))[:, :, 3].astype(np.float32)
+    best = None
+    for sc in np.arange(0.97, 1.031, 0.005):
+        w = int(round(W * sc)); h = int(round(m.shape[0] * w / m.shape[1]))
+        mm = cv2.resize(m, (w, h), interpolation=cv2.INTER_LINEAR)
+        for dx in range(-8, 9, 2):
+            for dy in range(-8, 9, 2):
+                c = np.zeros((H, W), np.float32)
+                x0, y0 = (W - w) // 2 + dx, (H - h) // 2 + dy
+                xa, ya, xb, yb = max(0, x0), max(0, y0), min(W, x0 + w), min(H, y0 + h)
+                c[ya:yb, xa:xb] = mm[ya - y0:yb - y0, xa - x0:xb - x0]
+                hard = c > 128
+                iou = (hard & own).sum() / max(1, (hard | own).sum())
+                if best is None or iou > best[0]: best = (iou, c)
+    print('logo clipped to the helmet master, overlap %.3f' % best[0])
+    master = best[1]
+    # colour: the cutout's un-mixed colour where it is solid, the art elsewhere; the soft edge takes colour from inside
+    col = np.where(own[..., None], a[:, :, :3], rgb[:, :, :3]).astype(np.uint8)
+    col = cv2.inpaint(np.ascontiguousarray(col), (master < 250).astype(np.uint8), 3, cv2.INPAINT_TELEA)
+    return Image.fromarray(np.dstack([col, master.clip(0, 255).astype(np.uint8)]), 'RGBA')
+
+
 def do_logo():
     """The TECHNO BOWL helmet logo from the rulebook cover (pre-game show, in place of a league shield)."""
     d = fitz.open(os.path.join(ROOT, 'TECHNO_BOWL_Rulebook_DriveThru.pdf'))
@@ -279,6 +311,7 @@ def do_logo():
     rgb = np.frombuffer(pix.samples, np.uint8).reshape(pix.h, pix.w, pix.n)[:, :, :3].copy()
     im = cutout(rgb, pocket_from=(0.62, 0.45))  # spare the white TECHNO BOWL lettering
     im.thumbnail((900, 900), Image.LANCZOS)
+    im = clip_to_helmet(im, np.array(Image.fromarray(rgb).resize(im.size, Image.LANCZOS)))
     im.save(os.path.join(OUT, 'techno-logo.webp'), 'WEBP', quality=90, method=6)
     print('logo', im.size)
     return 'techno-logo.webp'

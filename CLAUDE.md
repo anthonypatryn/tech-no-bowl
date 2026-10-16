@@ -19,6 +19,13 @@ messages, the bug list (`?view=bugs`, PIN), the Art Review Board (`?view=art`) a
 the owner pastes their "copy for Claude" output. The owner often asks for a plan first: give one, then build it.
 
 ### Latest round (all pushed, live; session of 2026-10-15/16)
+- **Inferno 8 v 8** (`infernopro` in MODES: pro + skills + field goals + inferno). Not a house rule: the rulebook says
+  INFERNO "also works with ALL PRO" (p.19). `ModePicker` (TeamPicker.jsx) adds 7 v 7 / 8 v 8 under Inferno! in quick
+  game, season and online; `modeName()`. Sim (200 games): 0 errors; vs 7 v 7: fewer TDs (1.9 vs 2.4 a game), ~0.4 field
+  goals a game, longer downs, the same fire. All-Pro beats Starter 64%.
+- Pixel football (`public/art/football.png`, 17 x 9, from the owner's picture) by TECHNO BOWL in the nav. The Techno
+  Bowl helmet logo is clipped to the team helmets' master silhouette (`clip_to_helmet` in extract_art.py, run by
+  `do_logo`; overlap 0.99, same frame): clean outline and facemask holes, no cover glow.
 - INFERNO fire tokens are the punchboard's pixel fireball (`public/art/fire.png`, 24 x 24, cut from `pb4f` and snapped
   to its pixel grid), via `FireIcon` in ui.jsx: the fire tracker and every prompt. No emoji for game pieces.
 - **Opening show, bigger** (`src/three/introPlan.js` = one timeline for the field, the cards and the sounds): after
@@ -215,7 +222,7 @@ the owner pastes their "copy for Claude" output. The owner often asks for a plan
 - A play ends by throwing `PlayEnd`; `endPlay` scores, moves the chains and the clock. Log entries carry data and drive
   the board, sounds, shots and replays. Pacing: `pace(entry)` adds owed time the next `ask` waits for.
 - Seeded `mulberry32`: the same seed + the same answers replay a game exactly (resume, undo, online host resume).
-- Modes: `MODES` in game.js (`skills`, `pro`, `fieldGoals`, `inferno`). `hasSkill(s, p, a)` in rules.js.
+- Modes: `MODES` in game.js (`skills`, `pro`, `fieldGoals`, `inferno`; `infernopro` = Inferno 8 v 8). `hasSkill(s, p, a)` in rules.js.
 
 ### Rulings (the rulebook leaves these open; change them if the owner disagrees)
 - Benches are dealt fresh every down (2 cards per player). Teams don't switch ends at half time.
@@ -269,7 +276,7 @@ npm run sim -- 300                         # must print errors: 0
 node tools/simulate.mjs 60 1 passive       # side 0 never acts: games must still end
 node tools/simulate.mjs 100 1 allpro:starter
 node tools/simulate.mjs 100 1 starter:rookie
-node tools/simulate.mjs 60 1 - inferno     # also: alltechno / pro / allpro (rules as the 5th argument)
+node tools/simulate.mjs 60 1 - inferno     # also: alltechno / pro / allpro / infernopro (rules as the 5th argument)
 ```
 Dev server: `.claude/launch.json` → port 5192. The project is in OneDrive, so Vite polls for file changes
 (`vite.config.js`); restart it if a change doesn't show up. The dev build exposes the live game as `window.__tb`.

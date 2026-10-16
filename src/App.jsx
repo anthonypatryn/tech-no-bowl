@@ -104,7 +104,7 @@ function TopBar({ view, go }) {
   const inMore = [...MORE, ...TOOLS].some(([v]) => v === view);
   return (
     <header className="topbar">
-      <a className="brand" href="/" onClick={(e) => { e.preventDefault(); go('home'); }}><span className="led">TECHNO BOWL</span></a>
+      <a className="brand" href="/" onClick={(e) => { e.preventDefault(); go('home'); }}><img className="brand-ball" src="/art/football.png" alt="" /><span className="led">TECHNO BOWL</span></a>
       <nav className="nav-main" aria-label="Main">{MAIN.map(link)}</nav>
       <span className="topbar-tools">
         <MusicPlayer small /><FullscreenButton />

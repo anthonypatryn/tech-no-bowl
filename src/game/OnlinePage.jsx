@@ -6,7 +6,7 @@ import { HostRoom, JoinClient, RemoteGame, cleanCode, loadIce } from '../net/roo
 import { Button, Chips, Panel, Row, Toggle } from './ui';
 import { TEAMS, teamById, uniformsFor, teamColors, helmetUrl, rosterFor } from '../data/art';
 import { altSlots, lineup as lineupOf } from '../data/abilities';
-import { MODES, MODE_INFO, TeamGrid, LineupPicker, AbilityCard, Sprite } from './TeamPicker';
+import { ModePicker, modeName, MODE_INFO, TeamGrid, LineupPicker, AbilityCard, Sprite } from './TeamPicker';
 import { onlineGames, forgetOnlineGame } from './useGame';
 import GameView from './GameView.jsx';
 
@@ -186,7 +186,7 @@ function HostLobby({ room, onStart, onLeave }) {
         </Panel>
       </div>
       <Panel>
-        <Row label="Rules"><Chips small value={setup.mode} onChange={(mode) => room.setRules({ mode })} options={MODES} /><span className="hint"> {MODE_INFO[setup.mode]}</span></Row>
+        <Row label="Rules"><ModePicker value={setup.mode} onChange={(mode) => room.setRules({ mode })} /><span className="hint"> {MODE_INFO[setup.mode]}</span></Row>
         <Row label="Play clocks"><Toggle checked={setup.clocks} onChange={(clocks) => room.setRules({ clocks })}>1:00 to set up and call, 0:30 for motion (out of time = delay of game)</Toggle></Row>
         {clash && <p className="warn">Same team, same uniform: one of you change uniforms.</p>}
         <div className="btns">
@@ -216,7 +216,7 @@ function JoinLobby({ client, onLeave }) {
         <Panel><h3>{watching ? `${L.seats[1]?.name ?? '…'} (away)` : 'You (away)'}</h3>{sel && <TeamChooser sel={sel} onChange={choose} disabled={watching} mode={L.setup.mode} />}</Panel>
       </div>
       <Panel>
-        <Row label="Rules"><b>{MODES.find(([k]) => k === L.setup.mode)?.[1]}</b><span className="hint"> {MODE_INFO[L.setup.mode]}</span></Row>
+        <Row label="Rules"><b>{modeName(L.setup.mode)}</b><span className="hint"> {MODE_INFO[L.setup.mode]}</span></Row>
         <Row label="Play clocks"><b>{L.setup.clocks ? 'On' : 'Off'}</b></Row>
         <div className="btns"><Button onClick={onLeave}>Leave</Button></div>
       </Panel>

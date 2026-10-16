@@ -71,7 +71,11 @@ p, li { text-wrap: pretty; overflow-wrap: break-word; }
 .app > :not(.topbar) { flex: 1 0 auto; }
 .topbar { position: sticky; top: 0; z-index: 40; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--s4);
   padding: var(--s2) max(var(--s4), env(safe-area-inset-left)); min-height: 56px; background: rgba(7, 9, 12, .94); border-bottom: var(--px) solid var(--line); }
-.brand { text-decoration: none; font-size: var(--t5); justify-self: start; white-space: nowrap; }
+.brand { text-decoration: none; font-size: var(--t5); justify-self: start; white-space: nowrap; display: inline-flex; align-items: center; gap: var(--s2); }
+/* rules picker: the modes, then Inferno's 7 v 7 / 8 v 8 */
+.mode-picker { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+/* the pixel football by the name (art/football.png, 17 x 9, drawn at 2 or 3 screen pixels a pixel) */
+.brand-ball { height: 1.15em; width: auto; image-rendering: pixelated; filter: drop-shadow(0 0 4px rgba(245, 224, 74, .35)); }
 .nav-main { display: flex; gap: var(--s1); }
 .nav-main a, .nav-menu a { text-decoration: none; padding: var(--s2) var(--s3); font-family: var(--pixel); font-size: var(--t3); color: var(--muted); border: var(--px) solid transparent; border-radius: var(--r1); white-space: nowrap; }
 .nav-main a:hover, .nav-menu a:hover { color: var(--text); border-color: var(--line); }

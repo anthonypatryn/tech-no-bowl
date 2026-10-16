@@ -14,7 +14,20 @@ export const MODE_INFO = {
   pro: '8-vs-8 (#51 suits up) and field goals, no abilities.',
   allpro: '8-vs-8, field goals and every special ability.',
   inferno: 'All Techno plus fire tokens: ON FIRE, EN FUEGO, FIRE BOMB, BRING THE HEAT, dirty hits.',
+  infernopro: 'All Pro plus fire tokens: 8-vs-8 (#51 suits up), field goals, ON FIRE, EN FUEGO, FIRE BOMB, BRING THE HEAT, dirty hits.',
 };
+export const modeName = (m) => (m === 'infernopro' ? 'Inferno! 8 v 8' : MODES.find(([k]) => k === m)?.[1] ?? m);
+
+// the rules picker: the five modes, and for Inferno how many a side (7 like All Techno, or 8 like All Pro, rulebook p.19)
+export function ModePicker({ value, onChange }) {
+  const inferno = value === 'inferno' || value === 'infernopro';
+  return (
+    <span className="mode-picker">
+      <Chips small value={inferno ? 'inferno' : value} onChange={(m) => onChange(m === 'inferno' && value === 'infernopro' ? value : m)} options={MODES} />
+      {inferno && <Chips small value={value} onChange={onChange} options={[['inferno', '7 v 7'], ['infernopro', '8 v 8']]} />}
+    </span>
+  );
+}
 
 const idx = (id) => TEAMS.findIndex((t) => t.id === id);
 const lum = (hex) => { const n = parseInt(hex.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255; };
@@ -61,7 +74,7 @@ export default function TeamPicker({ onStart }) {
       </div>
       <div className="ts-center glass">
         <div className="opt"><span>Computer</span><Chips small value={level} onChange={setLevel} options={LEVELS} /></div>
-        <div className="opt"><span>Rules</span><Chips small value={mode} onChange={setMode} options={MODES} /></div>
+        <div className="opt"><span>Rules</span><ModePicker value={mode} onChange={setMode} /></div>
         <p className="hint mode-info">{MODE_INFO[mode]}</p>
         {clash && <p className="warn">Same team, same uniform: change one side's uniform.</p>}
         <Button kind="primary" size="big" disabled={clash} onClick={() => onStart({ you, cpu, level, mode })}>Take the field <kbd className="kh">Enter</kbd></Button>

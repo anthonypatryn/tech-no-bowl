@@ -2,7 +2,7 @@
 //   node tools/simulate.mjs [games=200] [firstSeed=1] [mode] [rules=techno]
 //   mode: (none or -) = simple bot vs bot · passive = side 0 never acts unless it must · allpro:starter = AI level vs level
 //         (levels swap sides every game; the win rates per level are printed)
-//   rules: techno · alltechno · pro · allpro · inferno
+//   rules: techno · alltechno · pro · allpro · inferno · infernopro
 // Must print `errors: 0`. Any crash prints its seed so the game can be replayed exactly.
 import { readFileSync } from 'node:fs';
 import { Game } from '../src/engine/game.js';

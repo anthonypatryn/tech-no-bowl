@@ -36,6 +36,8 @@ export const MODES = {
   pro: { pro: true, skills: false, fieldGoals: true, inferno: false },
   allpro: { pro: true, skills: true, fieldGoals: true, inferno: false },
   inferno: { pro: false, skills: true, fieldGoals: false, inferno: true },
+  // INFERNO on top of ALL PRO (8-vs-8, field goals): the rulebook says INFERNO "also works with ALL PRO" (p.19)
+  infernopro: { pro: true, skills: true, fieldGoals: true, inferno: true },
 };
 const CONTACT = ['block', 'shove', 'juke', 'shake'];
 // the questions asked while the ball is dead: a coach may call a timeout from any of them
