@@ -8,7 +8,7 @@ const reduceMotion = typeof window !== 'undefined' && window.matchMedia?.('(pref
 // sound is ON by default. SOUND_V: bumping it turns sound back on (and the mixer back to normal) once for everyone,
 // clearing a mute saved by older builds whose sound controls didn't agree with each other
 const SOUND_V = 2;
-const DEFAULTS = { text: 'normal', calm: !!reduceMotion, fieldHi: true, clocks: false, speed: 'normal', quick: false, cb: false, autoEnd: true, keys: {}, muted: false, mix: { fx: 1, crowd: 0.75, music: 0.75 }, soundV: SOUND_V };
+const DEFAULTS = { text: 'normal', calm: !!reduceMotion, fieldHi: true, clocks: false, speed: 'normal', quick: false, cb: false, autoEnd: true, keys: {}, muted: false, musicMenus: true, musicBreaks: true, musicGame: false, musicShuffle: true, mix: { fx: 1, crowd: 0.75, music: 0.75 }, soundV: SOUND_V };
 
 let cur = DEFAULTS;
 try {

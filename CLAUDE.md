@@ -63,6 +63,10 @@ esp. cameras and cinematics) and **Escape Order 66** (sound editor, kits), both 
   bump `SOUND_V` in prefs.js to turn it back on for everyone once. The game screen's sound chip shows on / muted / tap.
 - **Animations:** ball flights start in a layout effect (else the ball teleports). `moveFx(s)` in Board reads the log
   for catch jumps, spin orbits and the end-of-play pile (tackle / sack: tackler + dogpilers + nearby stack up).
+- **Music:** `tools/cut_music.py` splits the owner's ESPN NFL Primetime compilation at MP3 frame boundaries (no
+  re-encode) into `public/music/NN-slug.mp3` + `src/data/music.json` (24 tracks). `src/game/music.js` streams them
+  through the mixer (`connectMedia`): menu music, half time / final whistle, optional during games; the ♪ player
+  (`MusicPlayer.jsx`) in the top bar and game tools. Full-screen button next to it (desktop; F works too).
 - **Next:** owner play-test.
 
 ## Look (8-bit everywhere)

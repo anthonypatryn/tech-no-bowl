@@ -38,6 +38,12 @@ export default function Settings() {
           <Toggle checked={!s.muted} onChange={(on) => setSettings({ muted: !on })}>Sound on</Toggle>
           <button className="btn small" onClick={async () => { await nudgeAudio(); playSound('whistle'); setTimeout(() => playSound('step', { len: 0.8 }), 900); }}>Test sound</button>
         </Row>
+        <Row label="Music player">
+          <Toggle checked={s.musicMenus !== false} onChange={(v) => setSettings({ musicMenus: v })}>Menu music</Toggle>
+          <Toggle checked={s.musicBreaks !== false} onChange={(v) => setSettings({ musicBreaks: v })}>At half time and the final whistle</Toggle>
+          <Toggle checked={!!s.musicGame} onChange={(v) => setSettings({ musicGame: v })}>During games</Toggle>
+          <span className="hint">The ♪ button (top bar, or the game's tools) picks tracks.</span>
+        </Row>
         {[['fx', 'Effects'], ['crowd', 'Crowd'], ['music', 'Music']].map(([k, label]) => (
           <Row key={k} label={label}>
             <Chips small value={s.mix[k]} onChange={(v) => setSettings({ mix: { [k]: v } })} options={[[0, 'Off'], [0.25, '25%'], [0.5, '50%'], [0.75, '75%'], [1, '100%']]} />

@@ -717,3 +717,15 @@ html.calm *, html.calm *::before { transition: none !important; animation: none 
 .game.review.cine .review-top { opacity: .35; }
 .review-done table td:nth-child(3) { max-width: 360px; }
 .sound-chip.muted, .sound-chip.off { border-color: var(--led); color: var(--led); animation: pulse-go 1s ease-in-out infinite alternate; }
+/* jukebox + full screen */
+.topbar-tools { display: flex; gap: 6px; align-items: center; margin-left: var(--s3); }
+.jukebox { position: relative; display: inline-block; }
+.jukebox-panel { position: absolute; right: 0; top: calc(100% + 6px); width: min(360px, 92vw); max-height: 70vh; overflow: auto; padding: var(--s3); z-index: 60; display: flex; flex-direction: column; gap: var(--s2); text-align: left; }
+.game-tools .jukebox-panel { right: auto; left: 0; }
+.jb-now b { display: block; color: var(--led); font-family: var(--pixel); font-size: 10px; }
+.jb-list { list-style: none; margin: 0; padding: 0; max-height: 240px; overflow: auto; border: var(--px) solid var(--line); }
+.jb-list li { display: flex; justify-content: space-between; gap: 8px; padding: 5px 8px; cursor: pointer; font-size: .85em; }
+.jb-list li:hover { background: rgba(255,255,255,.06); }
+.jb-list li.on { background: var(--led); color: #15130a; }
+.jb-switches { display: flex; flex-direction: column; gap: 4px; }
+@media (pointer: coarse) { .fs-btn { display: none; } }

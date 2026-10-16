@@ -35,6 +35,8 @@ import CoinToss from './CoinToss';
 import { recordResult } from './records';
 import { loadSeason, reportResult } from './season';
 import { crowd, stopTheme, audioState, nudgeAudio, play as playSound } from './sound';
+import MusicPlayer, { FullscreenButton } from './MusicPlayer.jsx';
+import { musicScene } from './music';
 import { settings } from './prefs';
 
 const BASE_COLORS = { act: '#2fd06b', moveOnly: '#1f9e8f', legal: '#2fd06b', move: '#2fd06b', ball: '#ffd34a', td: '#ffffff', out: '#ff6a5a', good: '#2fd06b', ok: '#f5e04a', bad: '#ff5a4a', push: '#ff9a3c', scatter: '#c77dff', motion: '#4ab8ff', place: '#4ab8ff' };
@@ -81,6 +83,11 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
   const spectating = !!game.client?.spectating;
   const oppName = online ? (ME === 0 ? (net.friend?.name ?? 'Them') : (net.lobby?.seats?.[0]?.name ?? 'Them')) : 'CPU';
   useGameSounds(game, { theme: !match.skipIntro });
+  // the jukebox steps aside for the game (unless Music during games is on); half time and the final whistle get a track
+  useEffect(() => { musicScene('game'); }, []);
+  const halfAt = s.log.findLast?.((e) => e.kind === 'half' && e.half === 2)?.id;
+  useEffect(() => { if (!halfAt) return undefined; musicScene('break'); const t = setTimeout(() => musicScene('game'), 25000); return () => clearTimeout(t); }, [halfAt]);
+  useEffect(() => { if (s.phase === 'over') musicScene('break'); }, [s.phase]);
   useEffect(() => {
     if (s.phase !== 'over') return;
     if (online) { clearOnlineResume(); return; }
@@ -426,6 +433,8 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
         <button className="btn small" onClick={() => setBug(true)}>Report a bug <Kbd a="bug" /></button>
         <button className="btn small" disabled={!lastPlay(s) || !!rs} onClick={() => setReplay(lastPlay(s))}>Replay</button>
         <SoundChip />
+        <MusicPlayer small />
+        <FullscreenButton />
         <button className={`btn small ${turbo ? 'on' : ''}`} onClick={toggleTurbo} title="Fast-forward: everything runs 4x">⏩ {turbo ? 'Fast' : 'Normal'} <Kbd a="turbo" /></button>
       </div>
       {rs && (

@@ -19,6 +19,8 @@ const BugList = lazy(() => import('./game/BugList.jsx'));
 const Lab = lazy(() => import('./game/Lab.jsx'));
 const OnlinePage = lazy(() => import('./game/OnlinePage.jsx'));
 const MomentReview = lazy(() => import('./game/MomentReview.jsx'));
+import MusicPlayer, { FullscreenButton } from './game/MusicPlayer.jsx';
+import { musicScene } from './game/music';
 const SoundEditor = lazy(() => import('./game/SoundEditor.jsx'));
 import BugReport from './game/BugReport.jsx';
 import { RulesPage } from './game/RulesDrawer.jsx';
@@ -39,6 +41,9 @@ export default function App() {
   }, []);
   useEffect(() => { document.documentElement.style.setProperty('--ui', TEXT_ZOOM[s.text] ?? 1); }, [s.text]);
   useEffect(() => { document.documentElement.classList.toggle('calm', !!s.calm); }, [s.calm]);
+
+  // the jukebox: menu music everywhere but in a game (the game screen takes over)
+  useEffect(() => { if (!['game', 'tutorial', 'review', 'moments', 'sounds'].includes(view)) musicScene('menu'); }, [view]);
 
   const go = (v) => {
     const url = v === 'home' ? location.pathname : `?view=${v}`;
@@ -77,6 +82,7 @@ function TopBar({ view, go }) {
       <a className="brand" href="/" onClick={(e) => { e.preventDefault(); go('home'); }}><span className="led">TECHNO BOWL</span></a>
       <nav>{link('home', 'Home')}{link('teams', 'Play')}{link('season', 'Season')}{link('online', 'Online')}{link('rules', 'Rules')}{link('art', 'Art Review')}{link('settings', 'Settings')}
         <a href="#bug" onClick={(e) => { e.preventDefault(); setBug(true); }}>Report a bug</a></nav>
+      <span className="topbar-tools"><MusicPlayer small /><FullscreenButton /></span>
       {bug && <BugReport onClose={() => setBug(false)} />}
     </header>
   );

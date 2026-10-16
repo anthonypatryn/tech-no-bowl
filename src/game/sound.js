@@ -35,6 +35,21 @@ export function audioState() {
   return ctx && ctx.state === 'running' ? 'on' : 'off';
 }
 export function nudgeAudio() { const c = wake(); applyMute(); return c?.resume?.().catch(() => {}); }
+// an <audio> element played through the mixer (the jukebox): its own gain, into the master (so the mute applies)
+const mediaNodes = new WeakMap();
+export function connectMedia(el) {
+  const ac = wake();
+  if (!ac || !el) return null;
+  let n = mediaNodes.get(el);
+  if (!n || n.gain.context !== ac) {
+    try { const src = ac.createMediaElementSource(el), gain = ac.createGain(); src.connect(gain).connect(out()); n = { src, gain }; mediaNodes.set(el, n); } catch { return null; }
+  }
+  return n.gain;
+}
+export const musicLevel = () => level('theme');
+// run something once audio is unlocked by a tap (the jukebox's blocked menu track)
+const unlockSubs = new Set();
+export const onAudioUnlock = (fn) => { unlockSubs.add(fn); return () => unlockSubs.delete(fn); };
 // the one audio context every sound shares (the synthesized dice, hits and coin too): iPad unlocks one per tap
 export const audioContext = () => wake();
 let master = null;
@@ -199,6 +214,7 @@ export function unlockAudioOnFirstTap() {
     const theme = SOUNDS.theme?.[0];
     if (theme && !themeEl) { const el = themeElement(theme.file); el.muted = true; el.play().then(() => { el.pause(); el.muted = false; }).catch(() => { el.muted = false; }); }
     if (!warmed) { warmed = true; setTimeout(() => preload(Object.keys(SOUNDS).filter((k) => k !== 'theme')), 300); }
+    setTimeout(() => unlockSubs.forEach((fn) => fn()), 50);
   };
   for (const ev of ['touchend', 'click', 'keydown', 'pointerup']) window.addEventListener(ev, () => { if (!ctx || ctx.state !== 'running') go(); }, { passive: true });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && ctx && ctx.state !== 'running') ctx.resume().catch(() => {}); });
