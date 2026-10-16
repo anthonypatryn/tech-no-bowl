@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Stage } from '../three/Stage';
 import { Field, Lights, sq } from '../three/Field';
+import { Stadium } from '../three/Stadium';
 import { PlayerCube } from '../three/Cube';
 import { TEAMS, uniformOf, artUrl } from '../data/art';
 import { lineUp } from './formation';
@@ -22,6 +23,7 @@ export default function Home({ go, onResume }) {
       <Stage className="home-stage" camera={{ position: [14, 6, 10] }}>
         <Lights />
         <Field />
+        <Stadium crowd={settings().fieldHi} />
         <Teams offense={a} defense={b} />
         <Orbit />
       </Stage>

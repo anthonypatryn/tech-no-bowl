@@ -66,9 +66,27 @@ export default function SeasonPage({ onPlay }) {
           <p className="hint">The top 8 make the playoffs.</p>
         </Panel>
       </div>
+      {season.stats && Object.keys(season.stats).length > 0 && <Leaders stats={season.stats} />}
       {season.bracket && <Bracket season={season} />}
       {dialog}
     </main>
+  );
+}
+
+// your team's season leaders
+function Leaders({ stats }) {
+  const cats = [['tds', 'Touchdowns', ''], ['rushYds', 'Rushing', ' yds'], ['recYds', 'Receiving', ' yds'], ['passYds', 'Passing', ' yds'], ['tackles', 'Tackles', ''], ['sacks', 'Sacks', '']];
+  return (
+    <Panel className="leaders">
+      <h3>Season leaders</h3>
+      <div className="leader-grid">
+        {cats.map(([k, label, unit]) => {
+          const top = Object.entries(stats).sort(([, a], [, b]) => b[k] - a[k])[0];
+          if (!top || !top[1][k]) return null;
+          return <div key={k} className="leader"><small>{label}</small><b>#{top[0]} {top[1].name}</b><span className="led">{top[1][k]}{unit}</span></div>;
+        })}
+      </div>
+    </Panel>
   );
 }
 

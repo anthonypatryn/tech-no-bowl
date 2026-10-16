@@ -8,6 +8,7 @@ import { Field, Lights, sq, ROWS, COLS } from './Field';
 import { PlayerCube, DownCube, CUBE } from './Cube';
 import { uniformOf, teamColors, artRows } from '../data/art';
 import { DiceRolls } from './Dice';
+import { Stadium, TUNNEL_Z } from './Stadium';
 import { settings } from '../game/prefs';
 
 const SPEED = 6.5; // squares per second when walking
@@ -486,7 +487,7 @@ const ease = (u) => u * u * (3 - 2 * u);
 export function RunOut({ teams, unis, rows, t0, startAt }) {
   const group = useRef();
   const squads = useMemo(() => teams.map((roster, side) => {
-    const tunnelZ = side === 0 ? 14.2 : -14.2;
+    const tunnelZ = side === 0 ? TUNNEL_Z - 0.3 : -(TUNNEL_Z - 0.3);
     const lineZ = side === 0 ? 3.2 : -3.2;
     return roster.map((p, i) => ({
       key: `${side}:${p.num}`, side, num: p.num,
@@ -518,11 +519,10 @@ export function RunOut({ teams, unis, rows, t0, startAt }) {
           <PlayerCube uniform={unis[q.side]} row={rows[q.side][q.num] ?? 0} />
         </group>
       ))}
-      {/* tunnel mouths: dark arches under the stands, with smoke */}
-      {[14.4, -14.4].map((z, i) => (
+      {/* smoke out of the tunnels (built into the stadium's end-zone stands) */}
+      {[TUNNEL_Z, -TUNNEL_Z].map((z, i) => (
         <group key={z} position={[0, 0, z]}>
-          <mesh position={[0, 0.9, i ? -0.4 : 0.4]}><boxGeometry args={[3.2, 1.8, 0.8]} /><meshStandardMaterial color="#0d0f13" /></mesh>
-          {smoke && <Burst confetti at={[0, 0, i ? 0.8 : -0.8]} colors={['#9aa0a6', '#c8ccd0', '#6f757b']} count={60} />}
+          {smoke && <Burst confetti at={[0, 0, i ? 0.5 : -0.5]} colors={['#9aa0a6', '#c8ccd0', '#6f757b']} count={60} />}
         </group>
       ))}
     </group>
@@ -726,6 +726,10 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
     if (e.kind === 'check' && e.tat && e.pid) { lunges[e.pid] = { id: e.id, to: e.tat, side: e.action === 'juke' || e.action === 'shake' }; break; }
   }
   const fx = useMemo(() => moveFx(s), [s.log.length, s.log.at(-1)?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // the crowd in the stands jumps on the big moments
+  const roar = useRef(0);
+  const lastKind = s.log.at(-1)?.kind;
+  useEffect(() => { if (['td', 'turnover', 'sack', 'catch', 'fieldgoal', 'safety', 'onfire', 'intercept'].includes(lastKind)) roar.current = 1; }, [s.log.at(-1)?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const players = Object.values(s.players).map((p) => {
     if (edit && p.side === edit.side) {
       const sp = edit.spots.find((x) => x.num === p.num);
@@ -761,6 +765,7 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
     <>
       <Lights />
       <Field />
+      <Stadium colors={tcolors.map((c) => c[0])} roar={roar} crowd={settings().fieldHi} />
       {showLine && (
         <>
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, lineZ]}>
@@ -789,7 +794,7 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
       {shot?.kind === 'skill' && shot.fx === 'dust' && <Dust key={shot.id} at={sq(...shot.at, 0)} />}
       {shot?.kind === 'td' && <Burst key={shot.id} confetti at={sq(...shot.at, 0)} colors={teamColors(s.teams[shot.side].id, s.teams[shot.side].uniform).concat(['#f5e04a', '#ffffff'])} count={120} />}
       <DiceRolls log={s.log} players={s.players} offense={s.offense} home={[s.spot, s.line]}
-        teamColors={s.teams.map((t) => teamColors(t.id, t.uniform))} />
+        teamColors={s.teams.map((t) => teamColors(t.id, t.uniform))} teamNames={s.teams.map((t) => t.name)} />
       <Tiles tiles={tiles} onPick={onTile} onHover={onHover} />
       {outlines.map((o, i) => <Outline key={i} squares={o.squares} color={o.color} />)}
       <OrbitControls makeDefault enableDamping dampingFactor={0.12} enabled={!shot && !intro} maxPolarAngle={Math.PI / 2.1} minDistance={2.5} maxDistance={45}

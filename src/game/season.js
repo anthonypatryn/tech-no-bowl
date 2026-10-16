@@ -50,8 +50,15 @@ export function nextGame(s) {
 }
 
 // your result is in: record it, simulate the rest of the round, move the season on
-export function reportResult(s, us, them) {
+// box: this game's numbers for our players ({ [num]: { name, rushYds, recYds, passYds, tds, tackles, sacks, ... } })
+export function reportResult(s, us, them, box = {}) {
   s = structuredClone(s);
+  s.stats ??= {};
+  for (const [num, b] of Object.entries(box)) {
+    const t = (s.stats[num] ??= { name: b.name, games: 0, rushYds: 0, recYds: 0, passYds: 0, tds: 0, tackles: 0, sacks: 0 });
+    t.games++;
+    for (const k of ['rushYds', 'recYds', 'passYds', 'tds', 'tackles', 'sacks']) t[k] += b[k] ?? 0;
+  }
   if (s.phase === 'regular') {
     const g = s.schedule[s.week];
     g.us = us; g.them = them;

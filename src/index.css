@@ -726,3 +726,18 @@ html.calm *, html.calm *::before { transition: none !important; animation: none 
 .saved-game small { grid-column: 1; }
 .saved-game .btns { grid-row: 1 / span 2; grid-column: 2; }
 .reconnect .away { max-width: 520px; text-align: center; font-family: var(--body); line-height: 1.5; padding: var(--s4); background: rgba(0,0,0,.6); }
+
+.die-tag { font-family: var(--pixel); font-size: 8px; padding: 3px 5px; border: 2px solid rgba(0,0,0,.6); white-space: nowrap; box-shadow: 0 2px 0 rgba(0,0,0,.5); }
+
+/* extras: ticker, half-time highlights, player of the game, leaders, quick chat */
+.ticker { position: absolute; top: 58px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 6px 14px; background: rgba(5, 7, 10, .85); border-left: 4px solid var(--mfl-red); font-family: var(--pixel); font-size: 11px; color: #fff; z-index: 7; white-space: nowrap; animation: ticker-in .35s ease-out; }
+.ticker-tag { background: var(--mfl-red); color: #fff; padding: 2px 5px; font-size: 8px; }
+@keyframes ticker-in { from { transform: translate(-50%, -12px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+.game.cine .ticker { top: 12vh; }
+.half-hl { display: flex; flex-direction: column; gap: 6px; padding: var(--s3); margin-top: var(--s2); }
+.potg { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: var(--s3) 0; padding: var(--s2); border: var(--px) solid var(--led); }
+.potg b { font-family: var(--pixel); font-size: 12px; }
+.leader-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--s2); }
+.leader { display: flex; flex-direction: column; gap: 2px; padding: var(--s2); border: var(--px) solid var(--line); }
+.chat-menu { position: absolute; top: calc(100% + 4px); right: 0; display: flex; flex-direction: column; gap: 3px; padding: 6px; z-index: 20; white-space: nowrap; }
+.react-float .rf.phrase { font-size: 16px; font-family: var(--pixel); background: rgba(0,0,0,.7); padding: 6px 10px; border-radius: 6px; }

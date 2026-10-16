@@ -19,6 +19,9 @@ export const randomCode = () => Array.from({ length: 5 }, () => ALPHABET[Math.fl
 export const cleanCode = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
 const peerId = (code) => PREFIX + code.toLowerCase();
 export const REACTIONS = ['👏', '😱', '🔥', '😂', '😤', '🏈'];
+// quick chat: fixed phrases, sent like the reactions (indexes after the emoji)
+export const PHRASES = ['Nice play!', 'Ouch!', 'Good game!', 'Your move!', 'Lucky dice...', 'Rematch?'];
+const SAYINGS = [...REACTIONS, ...PHRASES];
 
 // the same id across reloads, so a refresh rejoins the same seat
 export function clientId() {
@@ -229,7 +232,7 @@ export class HostRoom extends Emitter {
 
   react(side, k) {
     k = Number(k);
-    if (!(k >= 0 && k < REACTIONS.length)) return;
+    if (!(k >= 0 && k < SAYINGS.length)) return;
     this.reactions = [...this.reactions.slice(-9), { id: Math.random(), side, k, at: Date.now() }];
     for (const c of this.allConns()) { try { if (c.open) c.send({ t: 'react', side, k }); } catch { /* closed */ } }
     this.emit();

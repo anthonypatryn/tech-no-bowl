@@ -41,7 +41,8 @@ export default function OnlinePage({ go }) {
 
   // ---------- in a game ----------
   if (isHost && match) {
-    return <div className="online-game"><GameView key={match.key ?? match.seed} match={match} onExit={() => { room.backToLobby(); setMatch(null); }} onRematch={() => {}} /></div>;
+    return <div className="online-game"><GameView key={match.key ?? match.seed} match={match} onExit={() => { room.backToLobby(); setMatch(null); }}
+      onRematch={() => { room.backToLobby(); setMatch({ ...match, seed: Date.now(), key: Date.now(), replay: undefined, skipIntro: false }); }} /></div>;
   }
   if (remote && room.status !== 'lobby' && room.state) {
     return <div className="online-game"><GameView key={`r${room.lobby?.started}`} match={friendMatch} remote={remote} me={room.you === 1 ? 1 : 0} onExit={leave} /></div>;

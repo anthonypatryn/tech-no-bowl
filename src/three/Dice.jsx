@@ -3,7 +3,7 @@
 // The result is decided by the engine; the toss just lands on it.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { RoundedBox } from '@react-three/drei';
+import { RoundedBox, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { sq } from './Field';
 import { settings } from '../game/prefs';
@@ -37,8 +37,10 @@ function restingQuat(f, yaw) {
   return new THREE.Quaternion().setFromRotationMatrix(world.multiply(local.transpose())).premultiply(new THREE.Quaternion().setFromAxisAngle(Y, yaw));
 }
 
-function Die({ value, body = '#f4f0e6', pip = '#c21d24', at, from, delay = 0, size = 0.62 }) {
+// label: { text, bg, fg } = whose die it is, floating over it (it follows the die but never spins with it)
+function Die({ value, body = '#f4f0e6', pip = '#c21d24', at, from, delay = 0, size = 0.62, label }) {
   const ref = useRef();
+  const tag = useRef();
   const st = useMemo(() => {
     const f = FACES.find((x) => x.v === value) ?? FACES[0];
     return {
@@ -56,8 +58,11 @@ function Die({ value, body = '#f4f0e6', pip = '#c21d24', at, from, delay = 0, si
     o.quaternion.copy(st.target).premultiply(new THREE.Quaternion().setFromAxisAngle(st.axis, st.spin * (1 - turn)));
     o.position.set(from[0] + (at[0] - from[0]) * slide, size / 2 + 1.3 * Math.exp(-4 * t) * Math.abs(Math.sin(Math.PI * 3.2 * Math.pow(t, 0.75))), from[2] + (at[2] - from[2]) * slide);
     o.visible = st.t >= 0;
+    if (tag.current) { tag.current.position.set(o.position.x, o.position.y + size * 1.15, o.position.z); tag.current.visible = o.visible; }
   });
   return (
+    <>
+    {label && <group ref={tag}><Html center zIndexRange={[3, 0]} style={{ pointerEvents: 'none' }}><span className="die-tag" style={{ background: label.bg, color: label.fg }}>{label.text}</span></Html></group>}
     <group ref={ref}>
       <RoundedBox args={[size, size, size]} radius={size * 0.16} smoothness={4} castShadow>
         <meshStandardMaterial color={body} roughness={0.35} />
@@ -72,6 +77,7 @@ function Die({ value, body = '#f4f0e6', pip = '#c21d24', at, from, delay = 0, si
         );
       })}
     </group>
+    </>
   );
 }
 
@@ -104,10 +110,10 @@ function plan(x, z, n, cubes) {
   }
   return best.dice;
 }
-const SHOW_MS = 2600;
+const SHOW_MS = 3700; // the dice sit on the field a good second after they land
 
 // watches the log and throws the dice for the newest roll, beside whoever rolled
-export function DiceRolls({ log, players, teamColors, offense, home }) {
+export function DiceRolls({ log, players, teamColors, teamNames = [], offense, home }) {
   const cubes = Object.values(players).filter((p) => p.col != null).map((p) => sq(p.col, p.row));
   const last = useMemo(() => [...log].reverse().find((e) => ROLL_KINDS.includes(e.kind) && e.dice), [log]);
   const [roll, setRoll] = useState(null);
@@ -116,9 +122,18 @@ export function DiceRolls({ log, players, teamColors, offense, home }) {
     const p = last.pid && players[last.pid]?.col != null ? players[last.pid] : null;
     const spot = last.kind === 'scatter' ? last.from : p ? [p.col, p.row] : home; // who-goes-first: at the ball
     const [x, , z] = spot ? sq(spot[0], spot[1]) : [0, 0, 0];
-    const colors = last.kind === 'scatter' || last.kind === 'dice'
-      ? [offense, 1 - offense].map((side) => ({ body: teamColors[side][0], pip: teamColors[side][1] })).slice(0, last.dice.length)
+    // whose die is whose: the scatter's first die is the offense's; the who-goes-first roll's first die is the home team's
+    const owners = last.kind === 'scatter' ? [offense, 1 - offense] : last.kind === 'dice' ? [0, 1] : null;
+    const short = (side) => (teamNames[side] ?? '').toUpperCase();
+    const colors = owners
+      ? owners.map((side) => ({ body: teamColors[side][0], pip: teamColors[side][1], label: { text: short(side), bg: teamColors[side][0], fg: teamColors[side][1] } }))
       : last.kind === 'sport' ? [{ body: '#f4f0e6', pip: '#1b1b1b' }, { body: '#f4f0e6', pip: '#1b1b1b' }] : [{}, {}];
+    // a skill / sport check, a kick: one tag over the first die, the roller's team and number
+    if (!owners) {
+      const who = last.pid ? players[last.pid] : null;
+      const side = who?.side ?? last.side ?? offense;
+      colors[0] = { ...colors[0], label: { text: `${short(side)}${who ? ` #${who.num}` : ''}`, bg: teamColors[side][0], fg: teamColors[side][1] } };
+    }
     setRoll({ id: last.id, paths: plan(x, z, last.dice.length, cubes), dice: last.dice, colors: last.dice.map((_, i) => colors[i] ?? {}) });
     const t = setTimeout(() => setRoll((r) => (r?.id === last.id ? null : r)), SHOW_MS);
     return () => clearTimeout(t);

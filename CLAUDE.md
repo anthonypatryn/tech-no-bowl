@@ -52,6 +52,7 @@ owner pastes their "copy for Claude" output.
 | `src/game/prefs.js`, `Settings.jsx`, `keys.js` | Per-device settings (`tb-settings`; prefs.js, not settings.js: Windows name clash), the Settings page, rebindable keys |
 | `src/game/odds.js`, `records.js`, `ui.jsx` | Odds text, W-L records, the 8-bit control kit |
 | `src/three/Board.jsx` | The 3D game: `Mover` cubes (walk, lunge, jump, orbit, pile), `Ball`, `Tiles`, outlines, effects (`Burst`, `Dust`, `Flames`, `Swirl`, `KickBall`, `GoalPosts`), `moveFx`, camera `Rig` + `shotCam` |
+| `src/three/Stadium.jsx` | The stadium: stands (low on the broadcast side), crowd cubes that jump on big moments, tunnels in the end-zone stands (`TUNNEL_Z`), light towers |
 | `src/three/Cube.jsx`, `textures.js`, `Field.jsx`, `Dice.jsx`, `Stage.jsx` | Player / down cubes, atlases, the field + `sq(col,row)`, 3D dice, the canvas wrapper |
 | `src/engine/` | The rules engine, no UI: `board.js` geometry, `rules.js` pure rules + skills, `game.js` the `Game`, `formations.js`, `ai.js` (`makeAI`), `bot.js` (simulator coaches) |
 | `src/data/art.js` (+ generated `art.json`, `teams.json`), `abilities.js`, `sounds.json`, `music.json` | Art manifest + rosters, ability texts + alternates, clip table, track list |
@@ -101,6 +102,8 @@ owner pastes their "copy for Claude" output.
 - **Redraws** fall back to a timer when no animation frame comes (background tabs / an online host who switched away).
 - **React dev double-mount:** never stop a game in an effect cleanup on unmount; stop the one a new game replaces.
 - **Helmets:** every helmet is the same model in the same frame; `do_helmets` clips all 32 to one master silhouette.
+- **Timeouts** are an answer (`{ timeout: true }`) to any dead-ball question (`DEAD_BALL` in game.js), so they're
+  validated, saved and sent online like everything else. `same()` never matches a missing square (bad answers fail).
 
 ## Vercel env vars
 `KV_REST_API_URL`, `KV_REST_API_TOKEN`, `BUG_PIN` (bugs, reviews, sound overrides; shared Upstash database, key prefix

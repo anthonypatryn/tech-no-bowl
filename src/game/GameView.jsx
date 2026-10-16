@@ -9,7 +9,7 @@ import { useSettings } from './prefs';
 import { isKey } from './keys';
 import { Sprite } from './TeamPicker';
 import { HUMAN, useGame, canUndo, resumeMatch, clearResume, clearOnlineResume, setTurbo, isTurbo } from './useGame';
-import { REACTIONS } from '../net/room';
+import { REACTIONS, PHRASES } from '../net/room';
 import { makeAI, pKick } from '../engine/ai.js';
 import { SKILLS } from '../engine/rules.js';
 import { abilityText } from '../data/abilities';
@@ -96,12 +96,16 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
     // a season game: report it (once) and move the season on
     const season = loadSeason();
     if (match.season && season && !(season.reported ?? []).includes(match.seed)) {
-      reportResult({ ...season, reported: [...(season.reported ?? []), match.seed] }, s.score[ME], s.score[1 - ME]);
+      const mine = Object.fromEntries(Object.entries(s.box).filter(([pid]) => s.players[pid]?.side === ME).map(([pid, b]) => [s.players[pid].num, { ...b, name: s.players[pid].name }]));
+      reportResult({ ...season, reported: [...(season.reported ?? []), match.seed] }, s.score[ME], s.score[1 - ME], mine);
     }
   }, [s.phase]); // eslint-disable-line react-hooks/exhaustive-deps
   // instant replay: the last play played back on the board (automatic after a touchdown, or the Replay button)
   const [replay, setReplay] = useState(null);
-  const rs = useReplay(s, replay, () => setReplay(null));
+  // replays can queue up (the half-time highlights play one after another)
+  const replayQueue = useRef([]);
+  const rs = useReplay(s, replay, () => setReplay(replayQueue.current.length ? replayQueue.current.shift() : null));
+  const watchAll = (plays) => { if (!plays.length) return; replayQueue.current = plays.slice(1); setReplay(plays[0]); };
   const shown = rs ?? s;
   const lastTd = s.log.findLast?.((e) => e.kind === 'td');
   useEffect(() => {
@@ -404,7 +408,8 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
       </Stage>
       <ScoreBug s={s} />
       <Chyrons s={s} />
-      <Halftime s={s} />
+      <Ticker s={s} />
+      <Halftime s={s} highlights={highlights.current} onWatch={watchAll} />
       <Wipe s={s} />
       <CoinToss s={s} />
       <CoachTips s={s} enabled={tips && !intro} fresh={!match.skipIntro} onOff={() => setTips(false)} />
@@ -806,6 +811,7 @@ function Waiting({ s, online, spectating }) {
 // quick reactions both ways
 function OnlineBar({ net, host }) {
   const [, bump] = useState(0);
+  const [chat, setChat] = useState(false);
   useEffect(() => net.on(() => bump((x) => x + 1)), [net]);
   const f = host ? net.friend : null;
   const recent = (net.reactions ?? []).filter((r) => Date.now() - r.at < 3500);
@@ -817,8 +823,10 @@ function OnlineBar({ net, host }) {
         <span>{host ? (f ? `${f.name}${f.connected ? '' : ' (disconnected)'}${f.cpu ? ' · computer covering' : ''}` : 'No opponent') : net.status === 'reconnecting' ? 'Reconnecting to the host…' : `Room ${net.code}`}</span>
         {host && f && !f.connected && !f.cpu && <button className="btn small" onClick={() => net.takeOver()}>Let the computer play</button>}
         <span className="reacts">{REACTIONS.map((e, k) => <button key={k} className="chipbtn" onClick={() => (host ? net.react(0, k) : net.react(k))}>{e}</button>)}</span>
+        <span className="jukebox"><button className="chipbtn" onClick={() => setChat(!chat)} title="Quick chat">💬</button>
+          {chat && <span className="chat-menu glass">{PHRASES.map((p, i) => <button key={p} className="chipbtn" onClick={() => { const k = REACTIONS.length + i; if (host) net.react(0, k); else net.react(k); setChat(false); }}>{p}</button>)}</span>}</span>
       </div>
-      <div className="react-float">{recent.map((r) => <span key={r.id} className={`rf side${r.side}`}>{REACTIONS[r.k]}</span>)}</div>
+      <div className="react-float">{recent.map((r) => <span key={r.id} className={`rf side${r.side} ${r.k >= REACTIONS.length ? 'phrase' : ''}`}>{r.k < REACTIONS.length ? REACTIONS[r.k] : PHRASES[r.k - REACTIONS.length]}</span>)}</div>
       {!host && net.status === 'reconnecting' && (
         <div className="reconnect">
           {net.away
@@ -913,7 +921,7 @@ function Moment({ s }) {
   useEffect(() => {
     if (!last) return;
     setShown((x) => ({ ...x, dice: last.id }));
-    const t = setTimeout(() => setShown((x) => (x.dice === last.id ? { ...x, dice: null } : x)), 2600);
+    const t = setTimeout(() => setShown((x) => (x.dice === last.id ? { ...x, dice: null } : x)), 3600);
     return () => clearTimeout(t);
   }, [last?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -982,6 +990,7 @@ function EndScreen({ s, onExit, onRematch, match, online, highlights = [], onWat
         <h2 className="led big">{s.winner == null ? 'TIE GAME' : won ? 'YOU WIN!' : 'YOU LOSE'}</h2>
         <p className="final"><span>{s.teams[0].name}</span> <b className="led">{a}</b> – <b className="led">{b}</b> <span>{s.teams[1].name}</span></p>
         <StatCard s={s} title="FINAL" />
+        <PlayerOfTheGame s={s} />
         {top.length > 0 && (
           <div className="recap">
             <h3>Highlights</h3>
@@ -990,7 +999,9 @@ function EndScreen({ s, onExit, onRematch, match, online, highlights = [], onWat
         )}
         <div className="btns"><button className="btn small" onClick={share}>{copied ? 'Copied!' : 'Copy the result to share'}</button></div>
         <div className="btns">{online
-          ? <button className="btn primary" onClick={onExit}>Back to the lobby</button>
+          ? (match?.online
+            ? <><button className="btn" onClick={onExit}>Back to the lobby</button><button className="btn primary" onClick={onRematch}>Rematch</button></>
+            : <><span className="hint">The host can start a rematch.</span><button className="btn" onClick={onExit}>Leave</button></>)
           : match?.season
           ? <button className="btn primary" onClick={onExit}>Back to the season</button>
           : <><button className="btn" onClick={onExit}>Change teams</button><button className="btn primary" onClick={onRematch}>Rematch</button></>}</div>
@@ -1018,17 +1029,30 @@ function delayOfGame(req, edit, stack) {
 }
 
 // the halftime stat card, shown for a few seconds when the second half starts (Continue closes it sooner)
-function Halftime({ s }) {
+// the half-time show: the stat card, and the first half's best plays to watch (the jukebox plays a track meanwhile)
+function Halftime({ s, highlights = [], onWatch }) {
   const half = s.log.findLast?.((e) => e.kind === 'half' && e.half === 2);
   const [open, setOpen] = useState(null);
+  const top = highlights.filter((h) => h.half === 1).sort((x, y) => y.score - x.score).slice(0, 3).sort((x, y) => x.play.id - y.play.id);
   useEffect(() => {
     if (!half) return;
     setOpen(half.id);
-    const t = setTimeout(() => setOpen(null), 7000);
+    const t = setTimeout(() => setOpen(null), top.length ? 12000 : 7000);
     return () => clearTimeout(t);
   }, [half?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!half || open !== half.id) return null;
-  return <div className="halftime"><StatCard s={s} title="HALF TIME" onClose={() => setOpen(null)} /></div>;
+  return (
+    <div className="halftime">
+      <StatCard s={s} title="HALF TIME" onClose={() => setOpen(null)} />
+      {top.length > 0 && (
+        <div className="half-hl glass">
+          <b className="led">FIRST-HALF HIGHLIGHTS</b>
+          {top.map((h) => <span key={h.play.id}>{h.label}</span>)}
+          <button className="btn primary" onClick={() => { setOpen(null); onWatch(top.map((h) => h.play)); }}>▶ Watch them</button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // the chance a block / tackle succeeds, for its button
@@ -1107,4 +1131,63 @@ function SoundChip() {
   };
   const label = { on: '🔊 Sound', muted: '🔇 Muted: click to unmute', off: '🔈 Click to turn sound on' }[st];
   return <button className={`btn small sound-chip ${st}`} onClick={fix} title="Sound check">{label}</button>;
+}
+
+// ---------- the commentary ticker: a broadcast line for the big moments ----------
+const CALLS = {
+  td: ['TOUCHDOWN! HE IS GONE!', 'SIX! ...PLUS ONE! TOUCHDOWN!', 'NOBODY IS CATCHING HIM!', 'INTO THE END ZONE!'],
+  turnover: ['TURNOVER! THE BALL CHANGES HANDS!', 'THEY TAKE IT AWAY!', 'WHAT A CHANGE OF FORTUNE!'],
+  sack: ['BURIED IN THE BACKFIELD!', 'SACKED! NOWHERE TO GO!', 'THE POCKET COLLAPSES!'],
+  catch: ['WHAT A GRAB!', 'HE HAULS IT IN!', 'RIGHT ON THE NUMBERS!'],
+  stiffarm: ['WHAT A STIFF ARM!', 'GET OFF ME! STIFF ARM!'],
+  spin: ['A SPIN MOVE! HE IS FREE!', 'SPUN RIGHT AROUND HIM!'],
+  heat: ['BRINGING THE HEAT!', 'THAT ONE LEFT A MARK!'],
+  intercept: ['HE JUMPS THE ROUTE!', 'READ IT ALL THE WAY!'],
+  fieldgoal: ['IT IS GOOD!', 'RIGHT DOWN THE MIDDLE!'],
+  safety: ['SAFETY! TWO POINTS!', 'TRAPPED IN HIS OWN END ZONE!'],
+  onfire: ['HE IS ON FIRE!', 'SOMEBODY CALL THE FIRE DEPARTMENT!'],
+  fumble: ['FUMBLE! THE BALL IS LOOSE!', 'IT IS ON THE GROUND!'],
+  dogpile: ['DOGPILE! EVERYBODY IN!'],
+};
+function callFor(e) {
+  if (!e) return null;
+  if (e.kind === 'catch' && !(e.yds >= 20)) return null;
+  if (e.kind === 'turnover' && e.downs) return 'TURNOVER ON DOWNS!';
+  if (e.kind === 'kick' && !e.good) return 'NO GOOD! WIDE!';
+  const list = CALLS[e.kind];
+  return list ? list[e.id % list.length] : null;
+}
+function Ticker({ s }) {
+  const call = [...s.log].slice(-4).reverse().find((e) => callFor(e));
+  const [on, setOn] = useState(null);
+  useEffect(() => {
+    if (!call) return undefined;
+    const wait = call.kind === 'td' ? delayFor(s.log, s.log.indexOf(call)) * 1000 : 0; // the touchdown call waits for the runner
+    let t2;
+    const t1 = setTimeout(() => { setOn(call.id); t2 = setTimeout(() => setOn(null), 3200); }, wait);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [call?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!call || on !== call.id) return null;
+  return <div className="ticker" key={call.id}><span className="ticker-tag">LIVE</span><span>{callFor(call)}</span></div>;
+}
+
+// ---------- player of the game, from the box score ----------
+function PlayerOfTheGame({ s }) {
+  let best = null, bv = -Infinity;
+  for (const [pid, b] of Object.entries(s.box)) {
+    const p = s.players[pid];
+    if (!p) continue;
+    const v = b.tds * 6 + (b.rushYds + b.recYds) / 8 + b.passYds / 12 + b.tackles * 1.5 + b.sacks * 3 - b.fumbles * 2 + (s.winner === p.side ? 2 : 0);
+    if (v > bv) { bv = v; best = { p, b }; }
+  }
+  if (!best || bv <= 0) return null;
+  const { p, b } = best;
+  const bits = [b.tds && `${b.tds} TD`, b.rushYds && `${b.rushYds} rush yds`, b.recYds && `${b.rec} catches, ${b.recYds} yds`, b.passYds && `${b.comp}/${b.att}, ${b.passYds} pass yds`, b.tackles && `${b.tackles} tackles`, b.sacks && `${b.sacks} sacks`].filter(Boolean);
+  return (
+    <div className="potg">
+      <span className="led">PLAYER OF THE GAME</span>
+      <b>#{p.num} {p.name ?? ''}</b>
+      <small>{s.teams[p.side].name} · {bits.join(' · ') || 'all over the field'}</small>
+    </div>
+  );
 }
