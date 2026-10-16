@@ -32,7 +32,7 @@ export function moveWhy(s, p, to, left, parity = 0) {
     lines.push([`leaving ${tag(t)}'s zone${carrying ? ' (you have the ball)' : hasSkill(s, t, 'LOCKDOWN') ? ' (LOCKDOWN)' : ''}`, `+${n}`]);
   }
   if (diag) lines.push([`second diagonal${diag > 1 ? 's' : ''}`, `+${diag}`]);
-  return { kind: 'move', total: m.cost, left, lines, against: [...zones.keys()], help: [] };
+  return { kind: 'move', total: m.cost, left, lines, against: [...zones.keys()], help: [], tags: Object.fromEntries([...zones].map(([pid, n]) => [pid, `+${n}`])) };
 }
 
 // a block / tackle / shove / juke / shake / dirty hit on `target`: every modifier and who causes it
@@ -53,5 +53,8 @@ export function contactWhy(s, actor, target, action = 'block') {
   if (actor.onFire) lines.push(['ON FIRE', '+3']);
   const net = netModifier(mods.bonus, mods.penalty);
   if (mods.bonus > 3 || mods.penalty > 3) lines.push(['bonuses and penalties each stop at 3', '']);
-  return { kind: 'contact', net, lines, help: helpers.map((h) => h.pid), against: hurters.map((h) => h.pid), target: target.pid };
+  const tags = {};
+  for (const h of helpers) tags[h.pid] = hasSkill(s, h, 'TEAM PLAYER') ? '+2' : '+1';
+  for (const h of hurters) tags[h.pid] = hasSkill(s, h, 'TEAM PLAYER') ? '-2' : '-1';
+  return { kind: 'contact', net, lines, help: helpers.map((h) => h.pid), against: hurters.map((h) => h.pid), target: target.pid, tags };
 }

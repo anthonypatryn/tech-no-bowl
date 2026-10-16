@@ -19,6 +19,14 @@ messages, the bug list (`?view=bugs`, PIN), the Art Review Board (`?view=art`) a
 the owner pastes their "copy for Claude" output. The owner often asks for a plan first: give one, then build it.
 
 ### Latest round (all pushed, live)
+- BUG-9: cubes became unclickable after any move: turning click-through back on passed `raycast={undefined}`, which
+  R3F applies as undefined, not the real method. Cube.jsx now swaps `THREE.Mesh.prototype.raycast` / a no-op. Never pass
+  undefined to switch a three.js method back on.
+- Smart play: "Move & block / tackle #N" buttons with odds worked out from the square you'd hit from; odds over
+  the heads of every target (Settings / pause: Odds on the field), + / - over the players changing the hovered roll;
+  the breakdown is one line of chips. Follow up: Ask / Always / Never (Settings, pause, and on the question itself).
+- Fire bomb (and any touchdown off a long throw): the throw shot plays first, then the touchdown (`lead` in useShot);
+  the chase cam looks down at the field ahead of the ball; FIRE BOMB! callout in the top band; the ball burns.
 - Moment review fixes: field goals are one smooth gravity arc (`kickPath` / `KickBall`) into a net behind the posts
   (or off the upright with hops), never into the stands. The ball is no longer cleared at the end of a play (endPlay),
   only at the next down, so a touchdown catch's flight is drawn; a FIRE BOMB ball flies with flames. Sack moment text

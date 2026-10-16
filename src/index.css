@@ -948,3 +948,26 @@ html.calm *, html.calm *::before { transition: none !important; animation: none 
 .pause-label { font: 400 var(--t1) var(--pixel); color: var(--muted); text-transform: uppercase; margin-top: var(--s1); }
 /* replays: only the play, none of the live game's pop-ups */
 .game.replaying .dice-toast, .game.replaying .callout, .game.replaying .banner-big { display: none; }
+
+/* odds over players' heads, and + / - over the players changing the hovered roll */
+.field-odds-wrap { display: flex; gap: 3px; align-items: center; white-space: nowrap; }
+.field-odds { font: 400 var(--t2) var(--pixel); padding: 3px 5px; border-radius: var(--r1); border: var(--px) solid rgba(0, 0, 0, .55); box-shadow: 0 2px 0 rgba(0, 0, 0, .5); color: #fff; background: #c62828; }
+.field-odds.block, .field-odds.shove { background: #e07b1a; color: #1a0d00; }
+.field-odds.pass { background: var(--go); color: var(--go-ink); }
+.field-odds.juke, .field-odds.shake { background: #ffb000; color: #1f1400; }
+.field-odds.dirty { background: #7b3fc4; }
+.field-why { font: 400 var(--t2) var(--pixel); padding: 3px 5px; border-radius: var(--r1); border: var(--px) solid rgba(0, 0, 0, .55); color: #fff; }
+.field-why.help { background: #0b7f99; }
+.field-why.hurt { background: #b35400; }
+/* the breakdown: one line of chips */
+.why { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s2); }
+.why > b { margin-right: var(--s1); }
+.why-chip { font-size: var(--tiny); padding: 2px var(--s2); border: 1px solid var(--line); border-radius: var(--r1); background: rgba(255, 255, 255, .04); }
+.why-chip em { font: normal 400 var(--t1) var(--pixel); color: var(--go); }
+.why-chip.bad em { color: var(--bad); }
+/* the screen's panels sit above the labels drawn on the field (odds, number keys, dice tags) */
+.scorebug, .game-tools, .logfeed, .game-bottom, .dice-toast, .replay-ui, .chyron, .ticker { z-index: 6; }
+
+/* a callout over a throw (FIRE BOMB!) sits in the top band, out of the ball's way */
+.callout.top { top: 12%; }
+.callout.top span { font-size: var(--d1); }

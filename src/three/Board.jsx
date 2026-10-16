@@ -21,7 +21,7 @@ const SPEED = 6.5; // squares per second when walking
 // jump: { id, delay } = a leap (going up for a catch) after `delay` seconds
 // orbit: { id, pts:[[x,z]] } = walk round someone (a spin move), turning a full circle on the way
 // pile: { id, at:[x,z], level, delay, jx, jz, tilt:[rx,ry,rz] } = leap onto the pile after the whistle and stay there
-function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge, active, colors, jump, orbit, pile, skilled, solid = true, tag = null }) {
+function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge, active, colors, jump, orbit, pile, skilled, solid = true, tag = null, odds = null, why = null }) {
   const g = useRef();
   const pos = useRef(null);
   const queue = useRef([]);
@@ -106,7 +106,15 @@ function Mover({ p, uniform, row, path, positions, ring, onPick, onHover, lunge,
         onClick={onPick ? (e) => { e.stopPropagation(); onPick(p.pid); } : undefined} pickable={solid} />
       {active && <TurnMarker colors={colors} />}
       {skilled && !active && !p.down && <AbilityGem />}
-      {tag != null && <Html position={[0, 1.3, 0]} center zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}><b className="field-key">{tag}</b></Html>}
+      {tag != null && <Html position={[0, 1.3, 0]} center zIndexRange={[2, 0]} style={{ pointerEvents: 'none' }}><b className="field-key">{tag}</b></Html>}
+      {(odds || why) && (
+        <Html position={[0, 1.2, 0]} center zIndexRange={[2, 0]} style={{ pointerEvents: 'none' }}>
+          <span className="field-odds-wrap">
+            {odds && <b className={`field-odds ${odds.kind}`}>{odds.text}</b>}
+            {why && <b className={`field-why ${why.startsWith('-') ? 'hurt' : 'help'}`}>{why}</b>}
+          </span>
+        </Html>
+      )}
       {ring && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} raycast={() => null}>
           <ringGeometry args={[0.5, 0.6, 32]} />
@@ -414,7 +422,7 @@ function Ball({ ball, positions, slowmo, snapFrom, fire = false }) {
     <>
       <group ref={g}>
         {/* a FIRE BOMB flies on fire */}
-        {fire && <group position={[0, -0.25, 0]} scale={0.45}><Flames n={18} size={0.9} height={0.9} /></group>}
+        {fire && <group position={[0, -0.3, 0]} scale={0.7}><Flames n={26} size={1} height={1} /></group>}
         <group ref={spin}>
           <group ref={roll}>
             <mesh castShadow scale={[0.17, 0.17, 0.27]}>
@@ -660,8 +668,9 @@ function shotCam(shot, positions) {
     const side = new THREE.Vector3(-dirv.z, 0, dirv.x);
     const ball = positions.current.__ball ? positions.current.__ball.clone() : a.clone();
     if (p < 0.62) {
-      // chase cam: behind and above the ball, looking where it's going
-      return { pos: ball.clone().addScaledVector(dirv, -3.6).addScaledVector(side, 1.2).setY(Math.max(1.6, ball.y + 1.6)), target: ball.clone().addScaledVector(dirv, 2.5), rate: 7 };
+      // chase cam: behind and above the ball, looking down at the field ahead of it (never at the horizon: a throw
+      // into the end zone would stare into the dark stands and lose the ball)
+      return { pos: ball.clone().addScaledVector(dirv, -3.6).addScaledVector(side, 1.2).setY(Math.max(2.2, ball.y + 2)), target: ball.clone().addScaledVector(dirv, 2.5).setY(Math.max(0.3, ball.y * 0.55)), rate: 7 };
     }
     // low lens at the target square, the catch (or not) in frame
     return { pos: b.clone().addScaledVector(side, 3).addScaledVector(dirv, -1.4).setY(0.9), target: b.clone().setY(0.6), rate: 5 };
@@ -763,7 +772,7 @@ function Rig({ view, focus, dir, shot, positions, intro, setup }) {
 // ---------- the scene ----------
 // edit: { side, spots:[{num,col,row}] } shows a formation being placed instead of that side's real positions
 // pickable: the players the pointer can land on (null = everyone); the rest let it through to the squares under them
-export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outlines = [], rings = {}, onPlayer, edit, focusSq, shot, intro, onFree, setup, pickable = null, tags = {}, camShot = true, tele = null, epoch = 'live' }) {
+export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outlines = [], rings = {}, onPlayer, edit, focusSq, shot, intro, onFree, setup, pickable = null, tags = {}, camShot = true, tele = null, epoch = 'live', odds = {}, whyTags = {} }) {
   const s = game.state;
   const positions = useRef({});
   const unis = useMemo(() => s.teams.map((t) => uniformOf(t.id, t.uniform)), [s.teams]);
@@ -834,10 +843,10 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
         <Mover key={`${p.pid}:${epoch}`} p={p} uniform={unis[p.side]} row={rows[p.side][p.num]} path={paths[p.pid]} positions={positions}
           ring={rings[p.pid]} onPick={onPlayer} onHover={onHoverPlayer} lunge={lunges[p.pid]} active={s.active?.pid === p.pid && s.phase === 'play'} colors={tcolors[p.side]}
           jump={fx.jump[p.pid]} orbit={fx.orbit[p.pid]} pile={fx.pile[p.pid]}
-          skilled={!!s.skills && (p.abilities?.some((a) => s.inferno || !a.startsWith('INFERNO')) || !!p.fuego)} solid={!pickable || pickable.has(p.pid)} tag={tags[p.pid] ?? null} />
+          skilled={!!s.skills && (p.abilities?.some((a) => s.inferno || !a.startsWith('INFERNO')) || !!p.fuego)} solid={!pickable || pickable.has(p.pid)} tag={tags[p.pid] ?? null} odds={odds[p.pid] ?? null} why={whyTags[p.pid] ?? null} />
       ))}
       <Ball key={epoch} ball={s.ball} positions={positions} slowmo={!settings().calm} snapFrom={s.log.findLast?.((e) => e.kind === 'snap')?.from}
-        fire={s.log.slice(-4).some((e) => e.kind === 'firebomb' || (e.kind === 'check' && e.action === 'pass' && e.bomb))} />
+        fire={(shot?.kind === 'throw' && shot.bomb) || s.log.slice(-4).some((e) => e.kind === 'firebomb' || (e.kind === 'check' && e.action === 'pass' && e.bomb))} />
       {shot?.kind === 'hit' && <Burst key={shot.id} at={sq(...shot.at, 0)} colors={['#c9c9c9', '#7a5a3a', '#3f6b2a', '#ffffff']} count={shot.big ? 46 : 26} />}
       {shot?.kind === 'sack' && <Dust key={shot.id} at={sq(...shot.at, 0)} />}
       {(s.mode === 'pro' || s.mode === 'allpro') && <GoalPosts />}
@@ -854,7 +863,7 @@ export function Board({ game, view, tiles, onTile, onHover, onHoverPlayer, outli
       <Tiles tiles={tiles} onPick={onTile} onHover={onHover} />
       {tele && <Telestrator marks={tele.marks} shown={tele.shown} />}
       {/* number keys for squares (push, scatter): press the number or click the square */}
-      {tiles.filter((t) => t.label).map((t) => { const [x, , z] = sq(t.sq[0], t.sq[1]); return <Html key={`k${t.sq}`} position={[x, 0.05, z]} center zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}><b className="field-key">{t.label}</b></Html>; })}
+      {tiles.filter((t) => t.label).map((t) => { const [x, , z] = sq(t.sq[0], t.sq[1]); return <Html key={`k${t.sq}`} position={[x, 0.05, z]} center zIndexRange={[2, 0]} style={{ pointerEvents: 'none' }}><b className="field-key">{t.label}</b></Html>; })}
       {outlines.map((o, i) => <Outline key={i} squares={o.squares} color={o.color} />)}
       <OrbitControls makeDefault enableDamping dampingFactor={0.12} enabled={!(shot && camShot) && !intro} maxPolarAngle={Math.PI / 2.1} minDistance={2.5} maxDistance={45}
         onStart={() => { drag.current = { x: null, y: null }; }} onEnd={() => { drag.current = null; }} />

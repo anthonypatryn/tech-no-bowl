@@ -190,7 +190,7 @@ export const REVIEW = [
       script(g, { [qb.pid]: [{ kind: 'fuego', skill: 'JUKE' }, { kind: 'juke', pid: d.pid }] }, { followUp: () => false });
       return { g, focus: [qb.col, qb.row - 1], run: () => act(g, qb.pid) };
     } },
-  { key: 'firebomb', v: 3, title: 'Fire bomb', expect: 'INFERNO: a throw past normal range (3 tokens): FIRE BOMB! callout, then the ball flies like a long throw but on fire, long-throw camera, the receiver leaps for it (a touchdown catch here).',
+  { key: 'firebomb', v: 4, title: 'Fire bomb', expect: 'INFERNO: a throw past normal range (3 tokens): FIRE BOMB! callout, then the long-throw shot with the ball on fire (chase cam, slow motion at the top, the receiver leaps for it), and only then the touchdown.',
     build(on) {
       const { g, s, qb, put, clear, O } = scene({ mode: 'inferno', dice: [6, 5] }, on);
       s.fire[0] = 3;
@@ -371,5 +371,5 @@ function Callout({ s }) {
     const t = setTimeout(() => setOn(null), 1900);
     return () => clearTimeout(t);
   }, [call?.id]);
-  return call && on === call.id ? <div className={`callout ${['onfire', 'heat', 'fuego', 'firebomb'].includes(call.kind) ? 'hot' : ''}`} key={call.id}><span>{calloutFor(call)}</span></div> : null;
+  return call && on === call.id ? <div className={`callout ${['onfire', 'heat', 'fuego', 'firebomb'].includes(call.kind) ? 'hot' : ''} ${call.kind === 'firebomb' ? 'top' : ''}`} key={call.id}><span>{calloutFor(call)}</span></div> : null;
 }

@@ -63,7 +63,7 @@ function Die({ value, body = '#f4f0e6', pip = '#c21d24', at, from, delay = 0, si
   });
   return (
     <>
-    {label && <group ref={tag}><Html center zIndexRange={[3, 0]} style={{ pointerEvents: 'none' }}><span className="die-tag" style={{ background: label.bg, color: label.fg }}>{label.text}</span></Html></group>}
+    {label && <group ref={tag}><Html center zIndexRange={[2, 0]} style={{ pointerEvents: 'none' }}><span className="die-tag" style={{ background: label.bg, color: label.fg }}>{label.text}</span></Html></group>}
     <group ref={ref}>
       <RoundedBox args={[size, size, size]} radius={size * 0.16} smoothness={4} castShadow>
         <meshStandardMaterial color={body} roughness={0.35} />

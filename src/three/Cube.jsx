@@ -5,6 +5,11 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { downMaterials, playerMaterials } from './textures';
 
+// click-through on / off. Never pass undefined to turn it back on: React Three Fiber then sets the mesh's raycast to
+// undefined (not back to the real one) and the cube can never be clicked again (BUG-9)
+const MESH_RAYCAST = THREE.Mesh.prototype.raycast;
+const NO_RAYCAST = () => null;
+
 export const CUBE = 0.8; // in squares
 
 const damp = (a, b, rate, dt) => a + (b - a) * (1 - Math.exp(-rate * dt));
@@ -62,7 +67,7 @@ export function PlayerCube({ uniform, row, position = [0, 0, 0], facing = 0, dow
   });
   return (
     <group position={position} rotation={[0, facing, 0]}>
-      <mesh ref={ref} material={mats} castShadow receiveShadow onClick={onClick} position={[0, size / 2, 0]} raycast={pickable ? undefined : () => null}>
+      <mesh ref={ref} material={mats} castShadow receiveShadow onClick={onClick} position={[0, size / 2, 0]} raycast={pickable ? MESH_RAYCAST : NO_RAYCAST}>
         <boxGeometry args={[size, size, size]} />
       </mesh>
     </group>

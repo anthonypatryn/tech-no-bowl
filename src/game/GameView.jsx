@@ -138,7 +138,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
     const who = s.players[lastTd.pid];
     const play = base && { ...base, speed: 0.85 };
     const label = `Touchdown ${s.teams[lastTd.side].name}${who ? `: #${who.num} ${who.name}` : ''}`;
-    const t = setTimeout(() => { if (play) { replayQueue.current = []; setReel({ i: 0, n: 1, labels: [label] }); setReplay(play); } }, (delayFor(s.log, i) + 3.4 + 0.8) * 1000 / (isTurbo() ? 4 : 1));
+    const t = setTimeout(() => { if (play) { replayQueue.current = []; setReel({ i: 0, n: 1, labels: [label] }); setReplay(play); } }, (delayFor(s.log, i) + 3.4 + 0.8 + (s.log.slice(Math.max(0, i - 4), i).some((e) => e.kind === 'check' && e.action === 'pass' && (e.dist >= 8 || e.bomb)) ? 3 : 0)) * 1000 / (isTurbo() ? 4 : 1));
     return () => clearTimeout(t);
   }, [lastTd?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const shot = useShot(shown.log, shown.players);
@@ -187,11 +187,18 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
   };
   // quick play: the small prompts answer themselves
   const prefsNow = useSettings();
+  // auto follow-up (Settings, the pause menu, or the switch on the question itself): always / never, without asking
+  useEffect(() => {
+    if (req?.type !== 'followUp' || prefsNow.autoFollow == null) return undefined;
+    const t = setTimeout(() => game.answer(prefsNow.autoFollow === 'always', req.id), 250);
+    return () => clearTimeout(t);
+  }, [req?.id, prefsNow.autoFollow]); // eslint-disable-line react-hooks/exhaustive-deps
   // the shot only takes the camera (and letterboxes the screen) when Settings and the chosen view allow it
   const camShot = movesCamera(shot, rs ? (view === 'follow' ? 'broadcast' : view) : view, prefsNow.camMoves) ? shot : null;
   useEffect(() => {
     if (!prefsNow.quick || !req) return;
     const auto = { boost: 0, first: 'me', followUp: true, readReact: null, motion: null }[req.type];
+    if (req.type === 'followUp' && prefsNow.autoFollow != null) return; // its own setting decides
     if (auto === undefined) return;
     const t = setTimeout(() => game.answer(auto, req.id), 250);
     return () => clearTimeout(t);
@@ -416,6 +423,27 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
   const pickPlayer = (pid) => { if (usable(pid)) board.onPlayer(pid); else setCardOf(pid); };
   // moving: only the players you can act on catch the pointer, so aiming at a square near anyone else hits the square
   const pickable = useMemo(() => (req?.type === 'act' && req.moves.length ? new Set([...Object.keys(board.rings), ...Object.keys(board.reach ?? {}), ...(mode === 'pass' ? req.passes.map((x) => x.target).filter(Boolean) : [])]) : null), [req?.id, board.rings, mode]); // targets only (not the why / danger rings, which come and go as you hover) // eslint-disable-line react-hooks/exhaustive-deps
+  // the odds over players' heads (Settings: Odds on the field): every target of the open question, and players you
+  // can move to and hit in one go (worked out from the square you'd hit him from)
+  const fieldOdds = useMemo(() => {
+    if (req?.type !== 'act' || prefsNow.fieldOdds === false) return {};
+    const me = P(req.pid), out = {};
+    const put = (pid, kind, to) => {
+      const t = P(pid);
+      if (!t) return;
+      const from = to ? { ...s, players: { ...s.players, [me.pid]: { ...me, col: to[0], row: to[1] } } } : s;
+      const m = contactMods(from, to ? from.players[me.pid] : me, t, kind);
+      out[pid] = { text: pct(odds(netModifier(m.bonus, m.penalty)).success), kind };
+    };
+    for (const pid of req.tackles) put(pid, req.asMove.includes('tackle') ? 'tackle' : 'tackle');
+    for (const pid of req.blocks) if (!out[pid]) put(pid, 'block');
+    for (const pid of req.dirty) put(pid, 'dirty');
+    for (const pid of req.jukes) put(pid, 'juke');
+    for (const pid of req.shakes) put(pid, 'shake');
+    for (const [pid, r] of Object.entries(board.reach ?? {})) if (!out[pid]) put(pid, r.kind, r.to);
+    if (mode === 'pass') for (const ps of req.passes) if (ps.target && !out[ps.target]) out[ps.target] = { text: pct(odds(Math.min(3, ps.bonus) - ps.penalty).success), kind: 'pass' };
+    return out;
+  }, [req?.id, mode, board.reach, prefsNow.fieldOdds]); // eslint-disable-line react-hooks/exhaustive-deps
   // why: what a hovered move costs and why, or what goes into a hovered block / tackle; those players get rings
   const why = useMemo(() => {
     if (req?.type !== 'act') return null;
@@ -506,7 +534,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
     <InfoCtx.Provider value={{ hover: (pid) => setHover(pid ? { pid } : null), open: setCardOf }}>
     <div ref={rootRef} className={`game ${camShot || intro || rs ? 'cine' : ''} ${intro ? 'intro' : ''} ${rs ? 'replaying' : ''}`}>
       <Stage className="game-stage">
-        <Board game={rs ? { state: rs } : game} view={rs ? (view === 'follow' ? 'broadcast' : view) : view} setup={!rs && ['formation', 'call', 'motion'].includes(s.phase)} onFree={() => setView('free')} shot={shot} camShot={!!camShot} intro={intro} tiles={rs ? [] : board.tiles} rings={rs ? {} : rings} onTile={rs ? null : board.onTile} onHover={setHover} onHoverPlayer={(pid) => setHover(pid ? { pid } : null)} outlines={rs ? [] : board.outlines} onPlayer={rs ? null : pickPlayer} pickable={pickable} tags={rs ? {} : board.tags} tele={rs && tele ? { marks: tele, shown: rs.step ?? 0 } : null} epoch={rs ? `r${replay?.id}:${replay?.from ?? 0}` : 'live'}
+        <Board game={rs ? { state: rs } : game} view={rs ? (view === 'follow' ? 'broadcast' : view) : view} setup={!rs && ['formation', 'call', 'motion'].includes(s.phase)} onFree={() => setView('free')} shot={shot} camShot={!!camShot} intro={intro} tiles={rs ? [] : board.tiles} rings={rs ? {} : rings} onTile={rs ? null : board.onTile} onHover={setHover} onHoverPlayer={(pid) => setHover(pid ? { pid } : null)} outlines={rs ? [] : board.outlines} onPlayer={rs ? null : pickPlayer} pickable={pickable} tags={rs ? {} : board.tags} odds={rs ? {} : fieldOdds} whyTags={rs || prefsNow.fieldOdds === false ? {} : why?.tags ?? {}} tele={rs && tele ? { marks: tele, shown: rs.step ?? 0 } : null} epoch={rs ? `r${replay?.id}:${replay?.from ?? 0}` : 'live'}
           edit={edit && req?.type === 'formation' ? { side: ME, spots: edit } : null}
           focusSq={spot != null && P(spot)?.col != null ? [P(spot).col, P(spot).row] : null} />
       </Stage>
@@ -541,7 +569,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
           )}
           {suggest && <p className="suggest">Coach: {describe(suggest, P)}</p>}
           {game.crashed ? <p className="warn">Something broke: {game.crashed.split('\n')[0]}</p>
-            : req ? <>{left != null && <span className={`play-clock led ${left <= 10 ? 'low' : ''}`}>0:{String(left).padStart(2, '0')}</span>}<Prompt {...{ game, req, answer, s, P, mode, setMode, edit, setEdit, sel, stack, setStack, motion, setMotion, discard, setDiscard, primary, hover, setHover, why, rows: myRows, askCoach, reach: board.reach, danger, tap }} /></>
+            : req ? <>{left != null && <span className={`play-clock led ${left <= 10 ? 'low' : ''}`}>0:{String(left).padStart(2, '0')}</span>}<Prompt {...{ game, req, answer, s, P, mode, setMode, edit, setEdit, sel, stack, setStack, motion, setMotion, discard, setDiscard, primary, hover, setHover, why, rows: myRows, askCoach, reach: board.reach, danger, tap, pickPlayer, fieldOdds }} /></>
               : <Waiting s={s} online={online} spectating={spectating} />}
           {flag && <p className="warn">{flag}</p>}
         </div>
@@ -578,6 +606,9 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
               <Button onClick={() => { setPaused(false); setRules(true); }}>How to play</Button>
               <Button onClick={() => setSettings({ muted: !settings().muted })}>Sound: {prefsNow.muted ? 'OFF (turn on)' : 'ON (turn off)'}</Button>
               <Chips small value={prefsNow.speed} onChange={(speed) => setSettings({ speed })} options={[['slow', 'Slow'], ['normal', 'Normal'], ['fast', 'Fast']]} />
+              <span className="pause-label">Follow up after a block</span>
+              <Chips small value={prefsNow.autoFollow ?? 'ask'} onChange={(v) => setSettings({ autoFollow: v === 'ask' ? null : v })} options={[['ask', 'Ask me'], ['always', 'Always'], ['never', 'Never']]} />
+              <Button size="small" onClick={() => setSettings({ fieldOdds: prefsNow.fieldOdds === false })}>Odds on the field: {prefsNow.fieldOdds === false ? 'off' : 'on'}</Button>
               <span className="pause-label">Cinematic camera</span>
               <Chips small value={prefsNow.camMoves ?? 'big'} onChange={(camMoves) => setSettings({ camMoves })} options={[['big', 'Big plays'], ['all', 'Every moment'], ['off', 'Never']]} />
               <Button onClick={() => setSettings({ quick: !prefsNow.quick })}>Quick play: {prefsNow.quick ? 'on' : 'off'}</Button>
@@ -684,7 +715,10 @@ function Prompt(props) {
     }
     case 'onFire': return <OnFirePrompt key={req.id} {...props} />;
     case 'reverse': return yesNo(req.crit ? `Critical failure! ${name(req.against)} goes down. Push him back too?` : `The block failed! Reverse it on ${name(req.against)}?`, req.crit ? 'Push him' : 'Reverse it', req.crit ? 'Just knock him down' : 'Leave it');
-    case 'followUp': return yesNo(`Follow up${req.steps === 2 ? ' 2 squares' : ' into the gap'} with ${name(req.pid)}?`, 'Follow up', 'Stay');
+    case 'followUp': return (<>
+      {yesNo(`Follow up${req.steps === 2 ? ' 2 squares' : ' into the gap'} with ${name(req.pid)}?`, 'Follow up', 'Stay')}
+      <Chips small value={settings().autoFollow ?? 'ask'} onChange={(v) => setSettings({ autoFollow: v === 'ask' ? null : v })} options={[['ask', 'Ask me'], ['always', 'Always follow up'], ['never', 'Never']]} />
+    </>);
     case 'push': return <h3>Pick where {name(req.pid)} gets pushed: click an orange square, or press its number</h3>;
     case 'scatter': {
       const out = req.options.find((o) => o.out);
@@ -695,7 +729,7 @@ function Prompt(props) {
   }
 }
 
-function ActPrompt({ req, answer, P, mode, setMode, primary, hover, setHover, why, s, reach, danger, tap }) {
+function ActPrompt({ req, answer, P, mode, setMode, primary, hover, setHover, why, s, reach, danger, tap, pickPlayer, fieldOdds = {} }) {
   const hv = (pid, extra) => ({ onMouseEnter: () => setHover?.({ pid, ...extra }), onMouseLeave: () => setHover?.(null) });
   const p = P(req.pid);
   const [fuego, setFuego] = useState(false);
@@ -736,17 +770,16 @@ function ActPrompt({ req, answer, P, mode, setMode, primary, hover, setHover, wh
           {mine.map((a) => <span key={a} className={`skill-chip ${live.has(a) ? 'live' : ''}`} title={abilityText(a)}>{a}{live.has(a) ? ' ✦' : ''}</span>)}
         </div>
       )}
-      <p className="hint">{tip ?? (mode === 'pass' ? 'Pick a square or a teammate to throw to. Green = good odds, red = covered.'
+      <p className="hint">{(why?.kind === 'contact' ? null : tip) ?? (why?.kind === 'contact' ? `${fieldOdds[why.target]?.text ?? ''} to succeed` : null) ?? (mode === 'pass' ? 'Pick a square or a teammate to throw to. Green = good odds, red = covered.'
         : `Bright green = move and still act, teal = move only.${req.passes.length ? ' Yellow outline = throwing range, green = +1 short zone.' : ''} Hover a target for the odds.${req.tackles.length ? ' Red ring = TACKLE.' : ''}${req.blocks.length ? ' Orange ring = block.' : ''}${req.handoffs.length ? ' Cyan ring = hand-off.' : ''}${!canAct && req.spent && (req.mode === 'card' || req.mode === 'full') ? ' Moved too far to block, tackle or throw now.' : ''}`)}</p>
       {why && (
         <div className="why">
           <b>{why.kind === 'move' ? `Costs ${why.total} of ${why.left}` : `Modifier ${why.net > 0 ? '+' : ''}${why.net}`}</b>
-          <ul>{why.lines.map(([l, v]) => <li key={l}><span>{l}</span><em className={v.startsWith('-') ? 'bad' : ''}>{v}</em></li>)}</ul>
-          {(why.help.length > 0 || why.against.length > 0) && <small>{why.help.length > 0 && <i className="why-help">blue ring = helps you</i>}{why.against.length > 0 && <i className="why-hurt">{why.kind === 'move' ? 'orange ring = his zone costs you' : 'orange ring = hurts you'}</i>}</small>}
+          {why.lines.map(([l, v]) => <span key={l} className={`why-chip ${v.startsWith('-') ? 'bad' : ''}`}>{l} <em>{v}</em></span>)}
         </div>
       )}
       {/* every action open to him right now, as its own button (with the odds); or click the ringed player */}
-      {(req.tackles.length > 0 || req.blocks.length > 0 || req.handoffs.length > 0 || req.passes.length > 0 || req.canStand || req.dirty.length > 0 || req.jukes.length > 0 || req.shakes.length > 0) && (
+      {(req.tackles.length > 0 || req.blocks.length > 0 || req.handoffs.length > 0 || req.passes.length > 0 || req.canStand || req.dirty.length > 0 || req.jukes.length > 0 || req.shakes.length > 0 || Object.keys(reach ?? {}).length > 0) && (
         <div className="act-btns">
           {req.tackles.map((pid) => <Button key={`t${pid}`} className="act-tackle" {...hv(pid)} onClick={() => answer({ kind: 'tackle', pid })}>{req.asMove.includes('tackle') ? 'Diving tackle' : 'Tackle'} #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'tackle')}</span></Button>)}
           {req.blocks.filter((pid) => !req.tackles.includes(pid)).map((pid) => <Button key={`b${pid}`} className="act-block" {...hv(pid)} onClick={() => answer({ kind: 'block', pid })}>{blockWord} #{P(pid).num} <span className="odds">{chance(s, p, P(pid))}</span></Button>)}
@@ -755,6 +788,12 @@ function ActPrompt({ req, answer, P, mode, setMode, primary, hover, setHover, wh
           {req.shakes.map((pid) => <Button key={`k${pid}`} className="act-skill" {...hv(pid)} onClick={() => answer({ kind: 'shake', pid })}>Shake #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'shake')}</span></Button>)}
           {req.dirty.map((pid) => <Button key={`d${pid}`} className="act-dirty" {...hv(pid)} onClick={() => answer({ kind: 'dirty', pid })}>Dirty hit #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'dirty')}</span></Button>)}
           {req.handoffs.map((pid) => { const far = Math.max(Math.abs(P(pid).col - p.col), Math.abs(P(pid).row - p.row)) > 1; return <Button key={`h${pid}`} className="act-hand" onClick={() => answer({ kind: 'handoff', pid })}>{s.ball.pid === p.pid ? `${far ? 'Pitch' : 'Hand off'} to #${P(pid).num}` : `Take ${far ? 'the pitch' : 'hand-off'} from #${P(pid).num}`}</Button>; })}
+          {/* move there and hit him in one go: no need to move first and then find the button */}
+          {Object.entries(reach ?? {}).map(([pid, r]) => (
+            <Button key={`r${pid}`} className={r.kind === 'tackle' ? 'act-tackle' : 'act-block'} {...hv(pid)} onClick={() => pickPlayer?.(pid)}>
+              Move &amp; {r.kind} #{P(pid).num} <span className="odds">{fieldOdds[pid]?.text ?? ''}</span>
+            </Button>
+          ))}
           {req.passes.length > 0 && <button className={`btn ${mode === 'pass' ? 'on' : 'primary'}`} onClick={() => setMode(mode === 'pass' ? 'move' : 'pass')}>{mode === 'pass' ? 'Cancel throw' : 'Throw'} <Kbd a="throw" /></button>}
           {req.canStand && <Button kind="primary" onClick={() => answer({ kind: 'stand' })}>Stand up (costs 3)</Button>}
         </div>
@@ -1191,7 +1230,7 @@ function Moment({ s }) {
         </div>
       )}
       {big && shown.big === big.id && <div className={`banner-big ${big.kind}`}><span className="led">{words[big.kind]}</span></div>}
-      {call && shown.call === call.id && !(big && shown.big === big.id) && <div className={`callout ${['onfire', 'heat', 'fuego', 'firebomb'].includes(call.kind) ? 'hot' : ''}`} key={call.id}><span>{calloutFor(call)}</span></div>}
+      {call && shown.call === call.id && !(big && shown.big === big.id) && <div className={`callout ${['onfire', 'heat', 'fuego', 'firebomb'].includes(call.kind) ? 'hot' : ''} ${call.kind === 'firebomb' ? 'top' : ''}`} key={call.id}><span>{calloutFor(call)}</span></div>}
     </>
   );
 }

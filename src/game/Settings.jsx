@@ -28,6 +28,13 @@ export default function Settings() {
         <Row label="Calm motion">
           <Toggle checked={s.calm} onChange={(calm) => setSettings({ calm })}>Skip camera moves and cinematics</Toggle>
         </Row>
+        <Row label="Follow up">
+          <Chips small value={s.autoFollow ?? 'ask'} onChange={(v) => setSettings({ autoFollow: v === 'ask' ? null : v })} options={[['ask', 'Ask me'], ['always', 'Always'], ['never', 'Never']]} />
+          <span className="hint">After a block works: step into the gap without being asked, or never.</span>
+        </Row>
+        <Row label="Odds on the field">
+          <Toggle checked={s.fieldOdds !== false} onChange={(fieldOdds) => setSettings({ fieldOdds })}>Chances over the heads of the players you can hit or throw to, and + / - over the players changing a roll while you hover</Toggle>
+        </Row>
         <Row label="Cinematic camera">
           <Chips small value={s.camMoves ?? 'big'} onChange={(camMoves) => setSettings({ camMoves })} options={[['big', 'Big plays'], ['all', 'Every moment'], ['off', 'Never']]} />
           <span className="hint">When the camera leaves your view for a shot. Big plays = touchdowns, long throws, kicks. Overhead and Free never move.</span>

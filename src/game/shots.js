@@ -34,7 +34,7 @@ export function calloutFor(e) {
 export function shotFor(e, players) {
   if (!e) return null;
   const sqOfPid = (pid) => { const p = players[pid]; return p && p.col != null ? [p.col, p.row] : null; };
-  if (e.kind === 'check' && e.action === 'pass' && e.dist >= LONG_THROW && e.from && e.to) return { kind: 'throw', from: e.from, to: e.to };
+  if (e.kind === 'check' && e.action === 'pass' && (e.dist >= LONG_THROW || e.bomb) && e.from && e.to) return { kind: 'throw', from: e.from, to: e.to, bomb: !!e.bomb };
   if (e.kind === 'tackle') return e.at ? { kind: 'hit', at: e.at } : null;
   if (e.kind === 'sack') { const at = sqOfPid(e.pid); return at ? { kind: 'sack', at } : null; }
   // flattened by a critical block / shove: the same snap-zoom as a big hit, at where he lands
@@ -70,21 +70,32 @@ export const skipShot = () => window.dispatchEvent(new Event('tb-skip-shot'));
 // the shot running now (or null). The newest cinematic log entry wins.
 export function useShot(log, players, { full = false } = {}) {
   const last = useMemo(() => {
-    for (let i = log.length - 1; i >= Math.max(0, log.length - 6); i--) { const sh = shotFor(log[i], players); if (sh) return { ...sh, id: log[i].id, wait: delayFor(log, i) }; }
+    for (let i = log.length - 1; i >= Math.max(0, log.length - 6); i--) {
+      const sh = shotFor(log[i], players);
+      if (!sh) continue;
+      // a touchdown caught off a long throw (or a FIRE BOMB): the throw plays first, then the touchdown
+      let lead = null;
+      if (sh.kind === 'td') for (let j = i - 1; j >= Math.max(0, i - 4); j--) { const t = shotFor(log[j], players); if (t?.kind === 'throw') { lead = { ...t, id: log[j].id }; break; } }
+      return { ...sh, id: log[i].id, wait: delayFor(log, i), lead };
+    }
     return null;
   }, [log, players]);
   const [shot, setShot] = useState(null);
   useEffect(() => {
     if (!last || settings().calm) return;
-    let t2;
-    const t1 = setTimeout(() => {
-      const n = seen.get(last.kind) ?? 0;
-      seen.set(last.kind, n + 1);
-      const s = { ...last, t0: performance.now(), dur: DUR[last.kind] * (n && !full && last.kind !== 'throw' ? 0.6 : 1) };
+    let t2, t3;
+    const run = (sh, then) => {
+      const n = seen.get(sh.kind) ?? 0;
+      seen.set(sh.kind, n + 1);
+      const s = { ...sh, t0: performance.now(), dur: DUR[sh.kind] * (n && !full && sh.kind !== 'throw' ? 0.6 : 1) };
       setShot(s);
-      t2 = setTimeout(() => setShot((x) => (x?.id === s.id ? null : x)), s.dur * 1000);
-    }, last.wait * 1000);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+      t2 = setTimeout(() => { if (then) then(); else setShot((x) => (x?.id === s.id ? null : x)); }, s.dur * 1000);
+    };
+    const t1 = setTimeout(() => {
+      if (last.lead) run(last.lead, () => { t3 = setTimeout(() => run(last), 50); });
+      else run(last);
+    }, (last.lead ? 0 : last.wait) * 1000);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [last?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const skip = () => setShot(null);
