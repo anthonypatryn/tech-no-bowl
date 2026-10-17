@@ -19,6 +19,13 @@ messages, the bug list (`?view=bugs`, PIN), the Art Review Board (`?view=art`) a
 the owner pastes their "copy for Claude" output. The owner often asks for a plan first: give one, then build it.
 
 ### Latest round (all pushed, live; session of 2026-10-15/16)
+- BUG-14 / BUG-15: the sticky main-button row slid over rows after it (follow-up chips, the fire row). It only sticks
+  when it is the prompt's last row now; the act prompt's Done row moved below the fire row, the follow-up chips sit
+  above Follow up / Stay ("Next time", via `yesNo`'s `extra`). BUG-13: every action button (block, tackle, shove,
+  juke, shake, dirty hit, hand-off, Move & ...) leads with a number key 1-9 (`nk` / `kn` in ActPrompt, `HOT.nums`).
+- Move & block / tackle (button, click or key) goes straight on to that block: the queued hit (`queued`) was wiped in
+  the gap with no question while the move played out; it now waits for the next real question. Checked: Move & block
+  #39 → straight to "#7 blocks #39" (the bonus question).
 - BUG-12: a saved formation (or "same as last") used near a goal line dropped deep players past the end line: place()
   found no square and they vanished from the line-up (unclickable). `applySaved` now uses `placeNear` (row held on the
   field, walked back toward his own line, never past it). Test 68 covers both goal lines.

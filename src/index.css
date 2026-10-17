@@ -1044,7 +1044,11 @@ html.calm *, html.calm *::before { transition: none !important; animation: none 
 .hint:empty { display: none; }
 /* the main-button row (the one with a key label: Done, Ready, Roll...) sticks to the bottom of the prompt, so it is
    always in the same place however long the question gets */
-.prompt .btns:has(kbd.kh) { position: sticky; bottom: calc(-1 * var(--s3)); z-index: 1; margin-bottom: calc(-1 * var(--s3)); padding: var(--s2) 0 var(--s3); background: var(--glass-hi); }
+/* (only when it is the last row: BUG-14 / BUG-15, a sticky row with rows after it slid over them) */
+.prompt .btns:last-child:has(kbd.kh) { position: sticky; bottom: calc(-1 * var(--s3)); z-index: 1; padding: var(--s2) 0 var(--s3); background: var(--glass-hi); }
+/* action buttons lead with their number key (BUG-13) */
+.act-btns .btn > kbd.kh:first-child { margin: 0 var(--s2) 0 0; }
+.follow-pref { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin: var(--s2) 0; }
 /* playbook set numbers (press 1, 2, 3...) */
 .chip-num { display: inline-block; margin-right: var(--s1); padding: 0 var(--px); color: var(--ink); background: var(--led); font-weight: 400; }
 /* a new screen: a dark panel with a yellow edge slides off in 8 hard steps, 8-bit style */

@@ -76,7 +76,7 @@ function liveSkills(req, s, p) {
 // render (one game screen at a time), and every part of the screen below reads it.
 let ME = HUMAN;
 // keys the open question offers beyond the main button: same as last (L), playbook sets (1-9). Set by the prompt as it renders
-const HOT = { same: null, sets: [] };
+const HOT = { same: null, nums: [] };
 
 // remote: the friend's view of an online game (a RemoteGame fed by the host); me: which side this screen coaches
 export default function GameView({ match, remote = null, me = HUMAN, onExit, onRematch, onRestart }) {
@@ -242,8 +242,9 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
   useEffect(() => {
     setMode('move'); setSel(null); setMotion(null); setDiscard([]); setHover(null); setTap(null); setTabPid(null);
     // one-click: he's arrived next to his target: do the tackle / block now
-    const q = queued.current;
-    queued.current = null;
+    // (it waits through the gap with no question while the move plays out; the first real question decides it)
+    const q = req ? queued.current : null;
+    if (req) queued.current = null;
     if (q && req?.type === 'act' && req.pid === q.pid) {
       const list = q.kind === 'tackle' ? req.tackles : req.blocks;
       if (list.includes(q.target)) { game.answer({ kind: q.kind, pid: q.target }, req.id); return; }
@@ -535,7 +536,7 @@ function Screen({ game, match, onExit, onRematch, onRestart }) {
       else if (isKey(e, 'turbo')) toggleTurbo();
       else if (isKey(e, 'skip') && (camShot || rs)) { e.preventDefault(); if (rs) setReplay(null); else skipShot(); }
       else if (/^[1-9]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey && board.keyed?.[Number(e.key) - 1] && !camShot && !rs) { e.preventDefault(); board.keyed[Number(e.key) - 1](); }
-      else if (/^[1-9]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey && HOT.sets[Number(e.key) - 1] && !camShot && !rs) { e.preventDefault(); HOT.sets[Number(e.key) - 1](); }
+      else if (/^[1-9]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey && HOT.nums[Number(e.key) - 1] && !camShot && !rs) { e.preventDefault(); HOT.nums[Number(e.key) - 1](); }
       else if (isKey(e, 'same') && HOT.same && !camShot && !rs) { e.preventDefault(); HOT.same(); }
       else if (isKey(e, 'keys') || (e.key === '?' && keyFor('keys') === '?')) { e.preventDefault(); setKeysOpen((x) => !x); }
       // Tab: step through the players you can act on (their odds and breakdown show as if hovered); Enter does it
@@ -716,11 +717,11 @@ function KeysSheet({ onClose }) {
 function Prompt(props) {
   const { req, answer, s, P, primary } = props;
   primary.current = null;
-  HOT.same = null; HOT.sets = [];
+  HOT.same = null; HOT.nums = [];
   const name = (pid) => { const p = P(pid); return `#${p.num}`; };
-  const yesNo = (q, yes = 'Yes', no = 'No', def = true) => {
+  const yesNo = (q, yes = 'Yes', no = 'No', def = true, extra = null) => {
     primary.current = () => answer(def);
-    return (<><h3>{q}</h3><div className="btns"><Button kind={def ? 'primary' : undefined} keyAction={def ? 'primary' : undefined} onClick={() => answer(true)}>{yes}</Button><Button kind={def ? undefined : 'primary'} keyAction={def ? undefined : 'primary'} onClick={() => answer(false)}>{no}</Button></div></>);
+    return (<><h3>{q}</h3>{extra}<div className="btns"><Button kind={def ? 'primary' : undefined} keyAction={def ? 'primary' : undefined} onClick={() => answer(true)}>{yes}</Button><Button kind={def ? undefined : 'primary'} keyAction={def ? undefined : 'primary'} onClick={() => answer(false)}>{no}</Button></div></>);
   };
   switch (req.type) {
     case 'toss':
@@ -791,8 +792,8 @@ function Prompt(props) {
     case 'onFire': return <OnFirePrompt key={req.id} {...props} />;
     case 'reverse': return yesNo(req.crit ? `Critical failure! ${name(req.against)} goes down. Push him back too?` : `The block failed! Reverse it on ${name(req.against)}?`, req.crit ? 'Push him' : 'Reverse it', req.crit ? 'Just knock him down' : 'Leave it');
     case 'followUp': return (<>
-      {yesNo(`Follow up${req.steps === 2 ? ' 2 squares' : ' into the gap'} with ${name(req.pid)}?`, 'Follow up', 'Stay')}
-      <Chips small value={settings().autoFollow ?? 'ask'} onChange={(v) => setSettings({ autoFollow: v === 'ask' ? null : v })} options={[['ask', 'Ask me'], ['always', 'Always follow up'], ['never', 'Never']]} />
+      {yesNo(`Follow up${req.steps === 2 ? ' 2 squares' : ' into the gap'} with ${name(req.pid)}?`, 'Follow up', 'Stay', true,
+        <div className="follow-pref"><span className="pb-label">Next time</span><Chips small value={settings().autoFollow ?? 'ask'} onChange={(v) => setSettings({ autoFollow: v === 'ask' ? null : v })} options={[['ask', 'Ask me'], ['always', 'Always follow up'], ['never', 'Never']]} /></div>)}
     </>);
     case 'push': return <h3>Pick where {name(req.pid)} gets pushed: click an orange square, or press its number</h3>;
     case 'scatter': {
@@ -841,6 +842,10 @@ function ActPrompt({ req, answer, P, mode, setMode, primary, hover, setHover, wh
   if (hover?.pid && req.dirty.includes(hover.pid)) tip = contactOdds(s, p, P(hover.pid), 'Dirty hit', 'dirty');
   if (hover?.pass?.why?.length) tip += ` (${hover.pass.why.join(', ')})`;
   if (hover?.pass?.bomb) tip = `FIRE BOMB (3 tokens): ${tip}`;
+  // BUG-13: every action button gets a number key (1-9), labelled on the button
+  HOT.nums = []; // this panel re-renders on its own (hover), so it starts the list itself
+  const nk = (fn) => { HOT.nums.push(fn); return fn; };
+  const kn = () => (HOT.nums.length <= 9 ? <Kbd k={HOT.nums.length} /> : null);
   return (
     <>
       <h3>#{p.num} is up{modeName}{p.onFire ? <> <FireIcon /> ON FIRE</> : ''}. {req.left} movement left.</h3>
@@ -862,16 +867,16 @@ function ActPrompt({ req, answer, P, mode, setMode, primary, hover, setHover, wh
       {/* every action open to him right now, as its own button (with the odds); or click the ringed player */}
       {(req.tackles.length > 0 || req.blocks.length > 0 || req.handoffs.length > 0 || req.passes.length > 0 || req.canStand || req.dirty.length > 0 || req.jukes.length > 0 || req.shakes.length > 0 || Object.keys(reach ?? {}).length > 0) && (
         <div className="act-btns">
-          {req.tackles.map((pid) => <Button key={`t${pid}`} className="act-tackle" {...hv(pid)} onClick={() => answer({ kind: 'tackle', pid })}>{req.asMove.includes('tackle') ? 'Diving tackle' : 'Tackle'} #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'tackle')}</span></Button>)}
-          {req.blocks.filter((pid) => !req.tackles.includes(pid)).map((pid) => <Button key={`b${pid}`} className="act-block" {...hv(pid)} onClick={() => answer({ kind: 'block', pid })}>{blockWord} #{P(pid).num} <span className="odds">{chance(s, p, P(pid))}</span></Button>)}
-          {req.shoves.map((pid) => <Button key={`s${pid}`} className="act-skill" {...hv(pid, { shove: true })} onClick={() => answer({ kind: 'shove', pid })}>Shove #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'shove')}</span></Button>)}
-          {req.jukes.map((pid) => <Button key={`j${pid}`} className="act-skill" {...hv(pid)} onClick={() => answer({ kind: 'juke', pid })}>Juke #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'juke')}</span></Button>)}
-          {req.shakes.map((pid) => <Button key={`k${pid}`} className="act-skill" {...hv(pid)} onClick={() => answer({ kind: 'shake', pid })}>Shake #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'shake')}</span></Button>)}
-          {req.dirty.map((pid) => <Button key={`d${pid}`} className="act-dirty" {...hv(pid)} onClick={() => answer({ kind: 'dirty', pid })}>Dirty hit #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'dirty')}</span></Button>)}
-          {req.handoffs.map((pid) => { const far = Math.max(Math.abs(P(pid).col - p.col), Math.abs(P(pid).row - p.row)) > 1; return <Button key={`h${pid}`} className="act-hand" onClick={() => answer({ kind: 'handoff', pid })}>{s.ball.pid === p.pid ? `${far ? 'Pitch' : 'Hand off'} to #${P(pid).num}` : `Take ${far ? 'the pitch' : 'hand-off'} from #${P(pid).num}`}</Button>; })}
+          {req.tackles.map((pid) => <Button key={`t${pid}`} className="act-tackle" {...hv(pid)} onClick={nk(() => answer({ kind: 'tackle', pid }))}>{kn()}{req.asMove.includes('tackle') ? 'Diving tackle' : 'Tackle'} #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'tackle')}</span></Button>)}
+          {req.blocks.filter((pid) => !req.tackles.includes(pid)).map((pid) => <Button key={`b${pid}`} className="act-block" {...hv(pid)} onClick={nk(() => answer({ kind: 'block', pid }))}>{kn()}{blockWord} #{P(pid).num} <span className="odds">{chance(s, p, P(pid))}</span></Button>)}
+          {req.shoves.map((pid) => <Button key={`s${pid}`} className="act-skill" {...hv(pid, { shove: true })} onClick={nk(() => answer({ kind: 'shove', pid }))}>{kn()}Shove #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'shove')}</span></Button>)}
+          {req.jukes.map((pid) => <Button key={`j${pid}`} className="act-skill" {...hv(pid)} onClick={nk(() => answer({ kind: 'juke', pid }))}>{kn()}Juke #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'juke')}</span></Button>)}
+          {req.shakes.map((pid) => <Button key={`k${pid}`} className="act-skill" {...hv(pid)} onClick={nk(() => answer({ kind: 'shake', pid }))}>{kn()}Shake #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'shake')}</span></Button>)}
+          {req.dirty.map((pid) => <Button key={`d${pid}`} className="act-dirty" {...hv(pid)} onClick={nk(() => answer({ kind: 'dirty', pid }))}>{kn()}Dirty hit #{P(pid).num} <span className="odds">{chance(s, p, P(pid), 'dirty')}</span></Button>)}
+          {req.handoffs.map((pid) => { const far = Math.max(Math.abs(P(pid).col - p.col), Math.abs(P(pid).row - p.row)) > 1; return <Button key={`h${pid}`} className="act-hand" onClick={nk(() => answer({ kind: 'handoff', pid }))}>{kn()}{s.ball.pid === p.pid ? `${far ? 'Pitch' : 'Hand off'} to #${P(pid).num}` : `Take ${far ? 'the pitch' : 'hand-off'} from #${P(pid).num}`}</Button>; })}
           {/* move there and hit him in one go: no need to move first and then find the button */}
           {Object.entries(reach ?? {}).map(([pid, r]) => (
-            <Button key={`r${pid}`} className={r.kind === 'tackle' ? 'act-tackle' : 'act-block'} {...hv(pid)} onClick={() => pickPlayer?.(pid)}>
+            <Button key={`r${pid}`} className={r.kind === 'tackle' ? 'act-tackle' : 'act-block'} {...hv(pid)} onClick={nk(() => pickPlayer?.(pid))}>{kn()}
               Move &amp; {r.kind} #{P(pid).num} <span className="odds">{fieldOdds[pid]?.text ?? ''}</span>
             </Button>
           ))}
@@ -879,10 +884,6 @@ function ActPrompt({ req, answer, P, mode, setMode, primary, hover, setHover, wh
           {req.canStand && <Button kind="primary" onClick={() => answer({ kind: 'stand' })}>Stand up (costs 3)</Button>}
         </div>
       )}
-      <div className="btns">
-        <Button onClick={() => answer({ kind: 'end' })}>{req.spent || req.mode === 'half' ? (req.moves.length ? `Done (skip the ${req.left} left)` : 'Done') : 'Do nothing'} <Kbd a="primary" /></Button>
-        {req.canAdjust && <Button onClick={() => answer({ kind: 'adjust' })}>Adjustment</Button>}
-      </div>
       {req.fire && req.fire.tokens > 0 && (
         <div className="fire-row">
           <span className="pb-label"><FireIcon /> {req.fire.tokens}</span>
@@ -893,6 +894,10 @@ function ActPrompt({ req, answer, P, mode, setMode, primary, hover, setHover, wh
         </div>
       )}
       {fuego && <div className="playbook fuego-list">{SKILLS.map((k) => <button key={k} className="chipbtn" title={abilityText(k)} onClick={() => answer({ kind: 'fuego', skill: k })}>{k}</button>)}</div>}
+      <div className="btns">
+        <Button onClick={() => answer({ kind: 'end' })}>{req.spent || req.mode === 'half' ? (req.moves.length ? `Done (skip the ${req.left} left)` : 'Done') : 'Do nothing'} <Kbd a="primary" /></Button>
+        {req.canAdjust && <Button onClick={() => answer({ kind: 'adjust' })}>Adjustment</Button>}
+      </div>
     </>
   );
 }
@@ -1044,7 +1049,7 @@ function FormationPrompt({ req, answer, edit, setEdit, sel, primary, hover, s })
   const lastOk = lastSpots && lastSpots.length === req.roster.length && (req.role === 'offense' ? checkOffense(lastSpots, ctx) : checkDefense(lastSpots, req.offense, ctx)).ok;
   const ready = () => { rememberLast(teamId, req.role, edit, ctx); answer(edit); };
   if (res.ok) primary.current = ready;
-  HOT.sets = sets.map((set) => () => useSet(set));
+  HOT.nums = sets.map((set) => () => useSet(set));
   if (lastOk) HOT.same = () => setEdit(lastSpots);
   return (
     <>
