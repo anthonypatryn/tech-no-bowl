@@ -767,3 +767,17 @@ test('BUG-16: a dogpile only offers players who can reach a downed opponent, and
   await g2.dogpile(g2.s.players['0:42']);
   assert.deepEqual(asked2, []);
 });
+
+test('BUG-16: a dogpile still offers a player who can only get there by hurdling (1 fire token), and not without one', async () => {
+  // #33 (half move 2) at the sideline, boxed in by teammates; the only way to the downed carrier (#45) is through downed
+  // teammate #20's square
+  const layout = [[0, 42, 6, 20], [0, 33, 0, 10], [0, 61, 1, 9], [0, 62, 1, 10], [0, 63, 1, 11], [0, 64, 0, 9], [0, 20, 0, 11, true], [1, 45, 0, 13, true]];
+  for (const [tokens, offered] of [[1, true], [0, false]]) {
+    const g = skillGame(layout, null, [1, 2], {}, 'inferno');
+    g.s.fire[0] = tokens;
+    const asked = [];
+    g.agents[0] = scripted({ bonus: (req) => { asked.push([...req.options]); return null; } });
+    await g.dogpile(g.s.players['0:42']);
+    assert.equal((asked[0] ?? []).includes('0:33'), offered, `${tokens} token(s)`);
+  }
+});

@@ -1192,7 +1192,10 @@ export class Game {
       // BUG-16: only players who can really put the hit on: next to a downed opponent already, or able to get next to
       // one with the dogpile's half move (plus movement bought with fire tokens, which doesn't count toward the half,
       // p.20). Nobody can: no question, the play ends after the tackle as usual.
-      const canHit = (p) => [sqOf(p), ...[...moveReach(this.s, p, halfOf(p.skill) + (this.s.fire?.[p.side] ?? 0), 0, { allowOut: false }).values()].map((m) => m.to)]
+      // (a hurdle through a downed player's square is legal too: 1 token, so one less to buy movement with)
+      const tokens = this.s.fire?.[tackler.side] ?? 0;
+      const reach = (p, budget, hurdle) => [...moveReach(this.s, p, budget, 0, { allowOut: false, hurdle }).values()].map((m) => m.to);
+      const canHit = (p) => [sqOf(p), ...reach(p, halfOf(p.skill) + tokens, false), ...(tokens >= 1 ? reach(p, halfOf(p.skill) + tokens - 1, true) : [])]
         .some((q) => downed.some((o) => adjacent(q, sqOf(o))));
       const options = this.roster(tackler.side).filter((p) => p.pid !== exclude && !p.down && p.col != null && canHit(p)).map((p) => p.pid);
       if (!options.length) return;
