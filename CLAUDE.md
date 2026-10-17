@@ -19,6 +19,9 @@ messages, the bug list (`?view=bugs`, PIN), the Art Review Board (`?view=art`) a
 the owner pastes their "copy for Claude" output. The owner often asks for a plan first: give one, then build it.
 
 ### Latest round (all pushed, live; session of 2026-10-15/16)
+- BUG-16: the INFERNO dogpile offered every standing teammate. Now only players who can put the dirty hit on: next to a
+  downed opponent, or able to get next to one with the half move plus token-bought movement (`canHit` in `dogpile`). Nobody
+  can: no question, the play ends after the tackle. Test 69.
 - BUG-14 / BUG-15: the sticky main-button row slid over rows after it (follow-up chips, the fire row). It only sticks
   when it is the prompt's last row now; the act prompt's Done row moved below the fire row, the follow-up chips sit
   above Follow up / Stay ("Next time", via `yesNo`'s `extra`). BUG-13: every action button (block, tackle, shove,
@@ -272,7 +275,7 @@ the owner pastes their "copy for Claude" output. The owner often asks for a plan
 - Skills: a Playmaker-negated die counts 0. A failed OPTION or INTERCEPTOR sport check scatters. ZONE DEFENDER counts
   for INTERCEPTOR. POCKET PASSER: the first pass after the 5 called cards, by the snap taker who hasn't moved.
 - INFERNO: ON FIRE ends on any fumble. Hurdle = 1 token for the rest of the activation. The dogpile activation may move
-  (half, then the dirty hit). EN FUEGO ends when that coach activates another player.
+  (half, then the dirty hit); it's only offered to players who can reach a downed opponent that way. EN FUEGO ends when that coach activates another player.
 - Field goals: squares from the hiker's square to the square past the posts, +1 (the p.20 example = 12).
 
 ## Hard-won rules (don't undo these)
@@ -308,7 +311,7 @@ the owner pastes their "copy for Claude" output. The owner often asks for a plan
 ```
 npx oxlint src tools
 npx vite build
-npm test                                   # 68 rules tests
+npm test                                   # 69 rules tests
 npm run sim -- 300                         # must print errors: 0
 node tools/simulate.mjs 60 1 passive       # side 0 never acts: games must still end
 node tools/simulate.mjs 100 1 allpro:starter

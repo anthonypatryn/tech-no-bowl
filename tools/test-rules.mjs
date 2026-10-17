@@ -752,3 +752,18 @@ test('BUG-12: a saved formation used near a goal line keeps every player on the 
     }
   }
 });
+
+test('BUG-16: a dogpile only offers players who can reach a downed opponent, and asks nothing when nobody can', async () => {
+  // the tackler (#42) stands over the downed carrier (#45); #55 is two squares off (one step away), #33 far upfield
+  const g = skillGame([[0, 42, 6, 10], [0, 55, 8, 9], [0, 33, 0, 20], [1, 45, 6, 9, true]], null, [1, 2], {}, 'inferno');
+  const asked = [];
+  g.agents[0] = scripted({ bonus: (req) => { asked.push([...req.options]); return null; } });
+  await g.dogpile(g.s.players['0:42']);
+  assert.deepEqual(asked, [['0:55']]);
+  // nobody near: no question at all
+  const g2 = skillGame([[0, 42, 6, 10], [0, 33, 0, 20], [1, 45, 6, 9, true]], null, [1, 2], {}, 'inferno');
+  const asked2 = [];
+  g2.agents[0] = scripted({ bonus: (req) => { asked2.push(req.options); return null; } });
+  await g2.dogpile(g2.s.players['0:42']);
+  assert.deepEqual(asked2, []);
+});

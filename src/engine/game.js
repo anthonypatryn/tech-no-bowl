@@ -1187,8 +1187,15 @@ export class Game {
   async dogpile(tackler) {
     let exclude = tackler.pid;
     for (let n = 0; n < 7; n++) {
-      if (!this.roster(1 - tackler.side).some((o) => o.down && o.col != null)) return;
-      const options = this.roster(tackler.side).filter((p) => p.pid !== exclude && !p.down && p.col != null).map((p) => p.pid);
+      const downed = this.roster(1 - tackler.side).filter((o) => o.down && o.col != null);
+      if (!downed.length) return;
+      // BUG-16: only players who can really put the hit on: next to a downed opponent already, or able to get next to
+      // one with the dogpile's half move (plus movement bought with fire tokens, which doesn't count toward the half,
+      // p.20). Nobody can: no question, the play ends after the tackle as usual.
+      const canHit = (p) => [sqOf(p), ...[...moveReach(this.s, p, halfOf(p.skill) + (this.s.fire?.[p.side] ?? 0), 0, { allowOut: false }).values()].map((m) => m.to)]
+        .some((q) => downed.some((o) => adjacent(q, sqOf(o))));
+      const options = this.roster(tackler.side).filter((p) => p.pid !== exclude && !p.down && p.col != null && canHit(p)).map((p) => p.pid);
+      if (!options.length) return;
       const v = await this.askValid(tackler.side, { type: 'bonus', kind: 'dogpile', options }, (x) => (x == null || options.includes(x) ? null : 'pick a player or pass'), () => null);
       if (v == null) return;
       this.log(`DOGPILE! ${this.name(this.s.players[v])} piles on.`, 'dogpile', { pid: v });
